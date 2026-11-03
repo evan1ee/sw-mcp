@@ -2,6 +2,16 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.19
+
+Closes a gap found when planning the Phase 1a checks: 11.5.1 lists what the Drawing Geometry Snapshot holds but not how it is encoded ([register](open-decisions.md), N2).
+
+- **Snapshot encoding** (11.5.1) **[Builder's call]**:
+  - keys: pipeline tags, otherwise a kind prefix plus a hash of the native name; sheet order by `index`;
+  - points in sheet mm from the lower-left corner; arcs stored exactly and tessellated by the checks;
+  - text boxes stored raw with their read-back method, the font-metric margin applied by the checks;
+  - extension lines carry their attachment entity; model edges carry a kind; hatching is never exported.
+
 ## What changed in 1.18
 
 Records the Phase 0 owner decisions (new ADR-050, accepted 2026-11-04):

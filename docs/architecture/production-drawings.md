@@ -1,6 +1,6 @@
 # 11. Production Drawings (P0)
 
-> Specification v1.18, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.19, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 11.1 Purpose and Bar
 
@@ -127,6 +127,15 @@ The checks need more than annotation positions, so read-back produces a separate
 - The as-built Drawing Layout IR (11.11) is derived from the snapshot, so the two always agree.
 - Each drawing report stores the snapshot it was computed from, so any result can be reproduced offline.
 - Recorded snapshots are the fixtures for unit tests (15.1) and let the benchmark checks be replayed without SOLIDWORKS.
+
+**Encoding [Builder's call].** The schema is `schemas/drawing-geometry-snapshot/v0.json`. As a derived artifact it is read leniently (ADR-042).
+
+- **Keys.** Sheets, views and annotations are objects keyed by ID (3.4.1). An annotation the pipeline tagged is keyed by its tag. Every other item is keyed by a prefix (`s` sheet, `v` view, `a` annotation) plus `_` plus the first 10 hex characters of the SHA-256 of the UTF-8 native name; on a collision within one snapshot the add-in uses 16 characters. The native name is kept in `native_id`. Sheet order is the integer field `index`.
+- **Coordinates.** Points are `[x, y]` in sheet millimetres, origin at the sheet's lower-left corner.
+- **Curves.** Line work is stored as polylines (arrays of points) and arcs (`center`, `radius`, `start_deg`, `end_deg`, counter-clockwise). Arcs are stored exactly; the checks tessellate them with a chord error of at most 0.02 mm (11.5.2), so the add-in does no tessellation.
+- **Text boxes** are stored as read: four corners, counter-clockwise, the text height, and the method (`display_data` or `font_metrics`). The checks apply `drawing.check.font_metric_margin` themselves, so the threshold used is recorded in the report rather than baked into the snapshot.
+- **Extension lines** carry the attachment entity they start from, so chain and baseline arrangements can be recognized (11.5.2, D1).
+- **Model edges** carry a kind (`visible`, `silhouette`, `hidden`, `centerline`, `center_mark`). Hidden edges are present only when the view displays them, and section hatching is never exported.
 
 ### 11.5.2 Geometric Tests for D1–D3 [Builder's call]
 
