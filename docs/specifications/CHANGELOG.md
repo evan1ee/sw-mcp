@@ -12,6 +12,11 @@ Closes a gap found when starting the Phase 0 schema work: 3.4.4 says schemas mar
   - major version 0 is unstable, and ADR-042 applies from major 1;
   - the annotations `x-quantity` (number kind), `x-unordered` (set arrays) and `x-retryable` (default `retryable` per error code);
   - patterns are anchored and matched against the whole string.
+  - the meaning of `safe`, `after_fix` and `never`; timeouts, interruptions and a lost connection are never `safe`;
+  - integers are written without a fraction and stay at or below 2^53 − 1; ID-keyed objects use `propertyNames`.
+- Validation errors are ordered by pointer token by token, with array indices compared as numbers (3.4.7) **[Builder's call]**.
+- `geo:` reference IDs follow the item-ID grammar (3.4.2) **[Builder's call]**.
+- 3.4.3 notes that equality uses the quantum as a tolerance while hashing uses rounded values, so equivalence is decided by hash.
 
 ## What changed in 1.16
 
