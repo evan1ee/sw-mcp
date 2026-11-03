@@ -65,12 +65,18 @@
 
 ```python
 @pytest.mark.parametrize("s", ["bore_1", "a", "a" * 64])
-def test_item_id_accepts(s): assert is_item_id(s)
+def test_item_id_accepts(s):
+    assert is_item_id(s)
 
-@pytest.mark.parametrize("s", ["Bore_1", "1bore", "a" * 65, "bore-1", "bore_1\n", "", "前视基准面", "Boss-Extrude1"])
-def test_item_id_rejects_display_names(s): assert not is_item_id(s)
 
-@pytest.mark.parametrize("s", ["A", "AB", "Z"])          # accepted datum labels
+@pytest.mark.parametrize(
+    "s", ["Bore_1", "1bore", "a" * 65, "bore-1", "bore_1\n", "", "前视基准面", "Boss-Extrude1"]
+)
+def test_item_id_rejects_display_names(s):
+    assert not is_item_id(s)
+
+
+@pytest.mark.parametrize("s", ["A", "AB", "Z"])  # accepted datum labels
 @pytest.mark.parametrize("s", ["I", "O", "Q", "AI", "a", "ABC", ""])  # rejected (separate test)
 # document ID: "BRK-001-DI", "x", "a.b_c-d" ok; "-x", ".x", "a"*129, "a b" rejected
 
@@ -79,28 +85,64 @@ def test_parse_document_ref_roundtrip():
     assert r == DocumentRef("part", "bracket", 4) and str(r) == "part:bracket@4"
     assert parse_document_ref("drawing_intent:BRK-001-DI").revision is None
 
-@pytest.mark.parametrize("s", ["part:x@0", "part:x@01", "part:x@", "part:x@-1", " part:x", "PART:x",
-                               "foo:x", "part:", "part:x/bore_1", "part:x\n"])
+
+@pytest.mark.parametrize(
+    "s",
+    [
+        "part:x@0",
+        "part:x@01",
+        "part:x@",
+        "part:x@-1",
+        " part:x",
+        "PART:x",
+        "foo:x",
+        "part:",
+        "part:x/bore_1",
+        "part:x\n",
+    ],
+)
 def test_parse_document_ref_rejects(s):
-    with pytest.raises(ReferenceSyntaxError) as e: parse_document_ref(s)
+    with pytest.raises(ReferenceSyntaxError) as e:
+        parse_document_ref(s)
     assert e.value.ref == s and e.value.expected
 
-def test_parse_item_ref(): assert parse_item_ref("design_intent:BRK-001-DES@2/r1") == ItemRef(DocumentRef("design_intent", "BRK-001-DES", 2), "r1")
+
+def test_parse_item_ref():
+    assert parse_item_ref("design_intent:BRK-001-DES@2/r1") == ItemRef(
+        DocumentRef("design_intent", "BRK-001-DES", 2), "r1"
+    )
+
+
 def test_parse_intent_item_ref():
     assert parse_intent_item_ref("datum:A") == IntentItemRef("datum", "A")
-    assert parse_intent_item_ref("scheme:ds_bore_1_diameter_b41219").id == "ds_bore_1_diameter_b41219"
+    assert (
+        parse_intent_item_ref("scheme:ds_bore_1_diameter_b41219").id == "ds_bore_1_diameter_b41219"
+    )
     # rejected: "datum:I", "datum:a", "scheme:A", "tolerance:x"
+
+
 def test_parse_geometry_ref_variants():
-    assert parse_geometry_ref("bore_1.cylindrical_face") == FeatureRoleRef("bore_1", "cylindrical_face")
+    assert parse_geometry_ref("bore_1.cylindrical_face") == FeatureRoleRef(
+        "bore_1", "cylindrical_face"
+    )
     assert parse_geometry_ref("geo:g7f3a21c0") == StoredGeometryRef("g7f3a21c0")
     assert parse_geometry_ref("plane:right") == StandardGeometryRef("plane:right")
     assert parse_geometry_ref("origin") == StandardGeometryRef("origin")
     assert parse_geometry_ref("datum:A") == DatumGeometryRef("A")
     # rejected: "plane:left", "bore_1", "bore_1.a.b", "part:x"
+
+
 def test_parsers_reject_other_kinds():  # the field type decides (§3.4.2)
-    for parse, s in [(parse_param_ref, "part:x"), (parse_local_ref, "bore_1.diameter"),
-                     (parse_document_ref, "part:x/r1"), (parse_solidworks_dim_ref, "swdim:")]:
-        with pytest.raises(ReferenceSyntaxError): parse(s)
+    for parse, s in [
+        (parse_param_ref, "part:x"),
+        (parse_local_ref, "bore_1.diameter"),
+        (parse_document_ref, "part:x/r1"),
+        (parse_solidworks_dim_ref, "swdim:"),
+    ]:
+        with pytest.raises(ReferenceSyntaxError):
+            parse(s)
+
+
 # every parsed value: str(parse_x(s)) == s  (parametrized round-trip over all valid examples above)
 ```
 
@@ -126,22 +168,44 @@ def test_parsers_reject_other_kinds():  # the field type decides (§3.4.2)
 - [ ] **Step 1: Write failing tests**
 
 ```python
-def test_quantize_removes_float_noise(): assert quantize(0.1 + 0.2, "length") == 0.3
+def test_quantize_removes_float_noise():
+    assert quantize(0.1 + 0.2, "length") == 0.3
+
+
 def test_quantize_half_even_and_negative_zero():
     assert quantize(1.0000005, "length") == 1.0 and quantize(1.0000015, "length") == 1.000002
-    r = quantize(-0.0000001, "length"); assert r == 0.0 and math.copysign(1, r) == 1
+    r = quantize(-0.0000001, "length")
+    assert r == 0.0 and math.copysign(1, r) == 1
+
+
 def test_quantize_inch_and_ratio():
-    assert quantize(1.00000004, "length", "in") == 1.0 and quantize(0.1234567891, "ratio") == 0.123456789
+    assert (
+        quantize(1.00000004, "length", "in") == 1.0
+        and quantize(0.1234567891, "ratio") == 0.123456789
+    )
+
+
 def test_values_equal_quanta():
     assert values_equal(10.0, 10.000001, "length") and not values_equal(10.0, 10.0000011, "length")
-    assert values_equal(1.0, 1.0000001, "length", "in") and not values_equal(1.0, 1.0000002, "length", "in")
+    assert values_equal(1.0, 1.0000001, "length", "in") and not values_equal(
+        1.0, 1.0000002, "length", "in"
+    )
     assert values_equal(90.0, 90.000001, "angle") and not values_equal(3, 4, "count")
+
+
 @pytest.mark.parametrize("v", [math.nan, math.inf, -math.inf, True, "1.0", None])
 def test_require_finite_rejects(v):
-    with pytest.raises(ValueError): require_finite(v)
+    with pytest.raises(ValueError):
+        require_finite(v)
+
+
 def test_count_must_be_int():
-    with pytest.raises(ValueError): quantize(2.5, "count")
-def test_normalize_text_nfc(): assert normalize_text("é") == "é"
+    with pytest.raises(ValueError):
+        quantize(2.5, "count")
+
+
+def test_normalize_text_nfc():
+    assert normalize_text("é") == "é"
 ```
 
 - [ ] **Step 2: Run** `uv run pytest packages/cad-ir/tests/test_numbers.py packages/cad-ir/tests/test_text.py -q`. Expected: FAIL.
