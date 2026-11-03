@@ -1,0 +1,20 @@
+<Project>
+  <!-- Shared settings for every project in ExecutionServer.sln (ADR-038). -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <!-- Local SOLIDWORKS installation; interop assemblies are referenced from here, never committed. -->
+    <SolidWorksInstallDir Condition="'$(SolidWorksInstallDir)' == ''">C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\</SolidWorksInstallDir>
+    <SolidWorksInteropDir>$(SolidWorksInstallDir)api\redist\</SolidWorksInteropDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Lets the .NET SDK build net48 without a targeting pack installed. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,17 @@
+[project]
+name = "cad-application"
+version = "0.1.0"
+description = "Tool handlers, jobs, store and synchronization (spec 13, guideline G2)"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "cad-ir",
+    "cad-geometry",
+    "cad-references",
+    "cad-compiler",
+    "cad-drawing",
+    "cad-verification",
+]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"

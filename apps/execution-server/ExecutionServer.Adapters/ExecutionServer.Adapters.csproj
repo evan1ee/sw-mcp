@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Per-domain SOLIDWORKS adapters: documents, sketches, features, geometry, assemblies, drawings, verification. -->
+  <Import Project="..\SolidWorks.Interop.props" />
+
+  <PropertyGroup>
+    <RootNamespace>ExecutionServer.Adapters</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ExecutionServer.Core\ExecutionServer.Core.csproj" />
+  </ItemGroup>
+</Project>

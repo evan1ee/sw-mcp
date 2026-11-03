@@ -1,0 +1,12 @@
+[project]
+name = "cad-geometry"
+version = "0.1.0"
+description = "Geometry signatures, topology and measurements"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "cad-ir",
+]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"

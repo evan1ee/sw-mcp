@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The ISwAddin, pipe host, dispatcher, events and diagnostics (ADR-028). Registered per user (ADR-038). -->
+  <Import Project="..\SolidWorks.Interop.props" />
+
+  <PropertyGroup>
+    <RootNamespace>ExecutionServer.AddIn</RootNamespace>
+    <AssemblyName>sw-mcp.AddIn</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ExecutionServer.Core\ExecutionServer.Core.csproj" />
+    <ProjectReference Include="..\ExecutionServer.Adapters\ExecutionServer.Adapters.csproj" />
+  </ItemGroup>
+</Project>

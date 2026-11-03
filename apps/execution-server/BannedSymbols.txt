@@ -1,0 +1,3 @@
+M:SolidWorks.Interop.sldworks.ISldWorks.RunMacro(System.String,System.String,System.String);No macro execution through any tool (spec section 14)
+M:SolidWorks.Interop.sldworks.ISldWorks.RunMacro2(System.String,System.String,System.String,System.Int32,System.Int32@);No macro execution through any tool (spec section 14)
+M:SolidWorks.Interop.sldworks.IModelDocExtension.SelectByID2(System.String,System.String,System.Double,System.Double,System.Double,System.Boolean,System.Int32,SolidWorks.Interop.sldworks.Callout,System.Int32);Selection by display name is localized; select by entity (spec 8.3 rule 11)

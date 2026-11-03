@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- IPC protocol, operation-ID ledger and units. No SOLIDWORKS references (ADR-038). -->
+  <PropertyGroup>
+    <RootNamespace>ExecutionServer.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

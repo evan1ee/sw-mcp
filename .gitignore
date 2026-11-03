@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+
+# C#
+bin/
+obj/
+.vs/
+*.user
+TestResults/
+
+# SOLIDWORKS temporary and lock files
+~$*
+
+# Local tooling
+.idea/
+.vscode/
+*.log

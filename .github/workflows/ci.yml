@@ -1,0 +1,30 @@
+# Hosted CI (ADR-039): everything that does not need SOLIDWORKS.
+# Live suites and the drawing benchmark run on the self-hosted SOLIDWORKS runner (added in Phase 0).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --locked
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run pyright
+      - run: uv run lint-imports
+      - run: uv run pytest
+
+  csharp-core:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      # Core and its tests only; AddIn and Adapters need a SOLIDWORKS installation (ADR-038).
+      - run: dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj

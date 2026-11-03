@@ -1,0 +1,108 @@
+# uv workspace root (ADR-034). Not a package itself; `uv sync` installs every member.
+[project]
+name = "sw-mcp"
+version = "0.1.0"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "cad-ir",
+    "cad-geometry",
+    "cad-references",
+    "cad-compiler",
+    "cad-drawing",
+    "cad-verification",
+    "cad-protocol",
+    "cad-application",
+    "core-service",
+    "mcp-server",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12",
+    "pyright>=1.1.400",
+    "pytest>=8.4",
+    "pytest-cov>=6.2",
+    "import-linter>=2.3",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*", "apps/mcp-server", "apps/core-service"]
+
+[tool.uv.sources]
+cad-ir = { workspace = true }
+cad-geometry = { workspace = true }
+cad-references = { workspace = true }
+cad-compiler = { workspace = true }
+cad-drawing = { workspace = true }
+cad-verification = { workspace = true }
+cad-protocol = { workspace = true }
+cad-application = { workspace = true }
+core-service = { workspace = true }
+mcp-server = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["**/generated/**"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF", "PL", "PT"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.13"
+include = ["packages", "apps/mcp-server", "apps/core-service", "tests"]
+exclude = ["**/generated", "**/.venv"]
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+testpaths = ["packages", "apps/mcp-server", "apps/core-service", "tests"]
+
+[tool.coverage.run]
+source = ["packages"]
+omit = ["**/generated/**"]
+
+[tool.coverage.report]
+fail_under = 80
+
+# Python layering (guideline G2), checked in CI with `lint-imports`.
+[tool.importlinter]
+root_packages = [
+    "cad_ir", "cad_geometry", "cad_references", "cad_compiler", "cad_drawing",
+    "cad_verification", "cad_protocol", "cad_application", "core_service", "mcp_server",
+]
+
+[[tool.importlinter.contracts]]
+name = "cad-ir depends on nothing else of ours"
+type = "forbidden"
+source_modules = ["cad_ir"]
+forbidden_modules = [
+    "cad_geometry", "cad_references", "cad_compiler", "cad_drawing", "cad_verification",
+    "cad_protocol", "cad_application", "core_service", "mcp_server",
+]
+
+[[tool.importlinter.contracts]]
+name = "Pure core never reaches the backend, application or services"
+type = "forbidden"
+source_modules = ["cad_geometry", "cad_references", "cad_compiler", "cad_drawing", "cad_verification"]
+forbidden_modules = ["cad_protocol", "cad_application", "core_service", "mcp_server"]
+
+[[tool.importlinter.contracts]]
+name = "cad-application uses the Backend port, not the IPC client"
+type = "forbidden"
+source_modules = ["cad_application"]
+forbidden_modules = ["cad_protocol", "core_service", "mcp_server"]
+
+[[tool.importlinter.contracts]]
+name = "MCP front-end holds no state and calls only the core service"
+type = "forbidden"
+source_modules = ["mcp_server"]
+forbidden_modules = [
+    "cad_ir", "cad_geometry", "cad_references", "cad_compiler", "cad_drawing",
+    "cad_verification", "cad_protocol", "cad_application", "core_service",
+]

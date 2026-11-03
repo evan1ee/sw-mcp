@@ -1,0 +1,13 @@
+[project]
+name = "core-service"
+version = "0.1.0"
+description = "Long-lived per-user core service (ADR-041)"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "cad-application",
+    "cad-protocol",
+]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"

@@ -1,0 +1,31 @@
+<Project>
+  <!-- Imported by projects that call SOLIDWORKS (AddIn, Adapters). Core and Tests never import it (ADR-038). -->
+  <ItemGroup>
+    <Reference Include="SolidWorks.Interop.sldworks">
+      <HintPath>$(SolidWorksInteropDir)SolidWorks.Interop.sldworks.dll</HintPath>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SolidWorks.Interop.swconst">
+      <HintPath>$(SolidWorksInteropDir)SolidWorks.Interop.swconst.dll</HintPath>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SolidWorks.Interop.swpublished">
+      <HintPath>$(SolidWorksInteropDir)SolidWorks.Interop.swpublished.dll</HintPath>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Banned SOLIDWORKS APIs become build errors (ADR-038; spec 8.3 rules 9 and 11, section 14). -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="3.3.4" PrivateAssets="all" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)BannedSymbols.txt" />
+  </ItemGroup>
+
+  <Target Name="CheckSolidWorksInterop" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(SolidWorksInteropDir)SolidWorks.Interop.sldworks.dll')"
+           Text="SOLIDWORKS interop assemblies not found in '$(SolidWorksInteropDir)'. Set SolidWorksInstallDir, or build only ExecutionServer.Core and ExecutionServer.Tests on machines without SOLIDWORKS." />
+  </Target>
+</Project>
