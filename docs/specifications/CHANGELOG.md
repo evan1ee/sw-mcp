@@ -11,6 +11,11 @@ Closes a gap found when planning the Phase 1a checks: 11.5.1 lists what the Draw
   - points in sheet mm from the lower-left corner; arcs stored exactly and tessellated by the checks;
   - text boxes stored raw with their read-back method, the font-metric margin applied by the checks;
   - extension lines carry their attachment entity; model edges carry a kind; hatching is never exported.
+  - the arc sweep rule, judged with the angle quantum; checks run on the quantized snapshot;
+  - center-mark and centerline annotation line work counts as model edges.
+- **D1 chain and baseline exemption** (11.5.2) made exact: it applies only where every contact point lies on the shared extension line, inside the overlap of the coincident extension lines.
+- Arc chord error is `drawing.check.epsilon_mm` / 2 (was 0.02 mm).
+- D7 distance and precedence defined; soft metrics exclude shared extension lines, leader-to-target contact and non-visible edges (11.5).
 
 ## What changed in 1.18
 
