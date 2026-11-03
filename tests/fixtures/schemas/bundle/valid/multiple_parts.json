@@ -1,0 +1,8 @@
+{
+  "bundle_schema_version": "1.0",
+  "modules": [
+    "part:a@1",
+    "part:b@2",
+    "assembly:asm@1"
+  ]
+}

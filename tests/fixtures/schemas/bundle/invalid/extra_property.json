@@ -1,0 +1,9 @@
+{
+  "bundle_schema_version": "1.0",
+  "modules": [
+    "part:bracket@4",
+    "design_intent:BRK-001-DES@2",
+    "drawing_intent:BRK-001-DI@3"
+  ],
+  "extra": 1
+}

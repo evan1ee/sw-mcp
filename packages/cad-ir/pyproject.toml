@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Shared IR core and IR modules (spec 3.4, 4, 5, 11.10, 11.11)"
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    "jsonschema>=4.26.0",
     "pydantic>=2.11",
+    "rfc8785>=0.1.4",
 ]
 
 [build-system]

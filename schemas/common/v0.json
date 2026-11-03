@@ -1,0 +1,274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/common/v0.json",
+  "title": "Shared IR core types (spec 3.4)",
+  "$defs": {
+    "ModuleKey": {
+      "enum": [
+        "part",
+        "assembly",
+        "design_intent",
+        "drawing_intent",
+        "drawing_layout"
+      ]
+    },
+    "DocumentId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "ItemId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    },
+    "DatumLabel": {
+      "type": "string",
+      "pattern": "^[A-HJ-NPR-Z]{1,2}$"
+    },
+    "Revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "Units": {
+      "enum": [
+        "mm",
+        "in"
+      ]
+    },
+    "SchemaVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "ContentHash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "DocumentRef": {
+      "type": "string",
+      "pattern": "^(?:part|assembly|design_intent|drawing_intent|drawing_layout):[A-Za-z0-9][A-Za-z0-9._-]{0,127}(?:@[1-9][0-9]*)?$"
+    },
+    "ItemRef": {
+      "type": "string",
+      "pattern": "^(?:part|assembly|design_intent|drawing_intent|drawing_layout):[A-Za-z0-9][A-Za-z0-9._-]{0,127}(?:@[1-9][0-9]*)?/[a-z][a-z0-9_]{0,63}$"
+    },
+    "LocalRef": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    },
+    "IntentItemRef": {
+      "type": "string",
+      "pattern": "^(?:(?:scheme|critical|gdt|finish):[a-z][a-z0-9_]{0,63}|datum:[A-HJ-NPR-Z]{1,2})$"
+    },
+    "ParamRef": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}\\.[a-z][a-z0-9_]{0,63}$"
+    },
+    "GeometryRef": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}\\.[a-z][a-z0-9_]{0,63}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^geo:[a-z][a-z0-9_]{0,63}$"
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:plane:front|plane:top|plane:right|origin)$"
+        },
+        {
+          "type": "string",
+          "pattern": "^datum:[A-HJ-NPR-Z]{1,2}$"
+        }
+      ]
+    },
+    "SolidWorksDimRef": {
+      "type": "string",
+      "pattern": "^swdim:[^\u0000-\u001f-  ]+$"
+    },
+    "Length": {
+      "type": "number",
+      "x-quantity": "length"
+    },
+    "Angle": {
+      "type": "number",
+      "x-quantity": "angle"
+    },
+    "Ratio": {
+      "type": "number",
+      "x-quantity": "ratio"
+    },
+    "Count": {
+      "type": "integer",
+      "minimum": 0,
+      "x-quantity": "count",
+      "maximum": 9007199254740991
+    },
+    "DocumentHeader": {
+      "type": "object",
+      "properties": {
+        "module": {
+          "$ref": "#/$defs/ModuleKey"
+        },
+        "id": {
+          "$ref": "#/$defs/DocumentId"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/SchemaVersion"
+        },
+        "units": {
+          "$ref": "#/$defs/Units"
+        },
+        "revision": {
+          "$ref": "#/$defs/Revision"
+        },
+        "origin": {
+          "enum": [
+            "built",
+            "read"
+          ]
+        }
+      },
+      "required": [
+        "module",
+        "schema_version"
+      ]
+    },
+    "ValidationIssue": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "errors.json"
+        },
+        "pointer": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "error",
+            "warning"
+          ]
+        },
+        "expected": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ref": {
+          "type": "string"
+        },
+        "patch_op": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "code",
+        "pointer",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "Error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "$ref": "errors.json"
+        },
+        "message": {
+          "type": "string"
+        },
+        "retryable": {
+          "enum": [
+            "never",
+            "after_fix",
+            "safe"
+          ]
+        },
+        "details": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "retryable"
+      ],
+      "additionalProperties": false
+    },
+    "Envelope": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "data": true,
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Error"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ids": {
+          "type": "object",
+          "properties": {
+            "request_id": {
+              "type": "string"
+            },
+            "execution_id": {
+              "type": "string"
+            },
+            "report_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "request_id"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "ok",
+        "data",
+        "error",
+        "ids"
+      ],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "ok": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "error": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "error": {
+            "$ref": "#/$defs/Error"
+          },
+          "data": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  }
+}

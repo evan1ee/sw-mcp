@@ -1,0 +1,7 @@
+{
+  "bundle_schema_version": "1.0",
+  "modules": [
+    "part:a@1",
+    "part:a@1"
+  ]
+}

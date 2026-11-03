@@ -1,0 +1,12 @@
+[
+  "part:x@0",
+  "part:x@01",
+  "part:x@",
+  "part:x@-1",
+  " part:x",
+  "PART:x",
+  "foo:x",
+  "part:",
+  "part:x/bore_1",
+  "part:x\n"
+]

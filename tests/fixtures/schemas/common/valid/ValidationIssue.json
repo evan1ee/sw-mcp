@@ -1,0 +1,19 @@
+[
+  {
+    "code": "IR_SCHEMA_INVALID",
+    "pointer": "",
+    "message": "x"
+  },
+  {
+    "code": "IR_REFERENCE_UNRESOLVED",
+    "pointer": "/nodes/bore_1/parameters/diameter",
+    "message": "m",
+    "severity": "warning",
+    "expected": [
+      "a",
+      "b"
+    ],
+    "ref": "bore_1.x",
+    "patch_op": 0
+  }
+]

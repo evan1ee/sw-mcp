@@ -1,0 +1,71 @@
+[
+  {
+    "data": null,
+    "error": null,
+    "ids": {
+      "request_id": "r1"
+    }
+  },
+  {
+    "ok": true,
+    "data": null,
+    "error": null,
+    "ids": {}
+  },
+  {
+    "ok": true,
+    "data": null,
+    "error": {
+      "code": "X"
+    },
+    "ids": {
+      "request_id": "r1"
+    }
+  },
+  {
+    "ok": true,
+    "data": null,
+    "error": null,
+    "ids": {
+      "request_id": "r1",
+      "other": "x"
+    }
+  },
+  {
+    "ok": "yes",
+    "data": null,
+    "error": null,
+    "ids": {
+      "request_id": "r1"
+    }
+  },
+  {
+    "ok": true,
+    "data": null,
+    "error": {
+      "code": "STORE_LOCKED",
+      "message": "m",
+      "retryable": "safe"
+    },
+    "ids": {
+      "request_id": "r1"
+    }
+  },
+  {
+    "ok": false,
+    "data": null,
+    "error": null,
+    "ids": {
+      "request_id": "r1"
+    }
+  },
+  {
+    "ok": true,
+    "data": null,
+    "error": null,
+    "ids": {
+      "request_id": "r1"
+    },
+    "extra": 1
+  }
+]
