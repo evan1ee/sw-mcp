@@ -1,6 +1,6 @@
 # Open Decisions and Missing Specifications
 
-> Review of specification v1.11 (2026-11-03), updated for v1.18, for decisions that must be settled before implementation, so independent implementers build the same thing. Each item says why it matters, what is recommended, which document records it, and the first increment it blocks.
+> Review of specification v1.11 (2026-11-03), updated for v1.19, for decisions that must be settled before implementation, so independent implementers build the same thing. Each item says why it matters, what is recommended, which document records it, and the first increment it blocks.
 
 **Document types**
 - **ADR** — a choice between real alternatives, recorded once (`docs/adr/`).
@@ -56,6 +56,7 @@ No open items. Every decision found in the v1.11 review is recorded below. New g
 | C4 | Compiler stage behavior and error collection | [§6.7](../architecture/cad-compiler.md#67-stage-contract) |
 | K1 | Geometric tests and thresholds for drawing checks D1–D3 (blocked 1a) | [§11.5.2](../architecture/production-drawings.md#1152-geometric-tests-for-d1d3-builders-call) |
 | N1 | Schema file identity, and how a schema marks number kinds and unordered arrays for the canonical form (3.4.4) (blocked P0-schemas) | [§3.4.8](../architecture/shared-ir-core.md#348-schema-files-builders-call) |
+| N2 | Drawing Geometry Snapshot encoding: keys for native items, curves, raw text boxes (blocked 1a) | [§11.5.1](../architecture/production-drawings.md#1151-drawing-geometry-snapshot-builders-call) |
 
 ## Recommended order
 
