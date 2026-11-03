@@ -410,3 +410,4 @@ def test_scheme_entry_id_needs_slug():
 - C# type generation (ADR-035).
 - IPC schemas (ADR-036).
 - Store-backed resolution of floating references.
+- Checking that a bundle lists one part per Assembly Graph component (needs the Assembly Graph module).

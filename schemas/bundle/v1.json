@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/bundle/v1.json",
+  "title": "IR bundle manifest (spec 3.4.5)",
+  "type": "object",
+  "properties": {
+    "bundle_schema_version": {
+      "type": "string",
+      "pattern": "^1\\.(0|[1-9][0-9]*)$"
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/v0.json#/$defs/DocumentRef"
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "x-unordered": true
+    }
+  },
+  "required": [
+    "bundle_schema_version",
+    "modules"
+  ],
+  "additionalProperties": false
+}

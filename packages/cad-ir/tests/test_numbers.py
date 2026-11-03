@@ -77,3 +77,13 @@ def test_require_finite_rejects(v: object) -> None:
 @pytest.mark.parametrize("v", [0, 1, -2.5, 1e300])
 def test_require_finite_accepts(v: float) -> None:
     assert require_finite(v) == v
+
+
+@pytest.mark.parametrize("huge", [10**400, -(10**400)])
+def test_numbers_beyond_double_range_are_value_errors(huge: int) -> None:
+    with pytest.raises(ValueError, match="double"):
+        quantize(huge, "length")
+    with pytest.raises(ValueError, match="double"):
+        values_equal(huge, 1, "length")
+    with pytest.raises(ValueError, match="double"):
+        require_finite(huge)

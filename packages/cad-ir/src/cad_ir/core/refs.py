@@ -17,6 +17,7 @@ from cad_ir.core.ids import (
     ModuleKey,
 )
 
+_NAME_FULL: Final = re.compile(r"[^\x00-\x1f\x7f-\x9f\u2028\u2029]+")
 _DOC_FORM: Final = "<module>:<document_id>[@<revision>]"
 _ITEM_FORM: Final = "<module>:<document_id>[@<revision>]/<item_id>"
 _LOCAL_FORM: Final = "<item_id>"
@@ -44,7 +45,7 @@ _PARAM_RE: Final = re.compile(rf"(?P<feature>{ITEM_ID_PATTERN})\.(?P<name>{ITEM_
 _STORED_GEO_RE: Final = re.compile(rf"geo:(?P<id>{ITEM_ID_PATTERN})")
 _DATUM_GEO_RE: Final = re.compile(rf"datum:(?P<label>{DATUM_LABEL_PATTERN})")
 _STANDARD_NAMES: Final = ("plane:front", "plane:top", "plane:right", "origin")
-_SWDIM_RE: Final = re.compile(r"swdim:(?P<name>[^\x00-\x1f\x7f]+)")
+_SWDIM_RE: Final = re.compile(r"swdim:(?P<name>[^\x00-\x1f\x7f-\x9f\u2028\u2029]+)")
 
 
 class ReferenceSyntaxError(ValueError):
@@ -56,11 +57,34 @@ class ReferenceSyntaxError(ValueError):
         self.expected = expected
 
 
+def _check(pattern: re.Pattern[str], value: object, what: str) -> None:
+    """Raise ``ValueError`` unless ``value`` is a string matching ``pattern`` as a whole."""
+    if not isinstance(value, str) or pattern.fullmatch(value) is None:
+        raise ValueError(f"invalid {what}: {value!r}")
+
+
+_ITEM_ID_RE: Final = re.compile(ITEM_ID_PATTERN)
+_DOCUMENT_ID_RE: Final = re.compile(DOCUMENT_ID_PATTERN)
+_DATUM_LABEL_RE: Final = re.compile(DATUM_LABEL_PATTERN)
+_INTENT_KINDS: Final = ("scheme", "critical", "gdt", "datum", "finish")
+
+
 @dataclass(frozen=True, slots=True)
 class DocumentRef:
     module: ModuleKey
     document_id: str
     revision: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.module not in MODULE_KEYS:
+            raise ValueError(f"invalid module key: {self.module!r}")
+        _check(_DOCUMENT_ID_RE, self.document_id, "document ID")
+        if self.revision is not None and (
+            isinstance(self.revision, bool)
+            or not isinstance(self.revision, int)  # pyright: ignore[reportUnnecessaryIsInstance]
+            or self.revision < 1
+        ):
+            raise ValueError(f"invalid revision: {self.revision!r}")
 
     def __str__(self) -> str:
         base = f"{self.module}:{self.document_id}"
@@ -72,6 +96,11 @@ class ItemRef:
     document: DocumentRef
     item_id: str
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.document, DocumentRef):  # pyright: ignore[reportUnnecessaryIsInstance]
+            raise ValueError(f"invalid document reference: {self.document!r}")
+        _check(_ITEM_ID_RE, self.item_id, "item ID")
+
     def __str__(self) -> str:
         return f"{self.document}/{self.item_id}"
 
@@ -79,6 +108,9 @@ class ItemRef:
 @dataclass(frozen=True, slots=True)
 class LocalRef:
     item_id: str
+
+    def __post_init__(self) -> None:
+        _check(_ITEM_ID_RE, self.item_id, "item ID")
 
     def __str__(self) -> str:
         return self.item_id
@@ -92,6 +124,14 @@ class IntentItemRef:
     kind: IntentKind
     id: str
 
+    def __post_init__(self) -> None:
+        if self.kind not in _INTENT_KINDS:
+            raise ValueError(f"invalid intent item kind: {self.kind!r}")
+        if self.kind == "datum":
+            _check(_DATUM_LABEL_RE, self.id, "datum label")
+        else:
+            _check(_ITEM_ID_RE, self.id, "item ID")
+
     def __str__(self) -> str:
         return f"{self.kind}:{self.id}"
 
@@ -100,6 +140,10 @@ class IntentItemRef:
 class ParamRef:
     feature_id: str
     parameter: str
+
+    def __post_init__(self) -> None:
+        _check(_ITEM_ID_RE, self.feature_id, "feature ID")
+        _check(_ITEM_ID_RE, self.parameter, "parameter name")
 
     def __str__(self) -> str:
         return f"{self.feature_id}.{self.parameter}"
@@ -110,6 +154,10 @@ class FeatureRoleRef:
     feature_id: str
     role: str
 
+    def __post_init__(self) -> None:
+        _check(_ITEM_ID_RE, self.feature_id, "feature ID")
+        _check(_ITEM_ID_RE, self.role, "role name")
+
     def __str__(self) -> str:
         return f"{self.feature_id}.{self.role}"
 
@@ -117,6 +165,9 @@ class FeatureRoleRef:
 @dataclass(frozen=True, slots=True)
 class StoredGeometryRef:
     reference_id: str
+
+    def __post_init__(self) -> None:
+        _check(_ITEM_ID_RE, self.reference_id, "geometry reference ID")
 
     def __str__(self) -> str:
         return f"geo:{self.reference_id}"
@@ -129,6 +180,10 @@ type StandardGeometryName = Literal["plane:front", "plane:top", "plane:right", "
 class StandardGeometryRef:
     name: StandardGeometryName
 
+    def __post_init__(self) -> None:
+        if self.name not in _STANDARD_NAMES:
+            raise ValueError(f"invalid standard geometry name: {self.name!r}")
+
     def __str__(self) -> str:
         return self.name
 
@@ -136,6 +191,9 @@ class StandardGeometryRef:
 @dataclass(frozen=True, slots=True)
 class DatumGeometryRef:
     label: str
+
+    def __post_init__(self) -> None:
+        _check(_DATUM_LABEL_RE, self.label, "datum label")
 
     def __str__(self) -> str:
         return f"datum:{self.label}"
@@ -147,6 +205,9 @@ type GeometryRef = FeatureRoleRef | StoredGeometryRef | StandardGeometryRef | Da
 @dataclass(frozen=True, slots=True)
 class SolidWorksDimRef:
     full_name: str
+
+    def __post_init__(self) -> None:
+        _check(_NAME_FULL, self.full_name, "SOLIDWORKS dimension name")
 
     def __str__(self) -> str:
         return f"swdim:{self.full_name}"

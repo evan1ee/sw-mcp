@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/common/errors.json",
+  "title": "Error catalogue (ADR-037)",
+  "type": "string",
+  "oneOf": [
+    {
+      "const": "IR_SCHEMA_INVALID",
+      "description": "A document does not satisfy its JSON Schema.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "IR_SCHEMA_VERSION_UNSUPPORTED",
+      "description": "The document's schema_version is not supported.",
+      "x-retryable": "never"
+    },
+    {
+      "const": "IR_REFERENCE_UNRESOLVED",
+      "description": "A reference does not resolve to exactly one target.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "IR_MODULE_MISSING",
+      "description": "A module the bundle depends on is absent.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "IR_RULE_VIOLATED",
+      "description": "A semantic rule of the IR is violated.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "IR_CYCLE",
+      "description": "The references or dependencies form a cycle.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "REV_CONFLICT",
+      "description": "The expected revision differs from the stored revision.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "REF_AMBIGUOUS",
+      "description": "A geometry reference matches more than one entity.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "REF_NOT_FOUND",
+      "description": "A geometry reference matches no entity.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "REF_SIGNATURE_MISMATCH",
+      "description": "A stored geometry reference no longer matches its signature.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "REF_NOT_IN_VIEW",
+      "description": "The referenced geometry is not visible in the drawing view.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "REF_LOW_CONFIDENCE",
+      "description": "A geometry reference was resolved with low confidence.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "COMPILE_FAILED",
+      "description": "The compiler could not produce an execution plan.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "COMPILE_UNSUPPORTED_FEATURE",
+      "description": "The IR uses a feature the compiler does not support.",
+      "x-retryable": "never"
+    },
+    {
+      "const": "COMPILE_PLAN_INVALID",
+      "description": "The compiled execution plan failed its own validation.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "EXEC_TIMEOUT",
+      "description": "A command exceeded its time limit; it was not resent and may have run.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "EXEC_CANCELLED",
+      "description": "The job was cancelled.",
+      "x-retryable": "never"
+    },
+    {
+      "const": "EXEC_INTERRUPTED",
+      "description": "The job was interrupted before it finished (for example by a core crash); its outcome is unknown.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "EXEC_INTERRUPTED_BY_USER",
+      "description": "The user interrupted the job in SOLIDWORKS.",
+      "x-retryable": "never"
+    },
+    {
+      "const": "EXEC_NOT_FOUND",
+      "description": "No job or execution matches the given ID.",
+      "x-retryable": "never"
+    },
+    {
+      "const": "EXEC_DOCUMENT_DIRTY",
+      "description": "The target document has unsaved changes.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "DUPLICATE_OPERATION",
+      "description": "The operation ID was already applied; the original result is returned.",
+      "x-retryable": "never"
+    },
+    {
+      "const": "BACKEND_LOST",
+      "description": "The connection to SOLIDWORKS was lost; the operation may have run.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "BACKEND_BUSY",
+      "description": "SOLIDWORKS is busy with another operation.",
+      "x-retryable": "safe"
+    },
+    {
+      "const": "BACKEND_UI_BLOCKED",
+      "description": "A SOLIDWORKS dialog or UI state blocks the operation.",
+      "x-retryable": "safe"
+    },
+    {
+      "const": "BACKEND_REBUILD_ERROR",
+      "description": "SOLIDWORKS reported a rebuild error.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "BACKEND_READ_ONLY",
+      "description": "The document is read-only in SOLIDWORKS.",
+      "x-retryable": "never"
+    },
+    {
+      "const": "BACKEND_SESSION_AMBIGUOUS",
+      "description": "More than one SOLIDWORKS session could serve the request.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "BACKEND_VERSION_UNSUPPORTED",
+      "description": "The SOLIDWORKS version is not supported.",
+      "x-retryable": "never"
+    },
+    {
+      "const": "BACKEND_CAPABILITY_MISSING",
+      "description": "The backend lacks a capability the operation needs.",
+      "x-retryable": "never"
+    },
+    {
+      "const": "DRAWING_CHECK_FAILED",
+      "description": "One or more drawing checks failed; reported in the drawing report (a failed check is a result, not a tool error)",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "DRAWING_RELAYOUT_EXHAUSTED",
+      "description": "The re-layout limits were reached while a hard drawing check was still failing.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "DRAWING_UNSUPPORTED_PART",
+      "description": "The part cannot be drawn by the drawing pipeline.",
+      "x-retryable": "never"
+    },
+    {
+      "const": "AUTH_SOURCE_WRITE_NOT_ALLOWED",
+      "description": "Writing to a source file is not allowed.",
+      "x-retryable": "never"
+    },
+    {
+      "const": "AUTH_PATH_DENIED",
+      "description": "The path is outside the allowed locations.",
+      "x-retryable": "never"
+    },
+    {
+      "const": "STORE_LOCKED",
+      "description": "The project store is locked by another writer.",
+      "x-retryable": "safe"
+    },
+    {
+      "const": "STORE_CORRUPT",
+      "description": "The project store failed an integrity check.",
+      "x-retryable": "never"
+    },
+    {
+      "const": "CONFIG_INVALID",
+      "description": "The configuration is invalid.",
+      "x-retryable": "after_fix"
+    }
+  ]
+}

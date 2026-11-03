@@ -94,6 +94,7 @@ Every task must follow this four-phase engineering discipline:
 ### Python Verification
 ```bash
 uv sync
+uv run python scripts/generate_contracts.py --check
 uv run ruff check
 uv run ruff format --check
 uv run pyright

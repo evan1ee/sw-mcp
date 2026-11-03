@@ -1,0 +1,28 @@
+[
+  {
+    "code": "REV_CONFLICT",
+    "message": "m"
+  },
+  {
+    "code": "REV_CONFLICT",
+    "message": "m",
+    "retryable": "always"
+  },
+  {
+    "code": "NOPE",
+    "message": "m",
+    "retryable": "never"
+  },
+  {
+    "code": "REV_CONFLICT",
+    "message": "m",
+    "retryable": "never",
+    "details": []
+  },
+  {
+    "code": "REV_CONFLICT",
+    "message": "m",
+    "retryable": "never",
+    "stack": "x"
+  }
+]

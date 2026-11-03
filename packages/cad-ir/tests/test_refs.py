@@ -162,3 +162,51 @@ def test_parsers_reject_other_kinds() -> None:  # the field type decides (3.4.2)
 )
 def test_str_roundtrip(parse: Callable[[str], object], s: str) -> None:
     assert str(parse(s)) == s
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: DocumentRef("part", "x y", 0),
+        lambda: DocumentRef("part", "x", 0),
+        lambda: DocumentRef("part", "x", True),
+        lambda: DocumentRef("nope", "x"),  # type: ignore[arg-type]  # pyright: ignore
+        lambda: ItemRef(DocumentRef("part", "x"), "Bad"),
+        lambda: LocalRef("1a"),
+        lambda: IntentItemRef("datum", "bore"),
+        lambda: IntentItemRef("scheme", "A"),
+        lambda: IntentItemRef("other", "a"),  # type: ignore[arg-type]  # pyright: ignore
+        lambda: ParamRef("a", "B"),
+        lambda: FeatureRoleRef("a.b", "c"),
+        lambda: StoredGeometryRef("G1"),
+        lambda: StandardGeometryRef("plane:left"),  # type: ignore[arg-type]  # pyright: ignore
+        lambda: DatumGeometryRef("I"),
+        lambda: SolidWorksDimRef("D1\u0085"),
+        lambda: SolidWorksDimRef("a" + chr(0x2028) + "b"),
+        lambda: SolidWorksDimRef(""),
+    ],
+)
+def test_reference_values_validate_on_construction(build: Callable[[], object]) -> None:
+    with pytest.raises(ValueError):  # noqa: PT011
+        build()
+
+
+@pytest.mark.parametrize(
+    ("parser", "s"),
+    [
+        (parse_document_ref, "part:bracket@4"),
+        (parse_item_ref, "design_intent:BRK-001-DES@2/r1"),
+        (parse_local_ref, "bore_dia"),
+        (parse_intent_item_ref, "datum:A"),
+        (parse_intent_item_ref, "scheme:ds_a_1"),
+        (parse_param_ref, "bore_1.diameter"),
+        (parse_geometry_ref, "bore_1.cylindrical_face"),
+        (parse_geometry_ref, "geo:g7f3a21c0"),
+        (parse_geometry_ref, "plane:right"),
+        (parse_geometry_ref, "origin"),
+        (parse_geometry_ref, "datum:A"),
+        (parse_solidworks_dim_ref, "swdim:D1@Sketch1"),
+    ],
+)
+def test_every_parsed_instance_round_trips(parser: Callable[[str], object], s: str) -> None:
+    assert str(parser(s)) == s

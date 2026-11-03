@@ -1,0 +1,35 @@
+[
+  {
+    "pointer": "",
+    "message": "x"
+  },
+  {
+    "code": "NOT_A_CODE",
+    "pointer": "",
+    "message": "x"
+  },
+  {
+    "code": "IR_SCHEMA_INVALID",
+    "pointer": "",
+    "message": "x",
+    "extra": 1
+  },
+  {
+    "code": "IR_SCHEMA_INVALID",
+    "pointer": "",
+    "message": "x",
+    "severity": "info"
+  },
+  {
+    "code": "IR_SCHEMA_INVALID",
+    "pointer": "",
+    "message": "x",
+    "patch_op": -1
+  },
+  {
+    "code": "IR_SCHEMA_INVALID",
+    "pointer": "",
+    "message": "x",
+    "expected": "a"
+  }
+]

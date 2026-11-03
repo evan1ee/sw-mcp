@@ -1,0 +1,15 @@
+[
+  {
+    "code": "REV_CONFLICT",
+    "message": "m",
+    "retryable": "after_fix"
+  },
+  {
+    "code": "BACKEND_BUSY",
+    "message": "m",
+    "retryable": "safe",
+    "details": {
+      "item": "a"
+    }
+  }
+]

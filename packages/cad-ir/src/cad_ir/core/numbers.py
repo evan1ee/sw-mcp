@@ -33,6 +33,10 @@ def require_finite(value: object) -> int | float:
         raise ValueError(f"expected a finite number, got {type(value).__name__}")
     if isinstance(value, float) and not math.isfinite(value):
         raise ValueError(f"expected a finite number, got {value!r}")
+    try:
+        float(value)
+    except OverflowError as e:
+        raise ValueError("expected a number representable as a double") from e
     return value
 
 

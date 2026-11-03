@@ -1,0 +1,19 @@
+[
+  {
+    "module": "part",
+    "schema_version": "1.0"
+  },
+  {
+    "module": "part",
+    "id": "bracket",
+    "schema_version": "1.2",
+    "units": "mm",
+    "revision": 4,
+    "origin": "built"
+  },
+  {
+    "module": "drawing_intent",
+    "schema_version": "0.1",
+    "extension": 1
+  }
+]
