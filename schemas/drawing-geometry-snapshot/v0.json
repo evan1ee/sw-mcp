@@ -1,0 +1,394 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/drawing-geometry-snapshot/v0.json",
+  "title": "Drawing Geometry Snapshot (spec 11.5.1)",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "$ref": "../common/v0.json#/$defs/SchemaVersion",
+      "pattern": "^0\\.(0|[1-9][0-9]*)$"
+    },
+    "drawing": {
+      "type": "object",
+      "properties": {
+        "document": {
+          "type": "string"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "$ref": "../common/v0.json#/$defs/Revision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "document"
+      ]
+    },
+    "solidworks": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "service_pack": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "service_pack"
+      ]
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sheets": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "../common/v0.json#/$defs/ItemId"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Sheet"
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "drawing",
+    "solidworks",
+    "captured_at",
+    "sheets"
+  ],
+  "$defs": {
+    "Point": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/v0.json#/$defs/Length"
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "Polyline": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Point"
+      },
+      "minItems": 2
+    },
+    "Arc": {
+      "type": "object",
+      "properties": {
+        "center": {
+          "$ref": "#/$defs/Point"
+        },
+        "radius": {
+          "$ref": "../common/v0.json#/$defs/Length",
+          "exclusiveMinimum": 0
+        },
+        "start_deg": {
+          "$ref": "../common/v0.json#/$defs/Angle"
+        },
+        "end_deg": {
+          "$ref": "../common/v0.json#/$defs/Angle"
+        }
+      },
+      "required": [
+        "center",
+        "radius",
+        "start_deg",
+        "end_deg"
+      ]
+    },
+    "Curve": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "polyline": {
+              "$ref": "#/$defs/Polyline"
+            }
+          },
+          "required": [
+            "polyline"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "arc": {
+              "$ref": "#/$defs/Arc"
+            }
+          },
+          "required": [
+            "arc"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Rect": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "$ref": "#/$defs/Point"
+        },
+        "max": {
+          "$ref": "#/$defs/Point"
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ]
+    },
+    "TextBox": {
+      "type": "object",
+      "properties": {
+        "corners": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Point"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "height_mm": {
+          "$ref": "../common/v0.json#/$defs/Length",
+          "minimum": 0
+        },
+        "method": {
+          "enum": [
+            "display_data",
+            "font_metrics"
+          ]
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "corners",
+        "height_mm",
+        "method",
+        "text"
+      ]
+    },
+    "ExtensionLine": {
+      "type": "object",
+      "properties": {
+        "line": {
+          "$ref": "#/$defs/Polyline"
+        },
+        "entity": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "line",
+        "entity"
+      ]
+    },
+    "Arrowhead": {
+      "type": "object",
+      "properties": {
+        "polygon": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Point"
+          },
+          "minItems": 3
+        }
+      },
+      "required": [
+        "polygon"
+      ]
+    },
+    "Annotation": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "dimension",
+            "callout",
+            "note",
+            "gdt",
+            "datum",
+            "surface_finish",
+            "center_mark",
+            "centerline",
+            "balloon"
+          ]
+        },
+        "native_id": {
+          "type": "string"
+        },
+        "tag": {
+          "anyOf": [
+            {
+              "$ref": "../common/v0.json#/$defs/ItemId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "view": {
+          "anyOf": [
+            {
+              "$ref": "../common/v0.json#/$defs/ItemId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-unordered": true
+        },
+        "dimension_lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Curve"
+          }
+        },
+        "extension_lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ExtensionLine"
+          }
+        },
+        "arrowheads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Arrowhead"
+          }
+        },
+        "leaders": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Polyline"
+          }
+        },
+        "text_boxes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TextBox"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "native_id"
+      ]
+    },
+    "Edge": {
+      "type": "object",
+      "properties": {
+        "curve": {
+          "$ref": "#/$defs/Curve"
+        },
+        "kind": {
+          "enum": [
+            "visible",
+            "silhouette",
+            "hidden",
+            "centerline",
+            "center_mark"
+          ]
+        }
+      },
+      "required": [
+        "curve",
+        "kind"
+      ]
+    },
+    "View": {
+      "type": "object",
+      "properties": {
+        "native_id": {
+          "type": "string"
+        },
+        "scale": {
+          "$ref": "../common/v0.json#/$defs/Ratio",
+          "exclusiveMinimum": 0
+        },
+        "outline": {
+          "$ref": "#/$defs/Rect"
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Edge"
+          }
+        }
+      },
+      "required": [
+        "native_id",
+        "scale",
+        "outline",
+        "edges"
+      ]
+    },
+    "Sheet": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "$ref": "../common/v0.json#/$defs/Count"
+        },
+        "native_id": {
+          "type": "string"
+        },
+        "size_mm": {
+          "$ref": "#/$defs/Point"
+        },
+        "border": {
+          "$ref": "#/$defs/Rect"
+        },
+        "title_block": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Rect"
+          }
+        },
+        "views": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "../common/v0.json#/$defs/ItemId"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/View"
+          }
+        },
+        "annotations": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "../common/v0.json#/$defs/ItemId"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Annotation"
+          }
+        }
+      },
+      "required": [
+        "index",
+        "native_id",
+        "size_mm",
+        "border",
+        "title_block",
+        "views",
+        "annotations"
+      ]
+    }
+  }
+}

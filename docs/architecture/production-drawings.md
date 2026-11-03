@@ -1,6 +1,6 @@
 # 11. Production Drawings (P0)
 
-> Specification v1.18, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.19, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 11.1 Purpose and Bar
 
@@ -109,7 +109,7 @@ All are computed from drawing geometry read back from SOLIDWORKS, not assumed fr
 | D9 | Profile complete | All required items for the selected profile (11.3) present, including the "All profiles" ISO 128 items (center marks, centerlines, tangent-edge display) |
 | D10 | Rebuild clean | Drawing rebuilds without dangling dimensions or annotation errors; survives save/reopen. Dimensions attached to silhouette edges are reported as a warning, since they dangle easily after model changes |
 
-Soft metrics reported but not gating: extension-line crossings, dimension lines crossing visible model edges, dimension spacing uniformity, number of views, sheet size.
+Soft metrics reported but not gating: extension-line crossings, dimension lines crossing visible model edges, dimension spacing uniformity, number of views, sheet size. Extension lines shared by a chain or baseline arrangement (11.5.2) are not crossings. Only edges of kind `visible` and `silhouette` count as visible model edges, and a leader touching the edge it points at is not a crossing.
 
 ### 11.5.1 Drawing Geometry Snapshot [Builder's call]
 
@@ -128,6 +128,17 @@ The checks need more than annotation positions, so read-back produces a separate
 - Each drawing report stores the snapshot it was computed from, so any result can be reproduced offline.
 - Recorded snapshots are the fixtures for unit tests (15.1) and let the benchmark checks be replayed without SOLIDWORKS.
 
+**Encoding [Builder's call].** The schema is `schemas/drawing-geometry-snapshot/v0.json`. As a derived artifact it is read leniently (ADR-042).
+
+- **Keys.** Sheets, views and annotations are objects keyed by ID (3.4.1). An annotation the pipeline tagged is keyed by its tag. Every other item is keyed by a prefix (`s` sheet, `v` view, `a` annotation) plus `_` plus the first 10 hex characters of the SHA-256 of the UTF-8 native name; on a collision within one snapshot the add-in uses 16 characters. The native name is kept in `native_id`. Sheet order is the integer field `index`.
+- **Coordinates.** Points are `[x, y]` in sheet millimetres, origin at the sheet's lower-left corner.
+- **Curves.** Line work is stored as polylines (arrays of points) and arcs (`center`, `radius`, `start_deg`, `end_deg`, counter-clockwise). The sweep is `(end_deg − start_deg) mod 360`, except that an arc whose ends differ by a nonzero multiple of 360 is a full circle and ends that are equal are a zero-length arc, both judged with the angle quantum (1e-6°, 3.4.3) as tolerance. Arcs are stored exactly; the checks tessellate them with a chord error of at most `drawing.check.epsilon_mm` / 2 (11.5.2), so the add-in does no tessellation.
+- **Text boxes** are stored as read: four corners, counter-clockwise, the text height, and the method (`display_data` or `font_metrics`). The checks apply `drawing.check.font_metric_margin` themselves, so the threshold used is recorded in the report rather than baked into the snapshot.
+- **Extension lines** carry the attachment entity they start from, so chain and baseline arrangements can be recognized (11.5.2, D1).
+- **Quantized.** The checks run on the snapshot as stored: every number rounded to its quantum (3.4.3) before any test, so a replay of a stored snapshot gives exactly the same verdict.
+- **Center marks and centerlines.** The line work of `center_mark` and `centerline` annotations counts as model edges for the checks (D3), never as dimension lines (D1, D2).
+- **Model edges** carry a kind (`visible`, `silhouette`, `hidden`, `centerline`, `center_mark`). Hidden edges are present only when the view displays them, and section hatching is never exported.
+
 ### 11.5.2 Geometric Tests for D1–D3 [Builder's call]
 
 D1–D3 are pure functions of the snapshot (11.5.1). This section fixes what "cross", "overlap" and "over" mean, so every implementation gives the same verdict on the same snapshot. The thresholds are configuration keys (13.3.3, `drawing.check.*`) with the defaults below; the values used are recorded in each drawing report.
@@ -136,7 +147,7 @@ D1–D3 are pure functions of the snapshot (11.5.1). This section fixes what "cr
 
 | Primitive | Built from | Notes |
 | --- | --- | --- |
-| Dimension line | Dimension-line segments of one dimension, including the parts outside the extension lines; arcs of angular and arc-length dimensions tessellated with chord error ≤ 0.02 mm | Leader lines of dimensions, hole callouts and notes count as dimension lines for D1 and D2 |
+| Dimension line | Dimension-line segments of one dimension, including the parts outside the extension lines; arcs of angular and arc-length dimensions tessellated with chord error ≤ `drawing.check.epsilon_mm` / 2, so tessellation alone cannot hide a touching pair | Leader lines of dimensions, hole callouts and notes count as dimension lines for D1 and D2 |
 | Extension line | Segment from the gap at the feature to the overshoot end | |
 | Arrowhead | Closed polygon (filled or open arrow, oblique stroke, dot) | Treated as part of its dimension line |
 | Text box | Oriented rectangle around the rendered text of one annotation: value, tolerance stack, prefixes and suffixes, symbols (Ø, ⌴, ⌵), GD&T frames, datum and surface-texture symbols | Leaders and extension lines are not part of the text box. From display data where available; otherwise from font metrics, enlarged on every side by `drawing.check.font_metric_margin` × text height, and the report marks the result as estimated (11.5) |
@@ -150,7 +161,7 @@ D1–D3 are pure functions of the snapshot (11.5.1). This section fixes what "cr
 
 Not failures:
 - primitives of the same dimension;
-- a dimension line ending on a shared extension line in a chain or baseline arrangement. The extension line is shared when both dimensions attach to the same entity and their extension lines coincide within epsilon;
+- a dimension line ending on a shared extension line in a chain or baseline arrangement. The extension line is shared when both dimensions attach to the same entity and their extension lines coincide within epsilon. A contact between the two dimensions' dimension lines or arrowheads, or between a dimension line and the other dimension's shared extension line, is part of the arrangement and not a crossing only when every point of each primitive that lies within epsilon of the other also lies within epsilon of the shared extension line, inside the stretch where the two coincident extension lines overlap. A collinear overlap that continues past the shared line, or a contact elsewhere along the extension line, is a failure;
 - an arrowhead tip touching its own extension line or the edge it points at.
 
 Extension-line × extension-line crossings are not D1 failures; they are counted as a soft metric (11.5).
@@ -162,6 +173,8 @@ Extension-line × extension-line crossings are not D1 failures; they are counted
 An annotation's own lines never fail against its own text.
 
 **D3: text over geometry.** A failure is a text box closer than `drawing.check.edge_clearance_mm` (default **0.25 mm**) to any model edge, as defined in the primitives table. Text over section hatching and dimension lines crossing model edges are soft metrics (11.5).
+
+**D7: inside sheet.** A view fails when its outline leaves the border or touches a title-block zone; an annotation fails when any of its primitives does. The distance reported is how far the farthest point lies outside the border, measured along x or y (whichever is larger), or 0 for a title-block overlap. One failure is reported per view or annotation, and a border failure takes precedence.
 
 **Reporting.** Each failure records the check, the two item IDs (annotation tags, or view ID plus edge index), the measured distance, the threshold applied, the location in sheet mm and the read-back method of each item. Equal inputs give identical failure lists in a fixed order: sheet, then check, then item IDs.
 
