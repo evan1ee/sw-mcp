@@ -15,6 +15,7 @@ SCHEMAS_DIR = ROOT / "schemas"
 FIXTURES_DIR = ROOT / "tests" / "fixtures" / "schemas"
 COMMON_ID = "https://sw-mcp.invalid/schemas/common/v0.json"
 BUNDLE_ID = "https://sw-mcp.invalid/schemas/bundle/v1.json"
+SNAPSHOT_ID = "https://sw-mcp.invalid/schemas/drawing-geometry-snapshot/v0.json"
 
 type Json = Any
 
@@ -97,6 +98,31 @@ def test_bundle_valid_accepted(path: Path) -> None:
 @pytest.mark.parametrize("path", _bundle_cases("invalid"))
 def test_bundle_invalid_rejected(path: Path) -> None:
     assert _issues(_load(path), BUNDLE_ID) != []
+
+
+def _snapshot_cases(kind: str) -> list[Json]:
+    directory = FIXTURES_DIR / "drawing-geometry-snapshot" / kind
+    return [pytest.param(path, id=path.stem) for path in sorted(directory.glob("*.json"))]
+
+
+@pytest.mark.parametrize("path", _snapshot_cases("valid"))
+def test_snapshot_valid_accepted(path: Path) -> None:
+    assert _issues(_load(path), SNAPSHOT_ID) == []
+
+
+@pytest.mark.parametrize("path", _snapshot_cases("invalid"))
+def test_snapshot_invalid_rejected(path: Path) -> None:
+    assert _issues(_load(path), SNAPSHOT_ID) != []
+
+
+def test_snapshot_rejects_nan() -> None:
+    instance = _load(FIXTURES_DIR / "drawing-geometry-snapshot" / "valid" / "two_dimensions.json")
+    edges = instance["sheets"]["s_0123456789"]["views"]["v_front"]["edges"]
+    edges[0]["curve"]["polyline"][0][0] = float("nan")
+    issues = _issues(instance, SNAPSHOT_ID)
+    assert [i.pointer for i in issues] == [
+        "/sheets/s_0123456789/views/v_front/edges/0/curve/polyline/0/0"
+    ]
 
 
 def _walk(node: Json, path: str = "") -> Iterator[tuple[str, str, Json]]:

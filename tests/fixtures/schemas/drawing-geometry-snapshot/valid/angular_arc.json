@@ -1,0 +1,119 @@
+{
+  "schema_version": "0.1",
+  "drawing": {
+    "document": "bracket_dwg",
+    "revision": 3
+  },
+  "solidworks": {
+    "version": "2025",
+    "service_pack": "SP3.0"
+  },
+  "captured_at": "2026-11-04T10:00:00Z",
+  "sheets": {
+    "s_0123456789": {
+      "index": 0,
+      "native_id": "Sheet1",
+      "size_mm": [
+        297,
+        210
+      ],
+      "border": {
+        "min": [
+          10,
+          5
+        ],
+        "max": [
+          292,
+          205
+        ]
+      },
+      "title_block": [
+        {
+          "min": [
+            212,
+            5
+          ],
+          "max": [
+            292,
+            45
+          ]
+        }
+      ],
+      "views": {},
+      "annotations": {
+        "dim_angle": {
+          "kind": "dimension",
+          "native_id": "D3@Sheet1",
+          "tag": "dim_angle",
+          "view": null,
+          "dimension_lines": [
+            {
+              "arc": {
+                "center": [
+                  100,
+                  100
+                ],
+                "radius": 20,
+                "start_deg": 10,
+                "end_deg": 80
+              }
+            }
+          ],
+          "extension_lines": [
+            {
+              "line": [
+                [
+                  100,
+                  100
+                ],
+                [
+                  125,
+                  104.4
+                ]
+              ],
+              "entity": "edge:a"
+            },
+            {
+              "line": [
+                [
+                  100,
+                  100
+                ],
+                [
+                  104.4,
+                  125
+                ]
+              ],
+              "entity": "edge:b"
+            }
+          ],
+          "text_boxes": [
+            {
+              "corners": [
+                [
+                  118,
+                  118
+                ],
+                [
+                  126,
+                  118
+                ],
+                [
+                  126,
+                  121
+                ],
+                [
+                  118,
+                  121
+                ]
+              ],
+              "height_mm": 3,
+              "method": "display_data",
+              "text": "70"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
