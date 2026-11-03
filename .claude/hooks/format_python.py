@@ -11,9 +11,12 @@ norm = path.replace("\\", "/")
 if not norm.endswith(".py") or "/generated/" in norm or "/.venv/" in norm:
     sys.exit(0)
 
-subprocess.run(["uv", "run", "ruff", "format", path], capture_output=True, text=True)
+subprocess.run(["uv", "run", "ruff", "format", path], capture_output=True, text=True, check=False)
 check = subprocess.run(
-    ["uv", "run", "ruff", "check", "--fix", path], capture_output=True, text=True
+    ["uv", "run", "ruff", "check", "--fix", path],
+    capture_output=True,
+    text=True,
+    check=False,
 )
 if check.returncode != 0:
     print(check.stdout + check.stderr, file=sys.stderr)

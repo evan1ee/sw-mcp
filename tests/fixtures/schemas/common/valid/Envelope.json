@@ -1,0 +1,26 @@
+[
+  {
+    "ok": true,
+    "data": {
+      "x": 1
+    },
+    "error": null,
+    "ids": {
+      "request_id": "r1"
+    }
+  },
+  {
+    "ok": false,
+    "data": null,
+    "error": {
+      "code": "STORE_LOCKED",
+      "message": "m",
+      "retryable": "safe"
+    },
+    "ids": {
+      "request_id": "r1",
+      "execution_id": "e1",
+      "report_id": "p1"
+    }
+  }
+]

@@ -2,6 +2,33 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.18
+
+Records the Phase 0 owner decisions (new ADR-050, accepted 2026-11-04):
+
+- The agent shares the engineer's SOLIDWORKS session (8.3 rule 13); a dedicated instance stays only as the A12 fallback.
+- The general tolerance designation is `ISO 2768-m` with ISO 22081 (11.2, 11.10 `general_tolerance` and its example).
+- QA balloons are note-based balloons created by the pipeline (11.2).
+- Writing custom properties and changing `MarkedForDrawing` flags in parts are allowed, each only by an explicit per-call option (ADR-022, 11.1, 11.4).
+- No PDM is used; the PDM rules stay for other installations.
+- The owner approved the v1.17 decisions in 3.4.8.
+
+## What changed in 1.17
+
+Closes a gap found when starting the Phase 0 schema work: 3.4.4 says schemas mark number kinds and unordered arrays, but not how ([register](open-decisions.md), N1).
+
+- **Schema files** (new 3.4.8) **[Builder's call]**:
+  - every `$id` is under `https://sw-mcp.invalid/schemas/`, and schemas refer to each other by relative `$ref`;
+  - shared-core types live in `schemas/common/v0.json`, the error catalogue in `schemas/common/errors.json`, the bundle manifest in `schemas/bundle/v1.json`;
+  - major version 0 is unstable, and ADR-042 applies from major 1;
+  - the annotations `x-quantity` (number kind), `x-unordered` (set arrays) and `x-retryable` (default `retryable` per error code);
+  - patterns are anchored and matched against the whole string.
+  - the meaning of `safe`, `after_fix` and `never`; timeouts, interruptions and a lost connection are never `safe`;
+  - integers are written without a fraction and stay at or below 2^53 − 1; ID-keyed objects use `propertyNames`.
+- Validation errors are ordered by pointer token by token, with array indices compared as numbers (3.4.7) **[Builder's call]**.
+- `geo:` reference IDs follow the item-ID grammar (3.4.2) **[Builder's call]**.
+- 3.4.3 notes that equality uses the quantum as a tolerance while hashing uses rounded values, so equivalence is decided by hash.
+
 ## What changed in 1.16
 
 Closes a gap found in the implementation-readiness review: D1–D3 had no exact geometric meaning, so two implementations could disagree on the same drawing ([register](open-decisions.md), K1).

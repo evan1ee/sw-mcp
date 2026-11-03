@@ -1,0 +1,22 @@
+[
+  {
+    "schema_version": "1.0"
+  },
+  {
+    "module": "part"
+  },
+  {
+    "module": "foo",
+    "schema_version": "1.0"
+  },
+  {
+    "module": "part",
+    "schema_version": "1.0",
+    "origin": "other"
+  },
+  {
+    "module": "part",
+    "schema_version": "1.0",
+    "revision": 0
+  }
+]

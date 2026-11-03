@@ -1,6 +1,6 @@
 # 3.4 Shared IR Core
 
-> Specification v1.16, section 3.4. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.18, section 3.4. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The shared IR core is what every IR module, derived artifact and tool contract has in common: identifiers, references, units, numbers, revisions and the IR bundle (3.3). It is normative. Schemas in `schemas/common/` implement it (ADR-035), and every example in this specification follows it.
 
@@ -31,7 +31,7 @@ A reference is a string. Its kind is fixed by the schema type of the field that 
 | `IntentItemRef` | `<kind>:<id>`, kind is `scheme`, `critical`, `gdt`, `datum`, `finish` | An item of the drawing's Drawing Intent or its Resolved Scheme (11.10.1) | `scheme:ds_bore_1_diameter_b41219`, `datum:A` |
 | `ParamRef` | `<feature_id>.<parameter>` | A parameter of a node in the Part Feature Graph the module documents | `bore_1.diameter`, `sketch_bore.x` |
 | `GeometryRef` | `<feature_id>.<role>` (feature plus role, 11.1) | An entity defined by a feature-type role | `bore_1.cylindrical_face` |
-| | `geo:<reference_id>` | A stored geometry reference (section 7, `inspect_geometry`) | `geo:g7f3a21c0` |
+| | `geo:<reference_id>` | A stored geometry reference (section 7, `inspect_geometry`); `<reference_id>` follows the item-ID grammar **[Builder's call]** | `geo:g7f3a21c0` |
 | | `plane:front` \| `plane:top` \| `plane:right` \| `origin` | Standard planes and the origin, by role (5.3.6) | `plane:right` |
 | | `datum:<label>` | The datum feature's geometry, per its `applies_to` | `datum:A` |
 | `SolidWorksDimRef` | `swdim:<full name>` (stopgap, 11.1) | A SOLIDWORKS dimension by full name; converted to a `ParamRef` at intake and kept only for reporting | `swdim:D1@Sketch1` |
@@ -70,6 +70,7 @@ Rules:
   | Count | exact |
 
   Geometric and verification tolerances (10.3, 7.4) are separate and configurable; the quantum only decides whether two stored numbers are the same value.
+- **Equality and hashing differ.** Comparison uses the quantum as a tolerance, while hashing (3.4.4) uses each number rounded to its quantum. Two values can therefore compare equal and still hash differently (`1.0000004` and `1.0000006` mm round to `1.0` and `1.000001`), and tolerance equality is not transitive. Equivalence of stored documents (6.4) is decided by hash, never by comparing numbers one by one.
 - **Text** is UTF-8, normalized to Unicode NFC on input.
 
 ## 3.4.4 Canonical form and hashes
@@ -133,6 +134,23 @@ Agents correct IR from validation errors, so their form decides how many attempt
 - **Every error** carries `code` (ADR-037), `pointer` (RFC 6901 JSON Pointer into the submitted document; with ID-keyed collections it names the item, for example `/nodes/bore_1/parameters/diameter`), `message` (one line), and where useful `expected` (the allowed values or type) and `ref` (the reference that failed to resolve).
 - **Stages.** Schema validation runs first and stops the pipeline if it finds errors: semantic rules on a malformed document produce noise. Semantic validation of independent modules then runs for all of them. Cross-module checks run only when every module passed its own checks (3.4.5 validation order).
 - **All errors of a stage are reported**, not just the first, up to 50 per call with a count of the rest.
-- **Order is deterministic:** by pointer, then by code. The same document always gives the same error list.
+- **Order is deterministic:** by pointer, then by code. Pointers are compared token by token: two tokens that are both array indices compare as numbers, and any other pair compares by Unicode code point, so `/modules/2` comes before `/modules/10` **[Builder's call]**. The same document always gives the same error list.
 - **Warnings** use the same form with `severity: "warning"`. They never stop a stage and never block storing a document. Example: a `realizes` name ignored because no Design Intent is present (3.4.2 rule 1).
 - **Patches** (ADR-048) are validated as the whole document they produce. Pointers refer to that resulting document, and the error also names the failing patch operation's index.
+
+## 3.4.8 Schema files [Builder's call]
+
+Approved by the owner on 2026-11-04. How the files in `schemas/` (ADR-035) are named and how they carry what the canonical form (3.4.4) needs.
+
+- **Identity.** Every schema's `$id` is `https://sw-mcp.invalid/schemas/<directory>/<file>`. The `.invalid` top-level domain (RFC 2606) never resolves: an `$id` is a name, not a location. Schemas refer to each other by relative `$ref`, for example `../common/v0.json#/$defs/DocumentRef`.
+- **Files.** Shared-core types are `$defs` in `schemas/common/v0.json`. The error catalogue (ADR-037) is `schemas/common/errors.json`. The bundle manifest is `schemas/bundle/v1.json`, matching `bundle_schema_version` `1.0` (3.4.5).
+- **Major version 0 is unstable.** A contract is published at major 0 during Phase 0 and Phase 1 development. Any change is allowed at major 0, and the compatibility diff (ADR-042) skips it. The rules of ADR-042 apply from a contract's first release at major 1.
+- **Number kinds.** A numeric schema carries the annotation `"x-quantity"`: `length`, `angle`, `ratio` or `count`. The `$defs` `Length`, `Angle`, `Ratio` and `Count` in `common/v0.json` carry it, and module schemas use them by `$ref`. Canonicalization quantizes each number to the quantum of its kind (3.4.3); a number without a kind is left as written.
+- **Unordered arrays.** An array that is a set (3.4.4 step 3: `covers`, `targets`, sets of IDs) carries `"x-unordered": true`. Canonicalization sorts its elements by their canonical serialization.
+- **Error catalogue.** `errors.json` lists each code as a `oneOf` branch with `const`, a one-line `description` and `"x-retryable"`: the default `retryable` value (ADR-037) for that code. A response may override it for one error. The values mean:
+  - `safe`: nothing changed, and the same call may be repeated unchanged (for example `BACKEND_BUSY`, `STORE_LOCKED`);
+  - `after_fix`: the caller must change its input or first inspect the state the call may have left. Timeouts, interruptions and a lost add-in connection are `after_fix`, never `safe`, because the operation may have run (8.3 rule 8, 13.2.3);
+  - `never`: the same call cannot succeed in this environment (permissions, unsupported versions or features, cancelled or unknown jobs).
+- **Integers.** `"type": "integer"` accepts only JSON numbers written without a fraction or exponent (`2`, not `2.0`), and every integer schema sets `"maximum": 9007199254740991` (2^53 − 1) so that RFC 8785 can serialize it.
+- **Pattern-keyed objects.** Schemas restrict the keys of ID-keyed collections with `propertyNames`, never `patternProperties`.
+- **Patterns** are anchored (`^…$`) and use only syntax that ECMA-262, Python `re` and .NET agree on. Implementations match a whole string, so a trailing newline never passes.

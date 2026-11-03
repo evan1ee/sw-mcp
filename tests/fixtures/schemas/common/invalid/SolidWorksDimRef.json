@@ -1,0 +1,8 @@
+[
+  "swdim:",
+  "swdim:D1\n",
+  "D1@Sketch1",
+  "swdim:a\u0000b",
+  "swdim:D1\u0085",
+  "swdim:a\u2028b"
+]
