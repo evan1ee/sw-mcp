@@ -1,6 +1,6 @@
 # 3.4 Shared IR Core
 
-> Specification v1.16, section 3.4. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.17, section 3.4. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The shared IR core is what every IR module, derived artifact and tool contract has in common: identifiers, references, units, numbers, revisions and the IR bundle (3.3). It is normative. Schemas in `schemas/common/` implement it (ADR-035), and every example in this specification follows it.
 
@@ -136,3 +136,15 @@ Agents correct IR from validation errors, so their form decides how many attempt
 - **Order is deterministic:** by pointer, then by code. The same document always gives the same error list.
 - **Warnings** use the same form with `severity: "warning"`. They never stop a stage and never block storing a document. Example: a `realizes` name ignored because no Design Intent is present (3.4.2 rule 1).
 - **Patches** (ADR-048) are validated as the whole document they produce. Pointers refer to that resulting document, and the error also names the failing patch operation's index.
+
+## 3.4.8 Schema files [Builder's call]
+
+How the files in `schemas/` (ADR-035) are named and how they carry what the canonical form (3.4.4) needs.
+
+- **Identity.** Every schema's `$id` is `https://sw-mcp.invalid/schemas/<directory>/<file>`. The `.invalid` top-level domain (RFC 2606) never resolves: an `$id` is a name, not a location. Schemas refer to each other by relative `$ref`, for example `../common/v0.json#/$defs/DocumentRef`.
+- **Files.** Shared-core types are `$defs` in `schemas/common/v0.json`. The error catalogue (ADR-037) is `schemas/common/errors.json`. The bundle manifest is `schemas/bundle/v1.json`, matching `bundle_schema_version` `1.0` (3.4.5).
+- **Major version 0 is unstable.** A contract is published at major 0 during Phase 0 and Phase 1 development. Any change is allowed at major 0, and the compatibility diff (ADR-042) skips it. The rules of ADR-042 apply from a contract's first release at major 1.
+- **Number kinds.** A numeric schema carries the annotation `"x-quantity"`: `length`, `angle`, `ratio` or `count`. The `$defs` `Length`, `Angle`, `Ratio` and `Count` in `common/v0.json` carry it, and module schemas use them by `$ref`. Canonicalization quantizes each number to the quantum of its kind (3.4.3); a number without a kind is left as written.
+- **Unordered arrays.** An array that is a set (3.4.4 step 3: `covers`, `targets`, sets of IDs) carries `"x-unordered": true`. Canonicalization sorts its elements by their canonical serialization.
+- **Error catalogue.** `errors.json` lists each code as a `oneOf` branch with `const`, a one-line `description` and `"x-retryable"`: the default `retryable` value (ADR-037) for that code. A response may override it for one error.
+- **Patterns** are anchored (`^…$`) and use only syntax that ECMA-262, Python `re` and .NET agree on. Implementations match a whole string, so a trailing newline never passes.

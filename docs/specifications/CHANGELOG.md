@@ -2,6 +2,17 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.17
+
+Closes a gap found when starting the Phase 0 schema work: 3.4.4 says schemas mark number kinds and unordered arrays, but not how ([register](open-decisions.md), N1).
+
+- **Schema files** (new 3.4.8) **[Builder's call]**:
+  - every `$id` is under `https://sw-mcp.invalid/schemas/`, and schemas refer to each other by relative `$ref`;
+  - shared-core types live in `schemas/common/v0.json`, the error catalogue in `schemas/common/errors.json`, the bundle manifest in `schemas/bundle/v1.json`;
+  - major version 0 is unstable, and ADR-042 applies from major 1;
+  - the annotations `x-quantity` (number kind), `x-unordered` (set arrays) and `x-retryable` (default `retryable` per error code);
+  - patterns are anchored and matched against the whole string.
+
 ## What changed in 1.16
 
 Closes a gap found in the implementation-readiness review: D1–D3 had no exact geometric meaning, so two implementations could disagree on the same drawing ([register](open-decisions.md), K1).
