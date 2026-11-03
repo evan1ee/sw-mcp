@@ -7,6 +7,8 @@
 
 Never modify source parts without permission; respect read-only and PDM
 
+The owner grants two permissions, each enabled per tool call by an explicit option: writing custom properties and changing `MarkedForDrawing` flags ([ADR-050](ADR-050-phase-0-owner-decisions.md)).
+
 ## Rationale
 
 Drawings must not have side effects on released models

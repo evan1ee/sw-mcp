@@ -1,6 +1,6 @@
 # 15. Testing Strategy
 
-> Specification v1.17, section 15. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.18, section 15. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 15.1 Unit (no SOLIDWORKS)
 

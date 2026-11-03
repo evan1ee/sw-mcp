@@ -1,6 +1,6 @@
 # 3. High-Level Architecture
 
-> Specification v1.17, section 3. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.18, section 3. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 3.1 Layers
 

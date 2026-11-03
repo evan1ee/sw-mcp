@@ -1,6 +1,6 @@
 # 11. Production Drawings (P0)
 
-> Specification v1.17, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.18, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 11.1 Purpose and Bar
 
@@ -16,7 +16,7 @@ Scope: single-part drawings. Assembly drawings match the reference implementatio
 
 **Source files are not modified without permission (owner decision pending; ADR-022 [Builder's call]).** The pipeline writes only the drawing and its exports by default.
 - Title block values come from the part's existing custom properties, the Design Intent IR if attached, or else the Drawing Intent `context` (part number, revision, material, treatment), and the Drawing Intent IR (general tolerance). Values that are not in the part are written to drawing properties (`$PRPSHEET` links resolve to the referenced model, so the template mapping must say which source each field reads).
-- Writing custom properties into the part requires an explicit option.
+- Writing custom properties into the part requires an explicit option on the tool call, off by default (ADR-050).
 - A read-only part or a part checked in to SOLIDWORKS PDM is never checked out or made writable by the system; it is reported.
 - A part is never re-saved in a newer SOLIDWORKS version as a side effect.
 
@@ -30,7 +30,7 @@ ISO throughout:
 | Lines and views | ISO 128 |
 | Dimensioning | ISO 129-1 |
 | Scales | ISO 5455 preferred scales only (1:1, 1:2, 1:5, 1:10, 2:1, 5:1, …) |
-| General tolerances | ISO 2768-1 (default `m`). Shops still commonly read the combined `ISO 2768-mK`, but ISO 2768-2 (the `K`) has been superseded by ISO 22081; Phase 0 confirms with the owner which designation the title block carries **[Builder's call on class]** |
+| General tolerances | ISO 2768-1 (default `m`). Shops still commonly read the combined `ISO 2768-mK`, but ISO 2768-2 (the `K`) has been superseded by ISO 22081. The title block carries `ISO 2768-m` with ISO 22081 (owner decision, ADR-050) **[Builder's call on class]** |
 | Size and GPS principle | ISO 8015 (independence principle) referenced in the title block or general notes; ISO 14405-1 for size |
 | GD&T | ISO 1101, datums ISO 5459 |
 | Surface texture | ISO 21920-1 (successor to ISO 1302). Phase 0 checks that SOLIDWORKS 2025 can draw ISO 21920 symbols; if it cannot, ISO 1302-style symbols are used and the gap is recorded |
@@ -49,7 +49,7 @@ The `process` value selects a profile. It comes from the Design Intent IR if att
 | Machined | Full dimensions, tolerances and fits, GD&T where specified, surface finish symbols (general plus `surface_finish` exceptions), thread callouts, hole callouts, edge-break note |
 | Molded | Critical dimensions, draft angles, parting line, gate/ejector notes if given, material grade, texture/finish, general molding tolerance note, and a note stating where dimensions apply relative to draft (at the parting line, or the large/small end). Draft angles do not come in cleanly as model items, so they are shown as a note or as an angular dimension in a section view |
 | Sheet metal | Formed views, flat pattern view (the SOLIDWORKS flat-pattern derived configuration), bend lines, bend table (direction, angle, radius), material thickness, grain direction if given |
-| QA overlay | Balloons on Drawing Intent items that serve a requirement listed in the Design Intent `inspection`, or are marked `inspect: true` (4.3, 11.10), numbered consistently, inspection table on sheet or as export. In part drawings, SOLIDWORKS balloons attach to edges, not to dimensions. Numbered balloons on dimensions need either the separately licensed SOLIDWORKS Inspection add-in or note-based balloons attached to dimensions. Phase 0 decides with the owner which one to use |
+| QA overlay | Balloons on Drawing Intent items that serve a requirement listed in the Design Intent `inspection`, or are marked `inspect: true` (4.3, 11.10), numbered consistently, inspection table on sheet or as export. In part drawings, SOLIDWORKS balloons attach to edges, not to dimensions. Numbered balloons on dimensions are note-based balloons attached to dimensions, created by the pipeline; the SOLIDWORKS Inspection add-in is not used (owner decision, ADR-050) |
 
 ## 11.4 Pipeline
 
@@ -76,7 +76,7 @@ The pipeline follows these SOLIDWORKS constraints:
 - **Native options first.** Use Insert Model Items' own "eliminate duplicates" option before running custom duplicate logic. Check whether SOLIDWORKS's Auto Arrange Dimensions is exposed through the API and usable as a first placement pass before building that part of the placement engine.
 - **Hidden, not deleted.** Deleting a model dimension in a drawing hides it in that view, and inserting model items again brings it back. Cleanup records every dimension it hid and why (duplicate, non-functional, replaced by a reference dimension) as a `hidden` entry in the Resolved Scheme (11.10.1). Re-runs keep those dimensions hidden.
 - **Functional dimensioning.** When a model dimension is not functional (for example, positioned from a construction line instead of a datum), cleanup hides it and adds a reference (driven) dimension from the datum. Both appear in the scheme, linked by `replaced_by`, and the hidden parameter counts as covered for D4. Under ISO settings, SOLIDWORKS shows driven dimensions in parentheses by default, and ISO 129-1 reads parentheses as an *auxiliary* dimension that is neither toleranced nor inspected. A functional reference dimension therefore has parentheses turned off and shows its tolerance (explicit or general). Only dimensions the scheme marks `auxiliary` keep parentheses.
-- **`MarkedForDrawing`.** Insert Model Items brings in only the dimensions flagged `MarkedForDrawing` in the part, so on hand-modelled parts the flag decides what is imported. Changing it modifies the part (ADR-022). By default the pipeline leaves the flag alone, inserts what is marked, and fills gaps with reference dimensions. Changing the flag in the part needs the same explicit option as writing custom properties. Phase 0 measures how often this leaves gaps on the benchmark **[Builder's call]**.
+- **`MarkedForDrawing`.** Insert Model Items brings in only the dimensions flagged `MarkedForDrawing` in the part, so on hand-modelled parts the flag decides what is imported. Changing it modifies the part (ADR-022). By default the pipeline leaves the flag alone, inserts what is marked, and fills gaps with reference dimensions. Changing the flag in the part needs the same explicit per-call option as writing custom properties; the owner allows both (ADR-050). Phase 0 measures how often this leaves gaps on the benchmark **[Builder's call]**.
 - **What vs where.** Steps C–F write only the Resolved Scheme (11.10.1); they never change the Drawing Intent IR. Steps B and G write only the Drawing Layout IR (11.11).
 - **Configuration.** Every view references the configuration named in the intent. The flat pattern view uses the flat-pattern derived configuration.
 - **Scale.** View planning picks only ISO 5455 preferred scales.

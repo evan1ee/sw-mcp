@@ -1,6 +1,6 @@
 # 11.10 Drawing Intent IR (P0)
 
-> Specification v1.17, section 11.10. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.18, section 11.10. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The Drawing Intent IR is optional for tasks in general and required for every drawing task (section 3.3). It says what the drawing specifies: dimensions, tolerances, GD&T, datums and surface finish. Material, process, treatment and part metadata come from the Design Intent IR when one is attached (4.3). Otherwise they come from the part's SOLIDWORKS material and custom properties, overridden by `context` (3.3 rule 4). With PMI output (P2, 11.4), the same Drawing Intent IR is emitted as 3D annotations in the part.
 
@@ -11,7 +11,7 @@ The Drawing Intent IR is optional for tasks in general and required for every dr
 | design_intent | Optional. `DocumentRef` to the Design Intent IR this drawing specifies, e.g. `design_intent:BRK-001-DES@2` |
 | context | Optional, and only allowed when no Design Intent IR is attached: `process` (selects the profile), `material`, `treatment`, `metadata` (part number, revision). Each value overrides the part's own property |
 | configuration | SOLIDWORKS configuration the drawing views reference. Defaults to the active configuration; required when the part has more than one **[Builder's call]** |
-| general_tolerance | Default class `m` (11.2) **[Builder's call]**. The designation written, `ISO 2768-mK` or `ISO 2768-m` with ISO 22081, follows the Phase 0 owner decision (11.2). Overridable per part |
+| general_tolerance | Default class `m` (11.2) **[Builder's call]**. The designation written is `ISO 2768-m` with ISO 22081 (owner decision, ADR-050). Overridable per part |
 | surface_finish | `general` roughness (the "unless noted" value, e.g. Ra 1.6) and per-face `exceptions`, keyed by ID: `target` geometry plus value (e.g. Ra 0.8). The machined profile places a symbol on each exception |
 | datums | Datum features keyed by label (A, B, C; 3.4.1), their target geometry (`ref`) and `applies_to` (`surface` or `feature_of_size`, e.g. a bore's axis) |
 | critical_dimensions | Dimensions that must appear explicitly, keyed by ID, each referencing a feature parameter or geometry reference, with optional tolerance, optional `requirement` it serves, and optional `inspect: true` |
@@ -38,7 +38,7 @@ Example with a Design Intent IR attached (specifying the example in 4.3):
   "documents": "part:bracket@4",
   "design_intent": "design_intent:BRK-001-DES@2",
   "configuration": "Default",
-  "general_tolerance": "ISO 2768-mK",
+  "general_tolerance": "ISO 2768-m",
   "surface_finish": {
     "general": { "ra": 1.6 },
     "exceptions": { "finish_bore": { "target": "bore_1.cylindrical_face", "ra": 0.8, "requirement": "r1" } }

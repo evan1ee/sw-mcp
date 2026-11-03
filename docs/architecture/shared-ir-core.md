@@ -1,6 +1,6 @@
 # 3.4 Shared IR Core
 
-> Specification v1.17, section 3.4. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.18, section 3.4. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The shared IR core is what every IR module, derived artifact and tool contract has in common: identifiers, references, units, numbers, revisions and the IR bundle (3.3). It is normative. Schemas in `schemas/common/` implement it (ADR-035), and every example in this specification follows it.
 
@@ -140,7 +140,7 @@ Agents correct IR from validation errors, so their form decides how many attempt
 
 ## 3.4.8 Schema files [Builder's call]
 
-How the files in `schemas/` (ADR-035) are named and how they carry what the canonical form (3.4.4) needs.
+Approved by the owner on 2026-11-04. How the files in `schemas/` (ADR-035) are named and how they carry what the canonical form (3.4.4) needs.
 
 - **Identity.** Every schema's `$id` is `https://sw-mcp.invalid/schemas/<directory>/<file>`. The `.invalid` top-level domain (RFC 2606) never resolves: an `$id` is a name, not a location. Schemas refer to each other by relative `$ref`, for example `../common/v0.json#/$defs/DocumentRef`.
 - **Files.** Shared-core types are `$defs` in `schemas/common/v0.json`. The error catalogue (ADR-037) is `schemas/common/errors.json`. The bundle manifest is `schemas/bundle/v1.json`, matching `bundle_schema_version` `1.0` (3.4.5).

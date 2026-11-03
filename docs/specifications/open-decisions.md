@@ -1,6 +1,6 @@
 # Open Decisions and Missing Specifications
 
-> Review of specification v1.11 (2026-11-03), updated for v1.17, for decisions that must be settled before implementation, so independent implementers build the same thing. Each item says why it matters, what is recommended, which document records it, and the first increment it blocks.
+> Review of specification v1.11 (2026-11-03), updated for v1.18, for decisions that must be settled before implementation, so independent implementers build the same thing. Each item says why it matters, what is recommended, which document records it, and the first increment it blocks.
 
 **Document types**
 - **ADR** — a choice between real alternatives, recorded once (`docs/adr/`).
@@ -64,4 +64,4 @@ No open items. Every decision found in the v1.11 review is recorded below. New g
 3. **Before Phase 1b:** done (ADR-048, ADR-049, §3.4.7, §5.7, §5.8, §6.5–6.6).
 4. **Before Phase 1c:** done (§6.7).
 
-Owner input is still needed for ADR-034 to ADR-049 (all Proposed), assumptions A1–A14 and the open Phase 0 owner decisions in section 18.
+Owner input is still needed for ADR-034 to ADR-049 (all Proposed), assumptions A1–A14 and the holdout parts (11.8). The other Phase 0 owner decisions are recorded in [ADR-050](../adr/ADR-050-phase-0-owner-decisions.md).

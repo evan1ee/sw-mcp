@@ -1,6 +1,6 @@
 # 8. Execution Engine
 
-> Specification v1.17, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.18, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 8.1 Purpose
 
@@ -44,11 +44,11 @@ The C# command set is designed for this system, including annotation geometry re
     - Selection never uses `SelectByID2` with display names (5.3.6). Entities are selected through `IEntity.Select4` with explicit `SelectData` and the selection marks each feature API expects.
     - Graphics updates are turned off while building (`IModelView.EnableGraphicsUpdate`) and back on before any drawing read-back (rule 10).
 12. **No modal dialogs.** A modal dialog blocks the SOLIDWORKS thread and therefore the queue (rule 7). Documents are opened with `swOpenDocOptions_Silent`. Error and warning popups on rebuild, missing-reference prompts and save-as-newer-version prompts are turned off for the session, and their information is read through the API instead. A blocked UI is detected and reported as a backend failure, never retried blindly.
-13. **Sharing the session with the engineer (owner decision pending; default below is a [Builder's call]).** Rule 10 means the agent usually works in the engineer's own SOLIDWORKS. While a job runs:
+13. **Sharing the session with the engineer (owner decision, ADR-050).** Rule 10 means the agent usually works in the engineer's own SOLIDWORKS. While a job runs:
     - The add-in shows a non-modal "AI job running" banner with a Stop button, which cancels the job as `cancel_execution` does (8.4).
     - The job's documents are the only ones it touches. Document events from other documents are ignored by the job; they still feed external-edit detection (9.3).
     - If the engineer edits, closes or saves one of the job's documents, or changes the active document while the job needs it, the add-in detects it through document events, stops the job between commands and fails it with "interrupted by user". It never continues on a document whose state it no longer knows.
-    - Phase 0 decides with the owner whether a dedicated second SOLIDWORKS instance is preferred instead; that needs a license check, since each instance may consume a seat.
+    - The owner chose the shared session (ADR-050). A dedicated second instance remains only as the fallback of assumption A12; it needs a license check, since each instance may consume a seat.
 
 ## 8.4 Lifecycle
 

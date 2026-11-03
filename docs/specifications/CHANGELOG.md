@@ -2,6 +2,17 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.18
+
+Records the Phase 0 owner decisions (new ADR-050, accepted 2026-11-04):
+
+- The agent shares the engineer's SOLIDWORKS session (8.3 rule 13); a dedicated instance stays only as the A12 fallback.
+- The general tolerance designation is `ISO 2768-m` with ISO 22081 (11.2, 11.10 `general_tolerance` and its example).
+- QA balloons are note-based balloons created by the pipeline (11.2).
+- Writing custom properties and changing `MarkedForDrawing` flags in parts are allowed, each only by an explicit per-call option (ADR-022, 11.1, 11.4).
+- No PDM is used; the PDM rules stay for other installations.
+- The owner approved the v1.17 decisions in 3.4.8.
+
 ## What changed in 1.17
 
 Closes a gap found when starting the Phase 0 schema work: 3.4.4 says schemas mark number kinds and unordered arrays, but not how ([register](open-decisions.md), N1).

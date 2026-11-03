@@ -1,6 +1,6 @@
 # 18. Roadmap
 
-> Specification v1.17, section 18. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.18, section 18. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## Phase 0 — Audit and Contracts
 
@@ -19,7 +19,7 @@
 - Evaluate DimXpert vs model-item insertion on the benchmark parts and on one imported body; record the outcome in ADR-012.
 - Check API availability of Auto Arrange Dimensions, and SOLIDWORKS 2025 support for ISO 21920 surface texture symbols.
 - Prove each SOLIDWORKS API assumption in the assumption register below with a small live test, and record the outcome there.
-- Decide with the owner: shared SOLIDWORKS session or a dedicated instance (8.3 rule 13); the holdout parts they supply (11.8); QA balloons via the SOLIDWORKS Inspection add-in or note-based balloons; general tolerance designation (ISO 2768-mK vs ISO 2768-m + ISO 22081); whether the pipeline may write custom properties into parts or change `MarkedForDrawing` flags; PDM usage.
+- Decide with the owner: the holdout parts they supply (11.8). Decided in [ADR-050](../adr/ADR-050-phase-0-owner-decisions.md): shared SOLIDWORKS session; `ISO 2768-m` with ISO 22081; note-based QA balloons; custom-property and `MarkedForDrawing` writes allowed by explicit per-call option; no PDM. The owner supplies the company sheet format.
 - Write ADRs for decisions in section 19.
 - Map the reference implementation's feature support onto the tiers in 5.3, and its tools onto the toolsets in 12.3. Record its full tool list for the name-clash CI check, and produce the mapping table from its tool names to this system's (12.1).
 - Measure the reference implementation's token baseline (tool-definition size, responses on a few sample parts) as the bar to beat.
