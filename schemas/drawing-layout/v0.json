@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/drawing-layout/v0.json",
+  "title": "Drawing Layout IR (spec 11.11)",
+  "type": "object",
+  "required": [
+    "module",
+    "id",
+    "schema_version",
+    "units",
+    "intent",
+    "sheets",
+    "views"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "module": {
+      "const": "drawing_layout"
+    },
+    "id": {
+      "$ref": "../common/v0.json#/$defs/DocumentId"
+    },
+    "revision": {
+      "$ref": "../common/v0.json#/$defs/Revision"
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.(0|[1-9][0-9]*)$"
+    },
+    "units": {
+      "const": "mm"
+    },
+    "intent": {
+      "$ref": "../common/v0.json#/$defs/DocumentRef"
+    },
+    "part_path": {
+      "type": "string"
+    },
+    "drafting_standard": {
+      "type": "string"
+    },
+    "template": {
+      "type": "string"
+    },
+    "sheets": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "size": {
+            "enum": [
+              "A4",
+              "A3",
+              "A2",
+              "A1",
+              "A0",
+              "user_defined"
+            ]
+          },
+          "orientation": {
+            "enum": [
+              "landscape",
+              "portrait"
+            ]
+          },
+          "scale": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*:[1-9][0-9]*$"
+          },
+          "sheet_format": {
+            "type": "string"
+          },
+          "template": {
+            "$ref": "../common/v0.json#/$defs/DocumentRef"
+          }
+        }
+      }
+    },
+    "views": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "sheet",
+          "type",
+          "position",
+          "scale"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "sheet": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "base",
+              "projected",
+              "section",
+              "aligned_section",
+              "removed_section",
+              "broken_out_section",
+              "detail",
+              "auxiliary",
+              "flat_pattern",
+              "isometric"
+            ]
+          },
+          "parent": {
+            "type": "string"
+          },
+          "orientation": {
+            "enum": [
+              "front",
+              "top",
+              "right",
+              "back",
+              "bottom",
+              "left",
+              "isometric"
+            ]
+          },
+          "configuration": {
+            "type": "string"
+          },
+          "scale": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*:[1-9][0-9]*$"
+          },
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "display": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "hidden_lines": {
+                "type": "boolean"
+              },
+              "tangent_edges": {
+                "enum": [
+                  "removed",
+                  "phantom",
+                  "visible"
+                ]
+              }
+            }
+          },
+          "label": {
+            "type": "string"
+          },
+          "modifiers": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "broken": {
+                "type": "object"
+              },
+              "crop": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "annotations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "kind",
+          "view",
+          "text_position"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "dimension",
+              "callout",
+              "note",
+              "gdt",
+              "datum",
+              "surface_finish",
+              "center_mark",
+              "centerline",
+              "balloon"
+            ]
+          },
+          "intent_ref": {
+            "anyOf": [
+              {
+                "$ref": "../common/v0.json#/$defs/IntentItemRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "view": {
+            "type": "string"
+          },
+          "text_position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "tag": {
+            "type": "string"
+          },
+          "native_id": {
+            "type": "string"
+          },
+          "placed_by": {
+            "enum": [
+              "pipeline",
+              "manual",
+              "agent"
+            ]
+          },
+          "pinned": {
+            "type": "boolean"
+          },
+          "side": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "tables": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "sheet": {
+            "type": "string"
+          },
+          "anchor": {
+            "type": "string"
+          },
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    },
+    "title_block": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  }
+}

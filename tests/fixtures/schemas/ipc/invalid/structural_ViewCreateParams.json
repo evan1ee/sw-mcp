@@ -1,0 +1,15 @@
+[
+  {},
+  {
+    "view_type": "base"
+  },
+  {
+    "view_type": "base",
+    "orientation": "front"
+  },
+  {
+    "view_type": "base",
+    "orientation": "front",
+    "position": [100.0, 100.0]
+  }
+]

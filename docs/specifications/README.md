@@ -1,8 +1,8 @@
-﻿# AI-native Parametric CAD System
+# AI-native Parametric CAD System
 
 ## Product & Technical Specification
 
-**Document Version:** 1.25
+**Document Version:** 1.26
 **Date:** November 4, 2026
 **Status:** Proposed Architecture (refined after owner interview, two SOLIDWORKS reviews, an architecture review and a development-readiness review)
 **Reference Implementation:** SolidPilot — a behavioral reference only. This system is implemented independently: no SolidPilot code is copied into it. The reference may be studied for behavior, tool contracts and lessons learned, and its observable behavior may be matched. Everywhere else, this document calls it "the reference implementation".

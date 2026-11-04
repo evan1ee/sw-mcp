@@ -1,0 +1,41 @@
+[
+  {
+    "native_id": "Drawing View1",
+    "position_mm": [
+      150.0,
+      150.0
+    ],
+    "scale": 1.0,
+    "outline_mm": {
+      "min": [
+        100.0,
+        100.0
+      ],
+      "max": [
+        200.0,
+        200.0
+      ]
+    }
+  },
+  {
+    "view_id": "v_front",
+    "native_id": "Drawing View1",
+    "position_mm": [
+      150.0,
+      150.0
+    ],
+    "scale": 1.0,
+    "outline_mm": {
+      "min": [
+        100.0,
+        100.0
+      ],
+      "max": [
+        200.0,
+        200.0
+      ]
+    },
+    "width_mm": 100.0,
+    "height_mm": 100.0
+  }
+]

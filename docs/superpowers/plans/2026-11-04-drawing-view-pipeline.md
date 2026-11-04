@@ -140,6 +140,7 @@
       display: ViewDisplay = field(default_factory=ViewDisplay)
       parent: str | None = None
 
+
   @dataclass(frozen=True)
   class DrawingLayout:
       id: str
@@ -182,6 +183,7 @@
       spacing_mm: float = 25.0,
   ) -> tuple[int, int]:
       """Selects the largest ISO 5455 preferred scale (numerator, denominator) that fits."""
+
 
   def plan_ortho_views(
       part_extents: tuple[float, float, float],  # (dx, dy, dz)
@@ -286,6 +288,7 @@
       job_prefix: str,
   ) -> list[Operation]:
       """Converts a planned DrawingLayout into an ordered list of view.create operations."""
+
 
   def derive_as_built_layout(
       snapshot: dict[str, JsonValue],

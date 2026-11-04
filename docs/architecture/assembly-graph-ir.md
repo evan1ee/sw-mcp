@@ -1,6 +1,6 @@
-﻿# 5.6 Assembly Graph IR (optional module)
+# 5.6 Assembly Graph IR (optional module)
 
-> Specification v1.25, section 5.6. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.26, section 5.6. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## Purpose
 

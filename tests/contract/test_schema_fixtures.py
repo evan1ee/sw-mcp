@@ -18,6 +18,7 @@ BUNDLE_ID = "https://sw-mcp.invalid/schemas/bundle/v1.json"
 SNAPSHOT_ID = "https://sw-mcp.invalid/schemas/drawing-geometry-snapshot/v0.json"
 REPORT_ID = "https://sw-mcp.invalid/schemas/drawing-report/v0.json"
 TEMPLATE_ID = "https://sw-mcp.invalid/schemas/drawing-template/v0.json"
+LAYOUT_ID = "https://sw-mcp.invalid/schemas/drawing-layout/v0.json"
 
 type Json = Any
 
@@ -451,3 +452,27 @@ def test_template_valid_accepted(path: Path) -> None:
 @pytest.mark.parametrize("path", _template_cases("invalid"))
 def test_template_invalid_rejected(path: Path) -> None:
     assert _issues(_load(path), TEMPLATE_ID) != []
+
+
+def _layout_cases(kind: str) -> list[Json]:
+    return [
+        pytest.param(path, id=path.stem)
+        for path in sorted((FIXTURES_DIR / "drawing-layout" / kind).glob("*.json"))
+    ]
+
+
+def test_layout_fixtures_exist_for_both_kinds() -> None:
+    valid = {p.stem for p in (FIXTURES_DIR / "drawing-layout" / "valid").glob("*.json")}
+    invalid = {p.stem for p in (FIXTURES_DIR / "drawing-layout" / "invalid").glob("*.json")}
+    assert {"minimal", "three_view_a3"} <= valid
+    assert {"wrong_module", "missing_sheet", "bad_scale"} <= invalid
+
+
+@pytest.mark.parametrize("path", _layout_cases("valid"))
+def test_layout_valid_accepted(path: Path) -> None:
+    assert _issues(_load(path), LAYOUT_ID) == []
+
+
+@pytest.mark.parametrize("path", _layout_cases("invalid"))
+def test_layout_invalid_rejected(path: Path) -> None:
+    assert _issues(_load(path), LAYOUT_ID) != []

@@ -1,0 +1,15 @@
+{
+  "module": "drawing_layout",
+  "id": "BRK-001-DL",
+  "schema_version": "0.1",
+  "units": "mm",
+  "intent": "drawing_intent:BRK-001-DI@1",
+  "sheets": {
+    "s1": {
+      "size": "A3",
+      "orientation": "landscape",
+      "scale": "invalid_scale"
+    }
+  },
+  "views": {}
+}

@@ -38,6 +38,83 @@ public enum DocumentEventParamsEvent
     ActiveChanged
 }
 
+[JsonConverter(typeof(StringEnumConverter))]
+public enum ViewCreateParamsViewType
+{
+    [EnumMember(Value = "base")]
+    Base,
+    [EnumMember(Value = "projected")]
+    Projected,
+    [EnumMember(Value = "isometric")]
+    Isometric,
+    [EnumMember(Value = "flat_pattern")]
+    FlatPattern
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum ViewCreateParamsOrientation
+{
+    [EnumMember(Value = "front")]
+    Front,
+    [EnumMember(Value = "top")]
+    Top,
+    [EnumMember(Value = "right")]
+    Right,
+    [EnumMember(Value = "back")]
+    Back,
+    [EnumMember(Value = "bottom")]
+    Bottom,
+    [EnumMember(Value = "left")]
+    Left,
+    [EnumMember(Value = "isometric")]
+    Isometric
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum ViewCreateParamsDisplayMode
+{
+    [EnumMember(Value = "hlr")]
+    Hlr,
+    [EnumMember(Value = "hlv")]
+    Hlv,
+    [EnumMember(Value = "wireframe")]
+    Wireframe,
+    [EnumMember(Value = "shaded")]
+    Shaded,
+    [EnumMember(Value = "shaded_edges")]
+    ShadedEdges,
+    [EnumMember(Value = "default")]
+    Default
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum ViewCreateParamsTangentEdges
+{
+    [EnumMember(Value = "removed")]
+    Removed,
+    [EnumMember(Value = "phantom")]
+    Phantom,
+    [EnumMember(Value = "visible")]
+    Visible
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum ViewUpdateParamsDisplayMode
+{
+    [EnumMember(Value = "hlr")]
+    Hlr,
+    [EnumMember(Value = "hlv")]
+    Hlv,
+    [EnumMember(Value = "wireframe")]
+    Wireframe,
+    [EnumMember(Value = "shaded")]
+    Shaded,
+    [EnumMember(Value = "shaded_edges")]
+    ShadedEdges,
+    [EnumMember(Value = "default")]
+    Default
+}
+
 public sealed class Meta
 {
     [JsonProperty("request_id", NullValueHandling = NullValueHandling.Ignore)]
@@ -48,6 +125,15 @@ public sealed class Meta
 
     [JsonProperty("operation_id", NullValueHandling = NullValueHandling.Ignore)]
     public string? OperationId { get; set; }
+}
+
+public sealed class ViewOutline
+{
+    [JsonProperty("min", Required = Required.Always)]
+    public List<double> Min { get; set; } = new List<double>();
+
+    [JsonProperty("max", Required = Required.Always)]
+    public List<double> Max { get; set; } = new List<double>();
 }
 
 public sealed class Request
@@ -432,5 +518,101 @@ public sealed class SheetFormatGenerateResult
 
     [JsonProperty("size_mm", Required = Required.Always)]
     public List<double> SizeMm { get; set; } = new List<double>();
+}
+
+public sealed class ViewCreateParams
+{
+    [JsonProperty("model_path", NullValueHandling = NullValueHandling.Ignore)]
+    public string? ModelPath { get; set; }
+
+    [JsonProperty("sheet", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Sheet { get; set; }
+
+    [JsonProperty("view_type", Required = Required.Always)]
+    public ViewCreateParamsViewType ViewType { get; set; }
+
+    [JsonProperty("orientation", Required = Required.Always)]
+    public ViewCreateParamsOrientation Orientation { get; set; }
+
+    [JsonProperty("position", Required = Required.Always)]
+    public List<double> Position { get; set; } = new List<double>();
+
+    [JsonProperty("scale", Required = Required.Always)]
+    public double Scale { get; set; }
+
+    [JsonProperty("configuration", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Configuration { get; set; }
+
+    [JsonProperty("parent_view", NullValueHandling = NullValueHandling.Ignore)]
+    public string? ParentView { get; set; }
+
+    [JsonProperty("display_mode", NullValueHandling = NullValueHandling.Ignore)]
+    public ViewCreateParamsDisplayMode? DisplayMode { get; set; }
+
+    [JsonProperty("tangent_edges", NullValueHandling = NullValueHandling.Ignore)]
+    public ViewCreateParamsTangentEdges? TangentEdges { get; set; }
+
+    [JsonProperty("view_name", NullValueHandling = NullValueHandling.Ignore)]
+    public string? ViewName { get; set; }
+
+    [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
+    public Meta? Meta { get; set; }
+}
+
+public sealed class ViewCreateResult
+{
+    [JsonProperty("view_id", NullValueHandling = NullValueHandling.Ignore)]
+    public string? ViewId { get; set; }
+
+    [JsonProperty("native_id", Required = Required.Always)]
+    public string NativeId { get; set; } = string.Empty;
+
+    [JsonProperty("position_mm", Required = Required.Always)]
+    public List<double> PositionMm { get; set; } = new List<double>();
+
+    [JsonProperty("scale", Required = Required.Always)]
+    public double Scale { get; set; }
+
+    [JsonProperty("outline_mm", Required = Required.Always)]
+    public ViewOutline OutlineMm { get; set; } = null!;
+
+    [JsonProperty("width_mm", NullValueHandling = NullValueHandling.Ignore)]
+    public double? WidthMm { get; set; }
+
+    [JsonProperty("height_mm", NullValueHandling = NullValueHandling.Ignore)]
+    public double? HeightMm { get; set; }
+}
+
+public sealed class ViewUpdateParams
+{
+    [JsonProperty("view_name", Required = Required.Always)]
+    public string ViewName { get; set; } = string.Empty;
+
+    [JsonProperty("position", NullValueHandling = NullValueHandling.Ignore)]
+    public List<double>? Position { get; set; }
+
+    [JsonProperty("scale", NullValueHandling = NullValueHandling.Ignore)]
+    public double? Scale { get; set; }
+
+    [JsonProperty("display_mode", NullValueHandling = NullValueHandling.Ignore)]
+    public ViewUpdateParamsDisplayMode? DisplayMode { get; set; }
+
+    [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
+    public Meta? Meta { get; set; }
+}
+
+public sealed class ViewUpdateResult
+{
+    [JsonProperty("native_id", Required = Required.Always)]
+    public string NativeId { get; set; } = string.Empty;
+
+    [JsonProperty("position_mm", NullValueHandling = NullValueHandling.Ignore)]
+    public List<double>? PositionMm { get; set; }
+
+    [JsonProperty("scale", NullValueHandling = NullValueHandling.Ignore)]
+    public double? Scale { get; set; }
+
+    [JsonProperty("outline_mm", NullValueHandling = NullValueHandling.Ignore)]
+    public ViewOutline? OutlineMm { get; set; }
 }
 
