@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -38,6 +39,36 @@ public class SwAddin : ISwAddin
     private SldWorksDocumentEventMonitor? _eventMonitor;
     private SettingsGuard? _settingsGuard;
 
+    static SwAddin()
+    {
+        AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
+    }
+
+    private static Assembly? OnAssemblyResolve(object? sender, ResolveEventArgs args)
+    {
+        try
+        {
+            var assemblyName = new AssemblyName(args.Name).Name;
+            if (string.IsNullOrEmpty(assemblyName))
+            {
+                return null;
+            }
+            var executingAssemblyDir = Path.GetDirectoryName(typeof(SwAddin).Assembly.Location);
+            if (!string.IsNullOrEmpty(executingAssemblyDir))
+            {
+                var candidatePath = Path.Combine(executingAssemblyDir, assemblyName + ".dll");
+                if (File.Exists(candidatePath))
+                {
+                    return Assembly.LoadFrom(candidatePath);
+                }
+            }
+        }
+        catch
+        {
+        }
+        return null;
+    }
+
     public ISldWorks? SwApp => _swApp;
 
     public bool ConnectToSW(object ThisSW, int cookie)
@@ -47,6 +78,14 @@ public class SwAddin : ISwAddin
 
         try
         {
+            try
+            {
+                var localAppData = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData);
+                var logDir = Path.Combine(localAppData, "sw-mcp");
+                Directory.CreateDirectory(logDir);
+                File.AppendAllText(Path.Combine(logDir, "addin-load.log"), $"[{DateTime.UtcNow:O}] ConnectToSW started for PID {Process.GetCurrentProcess().Id}\n");
+            }
+            catch {}
             // 0. Recover any crashed settings from previous sessions
             SettingsGuard.RecoverAllCrashFiles(new Diagnostics.SldWorksSettingsTarget(_swApp));
             _settingsGuard = new SettingsGuard(new Diagnostics.SldWorksSettingsTarget(_swApp));
@@ -115,8 +154,16 @@ public class SwAddin : ISwAddin
 
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            try
+            {
+                var localAppData = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData);
+                var logDir = Path.Combine(localAppData, "sw-mcp");
+                Directory.CreateDirectory(logDir);
+                File.AppendAllText(Path.Combine(logDir, "addin-load.log"), $"[{DateTime.UtcNow:O}] ConnectToSW error: {ex}\n");
+            }
+            catch {}
             DisconnectFromSW();
             return false;
         }
