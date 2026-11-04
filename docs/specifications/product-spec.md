@@ -1,6 +1,6 @@
 # Product Specification
 
-> Specification v1.19, sections 1, 2, 16, 20, 21. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.20, sections 1, 2, 16, 20, 21. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 1. Executive Summary
 

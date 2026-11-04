@@ -2,6 +2,19 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.20
+
+Closes gaps found when planning the rest of the Phase 1a checks ([register](open-decisions.md), K2, N3, R1), and logs one that needs the owner's sheet format (K3).
+
+- **D5, D8, D10 without a Drawing Intent** (new 11.5.3) **[Builder's call]**:
+  - D5 has two parts. `duplicates` covers duplicate parameters and closed chains, which need no scheme. `auxiliary_marking` needs a Resolved Scheme, so D5 cannot be `pass` without one.
+  - D8 runs against an injected title-block mapping; a sheet without one is `not_evaluated`.
+  - D10's save/reopen part under `check_drawing`, which never saves: a drawing read back with no unsaved changes counts as `verified`; otherwise `not_checked`, which is `not_evaluated`.
+- **Drawing report** (new 11.5.4) **[Builder's call]**: contents, verdict rule, reason codes, and a `calibration` field that can only say `unverified` until Phase 0 calibration on real drawings.
+- **Snapshot additions** (11.5.1): `parameters` and `parenthesized` on annotations; `sheet_format`, `title_block_fields` and `revision_table` on sheets; root `rebuild`. All optional. Hidden annotations are not exported.
+- **Configuration:** new key `drawing.check.parallel_deg` (13.3.3); `revision_table` in the title-block mapping (13.3.4).
+- **Assumptions:** A15 and A16 added (18). `check_drawing` may rebuild in memory (8.4).
+
 ## What changed in 1.19
 
 Closes a gap found when planning the Phase 1a checks: 11.5.1 lists what the Drawing Geometry Snapshot holds but not how it is encoded ([register](open-decisions.md), N2).
