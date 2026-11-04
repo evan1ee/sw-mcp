@@ -86,8 +86,24 @@ public sealed class ScriptedHandler : ICommandHandler
         {
             var id = snapshotIds[snapshotCall++];
             ct.ThrowIfCancellationRequested();
-            var result = responses.TryGetValue(id, out var r) ? r["result"] : null;
-            return result ?? throw new InvalidOperationException("transcript has no snapshot result for id " + id);
+            if (responses.TryGetValue(id, out var r))
+            {
+                var error = r["error"];
+                if (error != null)
+                {
+                    var data = error["data"];
+                    var code = data?["code"]?.Value<string>() ?? error.Value<string>("code") ?? "IR_REFERENCE_UNRESOLVED";
+                    var msg = data?["message"]?.Value<string>() ?? error.Value<string>("message") ?? string.Empty;
+                    throw new IpcException(code, msg, data?["details"]);
+                }
+
+                if (r["result"] != null)
+                {
+                    return r["result"]!;
+                }
+            }
+
+            throw new InvalidOperationException("transcript has no snapshot result or error for id " + id);
         };
         handler.OnExecute = (doc, op, ct) =>
         {

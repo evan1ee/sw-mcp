@@ -5,11 +5,13 @@ it answers. A timeout reports ``EXEC_TIMEOUT``, never resends (8.3 rule 8), and 
 call, so its late response or chunks are discarded.
 """
 
+import contextlib
 import json
+import threading
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
-from typing import cast
+from dataclasses import dataclass, field
+from typing import Final, cast
 
 from cad_ir.core.json_types import JsonValue
 from cad_ir.generated.ipc import (
@@ -41,6 +43,7 @@ type NotificationHandler = Callable[[str, JsonValue], None]
 
 _CATALOGUE_ERROR = -32000
 _PARSE_ERROR = -32700
+_MAX_MISSED_PONGS: Final = 3
 
 
 @dataclass(slots=True)
@@ -51,6 +54,7 @@ class CallState:
     timeout_s: float
     deadline: float = 0.0
     response: RpcResponse | None = None
+    completed: threading.Event = field(default_factory=threading.Event)
 
 
 class PendingCall:
@@ -87,6 +91,8 @@ class IpcClient:
         command_timeout_s: float = 120.0,
         protocol: str = PROTOCOL_VERSION,
         monotonic: Callable[[], float] = time.monotonic,
+        reader_thread: bool = False,
+        heartbeat_interval_s: float = 10.0,
     ) -> None:
         self._transport = transport
         self._token = token
@@ -99,6 +105,24 @@ class IpcClient:
         self._closed = False
         self._pending: dict[int, CallState] = {}
         self._partial: dict[int, chunks.Partial] = {}
+        self._lock = threading.Lock()
+        self._send_lock = threading.Lock()
+        self._reader_enabled = reader_thread
+        self._heartbeat_interval_s = heartbeat_interval_s
+        self._stop_heartbeat = threading.Event()
+        self._missed_pongs = 0
+        self._last_activity = self._monotonic()
+        self._reader: threading.Thread | None = None
+        self._heartbeat: threading.Thread | None = None
+        if reader_thread:
+            self._reader = threading.Thread(
+                target=self._reader_loop, name="ipc-reader", daemon=True
+            )
+            self._heartbeat = threading.Thread(
+                target=self._heartbeat_loop, name="ipc-heartbeat", daemon=True
+            )
+            self._reader.start()
+            self._heartbeat.start()
 
     # --- public calls -------------------------------------------------------------------
 
@@ -150,9 +174,14 @@ class IpcClient:
         return self._parse(JobCancelResult.from_json, reply).cancelled
 
     def close(self) -> None:
-        if not self._closed:
+        with self._lock:
+            if self._closed:
+                return
             self._closed = True
-            self._transport.close()
+            for call in self._pending.values():
+                call.completed.set()
+        self._stop_heartbeat.set()
+        self._transport.close()
 
     # --- sending and waiting ------------------------------------------------------------
 
@@ -160,33 +189,58 @@ class IpcClient:
         return self.await_result(self._begin(method, params, "read"))
 
     def _begin(self, method: str, params: JsonValue, kind: str) -> CallState:
-        if self._closed:
-            raise _lost()
-        timeout = self._command_timeout_s if kind == "command" else self._read_timeout_s
-        call = CallState(self._next_id, timeout)
-        self._next_id += 1
+        with self._lock:
+            if self._closed:
+                raise _lost()
+            timeout = self._command_timeout_s if kind == "command" else self._read_timeout_s
+            call = CallState(self._next_id, timeout)
+            self._next_id += 1
+            call.deadline = self._monotonic() + timeout
+            self._pending[call.id] = call
+
         frame = Request(id=call.id, method=method, params=params).to_json()
+        payload = json.dumps(frame, ensure_ascii=False).encode("utf-8")
         try:
-            self._transport.send(json.dumps(frame, ensure_ascii=False).encode("utf-8"))
+            with self._send_lock:
+                self._transport.send(payload)
         except TransportClosed:
-            self._closed = True
+            self._handle_transport_closed()
             raise _lost() from None
-        call.deadline = self._monotonic() + timeout
-        self._pending[call.id] = call
         return call
 
     def await_result(self, call: CallState) -> JsonValue:
-        while call.response is None:
+        if self._reader is None:
+            while call.response is None:
+                if self._closed:
+                    self._forget(call)
+                    raise _lost()
+                self._pump(call)
+            self._forget(call)
+            return self._result_of(call.response)
+
+        remaining = call.deadline - self._monotonic()
+        while remaining > 0 and not call.completed.is_set():
             if self._closed:
                 self._forget(call)
                 raise _lost()
-            self._pump(call)
+            call.completed.wait(timeout=min(remaining, 0.1))
+            remaining = call.deadline - self._monotonic()
+
+        if not call.completed.is_set():
+            self._forget(call)
+            if self._closed:
+                raise _lost()
+            raise self._timed_out(call)
+
         self._forget(call)
+        if call.response is None:
+            raise _lost()
         return self._result_of(call.response)
 
     def _forget(self, call: CallState) -> None:
-        self._pending.pop(call.id, None)
-        self._partial.pop(call.id, None)
+        with self._lock:
+            self._pending.pop(call.id, None)
+            self._partial.pop(call.id, None)
 
     def _pump(self, call: CallState) -> None:
         remaining = call.deadline - self._monotonic()
@@ -197,7 +251,7 @@ class IpcClient:
         except TransportTimeout:
             raise self._timed_out(call) from None
         except TransportClosed:
-            self._closed = True
+            self._handle_transport_closed()
             return
         self._dispatch(payload)
 
@@ -208,6 +262,50 @@ class IpcClient:
             "The add-in did not answer in time; the request was not sent again.",
             "after_fix",
         )
+
+    # --- reader and heartbeat threads ---------------------------------------------------
+
+    def _reader_loop(self) -> None:
+        while not self._closed:
+            try:
+                payload = self._transport.receive(timeout_s=0.2)
+            except TransportTimeout:
+                continue
+            except TransportClosed:
+                self._handle_transport_closed()
+                break
+            except Exception:
+                self._handle_transport_closed()
+                break
+            self._last_activity = self._monotonic()
+            with contextlib.suppress(Exception):
+                self._dispatch(payload)
+
+    def _handle_transport_closed(self) -> None:
+        with self._lock:
+            if not self._closed:
+                self._closed = True
+                for call in self._pending.values():
+                    call.completed.set()
+
+    def _heartbeat_loop(self) -> None:
+        while not self._stop_heartbeat.wait(timeout=0.5):
+            if self._closed:
+                break
+            now = self._monotonic()
+            with self._lock:
+                idle = len(self._pending) == 0 and (
+                    now - self._last_activity >= self._heartbeat_interval_s
+                )
+            if idle:
+                try:
+                    self.ping()
+                    self._missed_pongs = 0
+                except Exception:
+                    self._missed_pongs += 1
+                    if self._missed_pongs >= _MAX_MISSED_PONGS:
+                        self.close()
+                        break
 
     # --- incoming frames ----------------------------------------------------------------
 
@@ -242,26 +340,29 @@ class IpcClient:
                 _PARSE_ERROR if error is None else error.code,
                 "the add-in could not read a request" if error is None else error.message,
             )
-        call = self._pending.get(response.id)
-        if call is not None:  # otherwise the call timed out: discard
-            call.response = response
+        with self._lock:
+            call = self._pending.get(response.id)
+            if call is not None:  # otherwise the call timed out: discard
+                call.response = response
+                call.completed.set()
 
     def _deliver(self, note: Notification) -> None:
         if self._on_notification is not None:
             self._on_notification(note.method, note.params)
 
     def _on_chunk(self, chunk: ResponseChunkParams) -> None:
-        if chunk.id not in self._pending:
-            return  # no longer waited for
-        try:
-            partial = chunks.add_chunk(self._partial.get(chunk.id), chunk)
-        except ValueError:
+        with self._lock:
+            if chunk.id not in self._pending:
+                return  # no longer waited for
+            try:
+                partial = chunks.add_chunk(self._partial.get(chunk.id), chunk)
+            except ValueError:
+                self._partial.pop(chunk.id, None)
+                raise
+            if not chunks.is_complete(partial):
+                self._partial[chunk.id] = partial
+                return
             self._partial.pop(chunk.id, None)
-            raise
-        if not chunks.is_complete(partial):
-            self._partial[chunk.id] = partial
-            return
-        self._partial.pop(chunk.id, None)
         response = RpcResponse.from_json(cast("JsonValue", json.loads(chunks.joined(partial))))
         if response.id != chunk.id:
             raise ValueError("response.chunk: joined frame answers another request")

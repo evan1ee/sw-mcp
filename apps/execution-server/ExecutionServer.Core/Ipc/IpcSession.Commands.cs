@@ -65,6 +65,8 @@ public sealed partial class IpcSession
 
             _queue.Enqueue(command);
         }
+
+        _onCommandEnqueued?.Invoke(this);
     }
 
     private void Cancel(long id)

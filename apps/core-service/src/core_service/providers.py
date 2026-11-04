@@ -10,7 +10,11 @@ from cad_ir.core.json_types import JsonValue
 from cad_protocol.errors import IpcError, IpcProtocolFault
 from cad_protocol.replay import Transcript, load_transcript, replay_backend
 
+from core_service.discovery import NamedPipeBackendProvider
+
 type NotificationCallback = Callable[[str, JsonValue], None]
+
+__all__ = ["NamedPipeBackendProvider", "NotificationCallback", "ReplayBackendProvider"]
 
 
 class ReplayBackendProvider:

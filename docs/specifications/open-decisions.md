@@ -15,7 +15,7 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-Three open items, K3, J11 and J21. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+Two open items, K3 and J11. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
 
 ### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
 
@@ -34,13 +34,6 @@ Three open items, K3, J11 and J21. Every decision found in the v1.11 review is r
 - **Recommendation.** When the adapter is built, add an optional per-view `quality_switched: true` to the snapshot's `View` (11.5.1), or a `warnings` list to the `drawing.snapshot` result (8.7), and map it to a `draft_view_switched` job warning. Decide with the live read-back, which shows whether the switch is per view or per sheet.
 - **Document:** Spec (11.5.1 or 8.7, and 8.4).
 - **Blocks:** `1a` (live read-back only).
-
-### J21: The C# transcript harness cannot script an error response
-
-- **Why it matters.** `check_drawing_bad_sheet.jsonl` has `drawing.snapshot` answer `IR_REFERENCE_UNRESOLVED`. The C# `ScriptedHandler` can only return results, so the scenario runs on the Python side only, and the add-in's error mapping for an unknown sheet (8.7) is not checked against the transcript.
-- **Recommendation.** In milestone 6, let `ScriptedHandler` return a JSON-RPC error from the transcript frame, then set the scenario's `sides` to `["python", "csharp"]`. Test infrastructure only; no contract changes.
-- **Document:** Spec (15.5) if the harness rule needs saying; otherwise none.
-- **Blocks:** `1a` (C# side of one transcript).
 
 ---
 
@@ -107,6 +100,7 @@ Three open items, K3, J11 and J21. Every decision found in the v1.11 review is r
 | J18 | Recovery edge cases: RECOVERY jobs, job folders without `job.json`, a store first opened after start, an unreadable known-stores list (found in milestone 5) | [§13.2.3](../architecture/project-store.md#1323-job-journal) |
 | J19 | `elapsed_ms` before the job starts (found in milestone 5) | [§12.4.5](../api/tool-contracts.md#1245-phase-1a-contracts) |
 | J20 | Log fields the engine emits that the sink's allow-list dropped (found in milestone 5) | [G3](../development/implementation-guidelines.md#g3--logging-and-correlation) |
+| J21 | The C# transcript harness cannot script an error response (settled in milestone 6) | [§15.5](../development/testing-strategy.md#155-contract-tests) |
 
 ## Recommended order
 
