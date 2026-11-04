@@ -14,6 +14,7 @@ using ExecutionServer.Core.Pipe;
 using ExecutionServer.Core.Ipc;
 using ExecutionServer.Core.Ipc.Generated;
 using ExecutionServer.Core.Ledger;
+using ExecutionServer.Adapters.Drawings;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -131,7 +132,10 @@ public class SwAddin : ISwAddin
                 Operations = new List<OperationInfo>
                 {
                     new OperationInfo { Op = "document.open", SchemaVersion = "0.1" },
-                    new OperationInfo { Op = "document.close", SchemaVersion = "0.1" }
+                    new OperationInfo { Op = "document.close", SchemaVersion = "0.1" },
+                    new OperationInfo { Op = "sheet_format.generate", SchemaVersion = "0.1" },
+                    new OperationInfo { Op = "drawing.create", SchemaVersion = "0.1" },
+                    new OperationInfo { Op = "document.save", SchemaVersion = "0.1" }
                 },
                 LicensedModules = new List<string>(),
                 Warnings = new List<string>()
@@ -276,7 +280,7 @@ public class SwAddin : ISwAddin
             ["started_at"] = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
         };
 
-        File.WriteAllText(_sessionFilePath, sessionObj.ToString(Formatting.Indented), Encoding.UTF8);
+        File.WriteAllText(_sessionFilePath, sessionObj.ToString(Formatting.Indented), new UTF8Encoding(false));
     }
 
     private static (string version, string sp) ParseRevision(string revision)
@@ -428,6 +432,33 @@ public class SwAddin : ISwAddin
                     var title = Path.GetFileName(document);
                     _sw.CloseDoc(title);
                     return new JObject { ["closed"] = true };
+                }
+
+                if (op.Op == "sheet_format.generate")
+                {
+                    var p = op.Params is JObject pObj
+                        ? pObj.ToObject<SheetFormatGenerateParams>()
+                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for sheet_format.generate");
+                    var res = new SheetFormatGenerator(_sw).Generate(p!, ct);
+                    return JObject.FromObject(res);
+                }
+
+                if (op.Op == "drawing.create")
+                {
+                    var p = op.Params is JObject pObj
+                        ? pObj.ToObject<DrawingCreateParams>()
+                        : new DrawingCreateParams();
+                    var res = new DrawingCreationAdapter(_sw).CreateDrawing(p ?? new DrawingCreateParams(), ct);
+                    return JObject.FromObject(res);
+                }
+
+                if (op.Op == "document.save")
+                {
+                    var p = op.Params is JObject pObj
+                        ? pObj.ToObject<DocumentSaveParams>()
+                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for document.save");
+                    var res = new DrawingCreationAdapter(_sw).SaveDocument(p!, ct);
+                    return JObject.FromObject(res);
                 }
 
                 return new JObject { ["op"] = op.Op, ["operation_id"] = op.OperationId, ["status"] = "applied" };

@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 from cad_ir.core.schema_validation import validate_against_schema
 from cad_ir.generated.ipc import Operation, OperationGroup
+from cad_protocol.backend import IpcBackend
 from core_service.discovery import (
     NamedPipeBackendProvider,
     SessionInfo,
@@ -54,8 +55,12 @@ def test_live_session_handshake() -> None:
     backend = provider.acquire(
         on_notification=lambda method, params: notifications.append((method, params))
     )
-    assert backend is not None
-    assert backend.session.protocol == "0.1"
+    try:
+        assert backend is not None
+        assert backend.session.protocol == "0.1"
+    finally:
+        if isinstance(backend, IpcBackend):
+            backend.close()
 
 
 def test_live_drawing_snapshot() -> None:

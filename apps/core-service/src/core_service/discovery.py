@@ -1,5 +1,6 @@
 """Session discovery for SOLIDWORKS add-in instances (spec 8.6.1)."""
 
+import contextlib
 import json
 import os
 import sys
@@ -76,13 +77,16 @@ def discover_sessions(
 
     sessions: list[SessionInfo] = []
     for path in session_dir.glob("*.json"):
+        pid = 0
+        with contextlib.suppress(ValueError):
+            pid = int(path.stem)
         try:
-            raw = json.loads(path.read_text(encoding="utf-8"))
+            raw = json.loads(path.read_text(encoding="utf-8-sig"))
             if not isinstance(raw, dict):
                 path.unlink(missing_ok=True)
                 continue
             content = cast(dict[str, Any], raw)
-            pid_raw = content.get("pid", 0)
+            pid_raw = content.get("pid", pid)
             pid = int(cast(int | str, pid_raw))
             if pid <= 0 or not is_process_running(pid):
                 path.unlink(missing_ok=True)
@@ -106,8 +110,11 @@ def discover_sessions(
                     started_at=started,
                 )
             )
-        except Exception:
+        except json.JSONDecodeError:
             path.unlink(missing_ok=True)
+        except Exception:
+            if pid <= 0 or not is_process_running(pid):
+                path.unlink(missing_ok=True)
 
     return sessions
 

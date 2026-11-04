@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/drawing.create.json",
+  "title": "Operation drawing.create (spec 6.5.1)",
+  "x-op": "drawing.create",
+  "x-mutates": "document",
+  "x-errors": [
+    "AUTH_PATH_DENIED",
+    "BACKEND_BUSY",
+    "BACKEND_UI_BLOCKED",
+    "FILE_NOT_FOUND"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Params": {
+      "type": "object",
+      "properties": {
+        "destination_path": {
+          "type": "string"
+        },
+        "template_path": {
+          "type": "string"
+        },
+        "sheet_format_path": {
+          "type": "string"
+        },
+        "paper_size": {
+          "type": "string"
+        },
+        "width_mm": {
+          "type": "number"
+        },
+        "height_mm": {
+          "type": "number"
+        },
+        "_meta": {
+          "$ref": "../v0.json#/$defs/Meta"
+        }
+      }
+    },
+    "Result": {
+      "type": "object",
+      "properties": {
+        "document": {
+          "type": "string"
+        },
+        "sheet_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "document",
+        "sheet_name"
+      ]
+    }
+  }
+}

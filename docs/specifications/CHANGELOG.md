@@ -2,6 +2,13 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.25
+
+Closes Open Decision K7 with operation schemas for backend sheet format generation and drawing creation.
+
+- **Backend Operations** (§6.5.2): added schemas for `sheet_format.generate`, `drawing.create`, and `document.save` in `schemas/ipc/ops/`.
+- **Open Decisions** ([register](open-decisions.md)): closed item **K7** (backend sheet format generation path from Drawing Template IR); 2 open decisions remain (K3, J11).
+
 ## What changed in 1.24
 
 Adds the Drawing Template IR module (§11.12, ADR-055), enabling CAD-neutral vector specification of sheet formats, borders, title blocks, and attribute link sources.

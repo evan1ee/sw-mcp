@@ -8,6 +8,8 @@ import unicodedata
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from cad_ir.drawing_template.model import DrawingTemplate
+
 from cad_drawing.checks.outcome import (
     CheckOutcome,
     CheckStatus,
@@ -37,6 +39,16 @@ class TitleBlockMapping:
     template: str
     required: tuple[str, ...] = ()
     revision_table: bool = False
+
+
+def mapping_from_drawing_template(template: DrawingTemplate) -> TitleBlockMapping:
+    """Derive a TitleBlockMapping from a DrawingTemplate IR model (ADR-055, K7)."""
+    required = tuple(name for name, field in template.fields if field.required)
+    return TitleBlockMapping(
+        template=template.id or "template",
+        required=required,
+        revision_table=template.revision_table_box is not None,
+    )
 
 
 def _normal(text: str) -> str:

@@ -1,0 +1,73 @@
+[
+  {
+    "template": {
+      "module": "drawing_template",
+      "id": "ACME-A3",
+      "schema_version": "0.1",
+      "units": "mm",
+      "paper": {
+        "size": "A3",
+        "orientation": "landscape"
+      },
+      "border": {
+        "margins": {
+          "left": 20.0,
+          "right": 10.0,
+          "top": 10.0,
+          "bottom": 10.0
+        }
+      },
+      "title_block": {
+        "zones": {
+          "main": {
+            "min": [230.0, 10.0],
+            "max": [410.0, 60.0]
+          }
+        }
+      },
+      "fields": {
+        "part_number": {
+          "source": ["part_property:PartNo"],
+          "box": { "min": [232.0, 40.0], "max": [300.0, 48.0] },
+          "height": 3.5
+        },
+        "revision": {
+          "source": ["drawing_property:Revision"],
+          "box": { "min": [302.0, 40.0], "max": [330.0, 48.0] },
+          "height": 3.5
+        },
+        "material": {
+          "source": ["part_material"],
+          "box": { "min": [232.0, 30.0], "max": [300.0, 38.0] },
+          "height": 3.5
+        },
+        "finish": {
+          "source": ["drawing_intent:finish.general"],
+          "box": { "min": [302.0, 30.0], "max": [360.0, 38.0] },
+          "height": 3.5
+        },
+        "general_tolerance": {
+          "source": ["drawing_intent:tolerances.general"],
+          "box": { "min": [232.0, 20.0], "max": [300.0, 28.0] },
+          "height": 3.5
+        },
+        "scale": {
+          "source": ["sheet:scale"],
+          "box": { "min": [302.0, 20.0], "max": [330.0, 28.0] },
+          "height": 3.5
+        },
+        "projection_symbol": {
+          "source": ["sheet:projection"],
+          "box": { "min": [332.0, 20.0], "max": [360.0, 28.0] },
+          "height": 3.5
+        },
+        "units": {
+          "source": ["sheet:units"],
+          "box": { "min": [362.0, 20.0], "max": [410.0, 28.0] },
+          "height": 3.5
+        }
+      }
+    },
+    "destination_path": "C:/d/test.slddrt"
+  }
+]

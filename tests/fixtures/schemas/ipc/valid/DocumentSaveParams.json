@@ -1,0 +1,14 @@
+[
+  {
+    "path": "C:/d/test.slddrw"
+  },
+  {
+    "path": "C:/d/test.slddrw",
+    "target_path": "C:/d/copy.slddrw",
+    "_meta": {
+      "request_id": "r_1",
+      "job_id": "j1",
+      "operation_id": "j1:1"
+    }
+  }
+]

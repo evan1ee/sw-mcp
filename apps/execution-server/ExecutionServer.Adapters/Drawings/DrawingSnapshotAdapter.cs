@@ -46,13 +46,43 @@ public sealed class DrawingSnapshotAdapter
         try
         {
             modelDoc = (IModelDoc2)_sw.ActiveDoc;
-            if (modelDoc != null && !string.Equals(modelDoc.GetPathName(), p.Document, StringComparison.OrdinalIgnoreCase))
+            if (modelDoc != null)
             {
-                Marshal.ReleaseComObject(modelDoc);
-                modelDoc = null;
+                var curPath = modelDoc.GetPathName();
+                var curTitle = modelDoc.GetTitle();
+                if (!string.Equals(curPath, p.Document, StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(curTitle, p.Document, StringComparison.OrdinalIgnoreCase))
+                {
+                    Marshal.ReleaseComObject(modelDoc);
+                    modelDoc = null;
+                }
             }
 
             if (modelDoc == null)
+            {
+                try
+                {
+                    modelDoc = (IModelDoc2)_sw.GetOpenDocument(p.Document);
+                }
+                catch
+                {
+                    modelDoc = null;
+                }
+            }
+
+            if (modelDoc == null)
+            {
+                try
+                {
+                    modelDoc = (IModelDoc2)_sw.GetOpenDocumentByName(p.Document);
+                }
+                catch
+                {
+                    modelDoc = null;
+                }
+            }
+
+            if (modelDoc == null && File.Exists(p.Document))
             {
                 int errors = 0;
                 int warnings = 0;
