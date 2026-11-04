@@ -895,3 +895,175 @@ class DocumentOpenResult:
         out: dict[str, JsonValue] = {}
         out["owned"] = _dump(self.owned)
         return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DocumentSaveParams:
+    path: str
+    target_path: str | None = None
+    meta: Meta | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DocumentSaveParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            path=_str(_req(obj, "path", where), f"{where}.path"),
+            target_path=_opt(obj, "target_path", where, _str),
+            meta=_opt(obj, "_meta", where, Meta._at),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["path"] = _dump(self.path)
+        if self.target_path is not None:
+            out["target_path"] = _dump(self.target_path)
+        if self.meta is not None:
+            out["_meta"] = _dump(self.meta)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DocumentSaveResult:
+    saved_path: str
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DocumentSaveResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            saved_path=_str(_req(obj, "saved_path", where), f"{where}.saved_path"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["saved_path"] = _dump(self.saved_path)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DrawingCreateParams:
+    destination_path: str | None = None
+    template_path: str | None = None
+    sheet_format_path: str | None = None
+    paper_size: str | None = None
+    width_mm: float | None = None
+    height_mm: float | None = None
+    meta: Meta | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DrawingCreateParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            destination_path=_opt(obj, "destination_path", where, _str),
+            template_path=_opt(obj, "template_path", where, _str),
+            sheet_format_path=_opt(obj, "sheet_format_path", where, _str),
+            paper_size=_opt(obj, "paper_size", where, _str),
+            width_mm=_opt(obj, "width_mm", where, _num),
+            height_mm=_opt(obj, "height_mm", where, _num),
+            meta=_opt(obj, "_meta", where, Meta._at),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        if self.destination_path is not None:
+            out["destination_path"] = _dump(self.destination_path)
+        if self.template_path is not None:
+            out["template_path"] = _dump(self.template_path)
+        if self.sheet_format_path is not None:
+            out["sheet_format_path"] = _dump(self.sheet_format_path)
+        if self.paper_size is not None:
+            out["paper_size"] = _dump(self.paper_size)
+        if self.width_mm is not None:
+            out["width_mm"] = _dump(self.width_mm)
+        if self.height_mm is not None:
+            out["height_mm"] = _dump(self.height_mm)
+        if self.meta is not None:
+            out["_meta"] = _dump(self.meta)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DrawingCreateResult:
+    document: str
+    sheet_name: str
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DrawingCreateResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            document=_str(_req(obj, "document", where), f"{where}.document"),
+            sheet_name=_str(_req(obj, "sheet_name", where), f"{where}.sheet_name"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["document"] = _dump(self.document)
+        out["sheet_name"] = _dump(self.sheet_name)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SheetFormatGenerateParams:
+    template: JsonValue
+    destination_path: str
+    meta: Meta | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "SheetFormatGenerateParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            template=_any(_req(obj, "template", where), f"{where}.template"),
+            destination_path=_str(_req(obj, "destination_path", where), f"{where}.destination_path"),
+            meta=_opt(obj, "_meta", where, Meta._at),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["template"] = _dump(self.template)
+        out["destination_path"] = _dump(self.destination_path)
+        if self.meta is not None:
+            out["_meta"] = _dump(self.meta)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SheetFormatGenerateResult:
+    path: str
+    size_mm: tuple[float, ...]
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "SheetFormatGenerateResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            path=_str(_req(obj, "path", where), f"{where}.path"),
+            size_mm=_list_of(_num)(_req(obj, "size_mm", where), f"{where}.size_mm"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["path"] = _dump(self.path)
+        out["size_mm"] = _dump(self.size_mm)
+        return out

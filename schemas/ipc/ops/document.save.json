@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/document.save.json",
+  "title": "Operation document.save (spec 6.5.1, ADR-046)",
+  "x-op": "document.save",
+  "x-mutates": "document",
+  "x-errors": [
+    "AUTH_PATH_DENIED",
+    "BACKEND_BUSY",
+    "BACKEND_UI_BLOCKED",
+    "FILE_NOT_FOUND"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Params": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "target_path": {
+          "type": "string"
+        },
+        "_meta": {
+          "$ref": "../v0.json#/$defs/Meta"
+        }
+      },
+      "required": [
+        "path"
+      ]
+    },
+    "Result": {
+      "type": "object",
+      "properties": {
+        "saved_path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "saved_path"
+      ]
+    }
+  }
+}

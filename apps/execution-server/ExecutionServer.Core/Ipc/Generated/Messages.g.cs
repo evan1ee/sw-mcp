@@ -362,3 +362,75 @@ public sealed class DocumentOpenResult
     public bool Owned { get; set; }
 }
 
+public sealed class DocumentSaveParams
+{
+    [JsonProperty("path", Required = Required.Always)]
+    public string Path { get; set; } = string.Empty;
+
+    [JsonProperty("target_path", NullValueHandling = NullValueHandling.Ignore)]
+    public string? TargetPath { get; set; }
+
+    [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
+    public Meta? Meta { get; set; }
+}
+
+public sealed class DocumentSaveResult
+{
+    [JsonProperty("saved_path", Required = Required.Always)]
+    public string SavedPath { get; set; } = string.Empty;
+}
+
+public sealed class DrawingCreateParams
+{
+    [JsonProperty("destination_path", NullValueHandling = NullValueHandling.Ignore)]
+    public string? DestinationPath { get; set; }
+
+    [JsonProperty("template_path", NullValueHandling = NullValueHandling.Ignore)]
+    public string? TemplatePath { get; set; }
+
+    [JsonProperty("sheet_format_path", NullValueHandling = NullValueHandling.Ignore)]
+    public string? SheetFormatPath { get; set; }
+
+    [JsonProperty("paper_size", NullValueHandling = NullValueHandling.Ignore)]
+    public string? PaperSize { get; set; }
+
+    [JsonProperty("width_mm", NullValueHandling = NullValueHandling.Ignore)]
+    public double? WidthMm { get; set; }
+
+    [JsonProperty("height_mm", NullValueHandling = NullValueHandling.Ignore)]
+    public double? HeightMm { get; set; }
+
+    [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
+    public Meta? Meta { get; set; }
+}
+
+public sealed class DrawingCreateResult
+{
+    [JsonProperty("document", Required = Required.Always)]
+    public string Document { get; set; } = string.Empty;
+
+    [JsonProperty("sheet_name", Required = Required.Always)]
+    public string SheetName { get; set; } = string.Empty;
+}
+
+public sealed class SheetFormatGenerateParams
+{
+    [JsonProperty("template", Required = Required.Always)]
+    public JToken Template { get; set; } = null!;
+
+    [JsonProperty("destination_path", Required = Required.Always)]
+    public string DestinationPath { get; set; } = string.Empty;
+
+    [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
+    public Meta? Meta { get; set; }
+}
+
+public sealed class SheetFormatGenerateResult
+{
+    [JsonProperty("path", Required = Required.Always)]
+    public string Path { get; set; } = string.Empty;
+
+    [JsonProperty("size_mm", Required = Required.Always)]
+    public List<double> SizeMm { get; set; } = new List<double>();
+}
+

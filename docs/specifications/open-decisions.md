@@ -15,7 +15,7 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-Three open items: K3, J11, and K7. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+Two open items: K3 and J11. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
 
 ### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
 
@@ -36,26 +36,13 @@ Three open items: K3, J11, and K7. Every decision found in the v1.11 review is r
 - **Document:** Spec (11.5.1 or 8.7, and 8.4).
 - **Blocks:** `1a` (live read-back only).
 
-### K7: Sheet format generation path from Drawing Template IR
-
-- **Why it matters.** Drawing Template IR (§11.12, ADR-055) defines paper, border, title block zones, lines, texts, and attribute link fields as pure data. To produce drawings using these templates, the backend must generate `.slddrt` sheet formats or construct sheets in SOLIDWORKS.
-- **Topics to settle:**
-  - The exact SOLIDWORKS API calls to construct sheet format geometry (`ISketchSegment` vs sheet-level lines, note creation on sheet format layer `swSheetFormat` vs drawing sheet layer).
-  - How fields become linked notes (`$PRPSHEET` vs `$PRP`).
-  - Read-back locators and how a generated sheet references its template revision for check D8.
-  - Drawing the first-angle projection symbol geometry.
-  - Where reusable templates across projects are stored and resolved.
-- **Consequence for D8:** Until `sheet_format.generate` and read-back linkage land, a drawing sheet using a generated format reports `not_evaluated` with `title_block_mapping_missing` (11.5.3).
-- **Recommendation.** Address in Phase 1b when implementing backend drawing generation.
-- **Document:** Spec (§6.5.2, §11.12), ADR-055.
-- **Blocks:** `later` (sheet format generation in backend only; Drawing Template IR schema, fixtures, and pure validation are not blocked).
-
 ---
 
 ## Closed
 
 | ID | Item | Recorded in |
 | --- | --- | --- |
+| K7 | Sheet format generation path from Drawing Template IR | [§6.5.2](../architecture/backend-operations.md#652-vocabulary), [§11.12](../architecture/drawing-template-ir.md), [ADR-055](../adr/ADR-055-generated-sheet-formats.md) |
 | X1 | Process topology and job ownership across MCP clients | [ADR-041](../adr/ADR-041-core-service-topology.md) |
 | I1 | One reference grammar | [§3.4.2](../architecture/shared-ir-core.md#342-references) |
 | I2 | Canonical serialization, units and numeric comparison | [§3.4.3–3.4.4](../architecture/shared-ir-core.md#343-units-and-numbers) |

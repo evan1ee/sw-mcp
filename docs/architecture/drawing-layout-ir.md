@@ -1,6 +1,6 @@
-# 11.11 Drawing Layout IR
+﻿# 11.11 Drawing Layout IR
 
-> Specification v1.24, section 11.11. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.25, section 11.11. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## Purpose
 
