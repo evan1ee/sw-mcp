@@ -1,6 +1,6 @@
 """Pure drawing checks D1-D3, D5, D7, D8, D10 and the drawing report (spec 11.5)."""
 
-from cad_drawing.checks.d8 import TitleBlockMapping
+from cad_drawing.checks.d8 import TitleBlockMapping, check_d8, mapping_from_drawing_template
 from cad_drawing.checks.failures import CheckFailure, CheckItem
 from cad_drawing.checks.outcome import CheckOutcome, RuleFailure
 from cad_drawing.checks.report import REPORT_SCHEMA_ID, DrawingReport, build_report
@@ -23,6 +23,8 @@ __all__ = [
     "SoftMetrics",
     "TitleBlockMapping",
     "build_report",
+    "check_d8",
+    "mapping_from_drawing_template",
     "parse_snapshot",
     "run_geometry_checks",
 ]
