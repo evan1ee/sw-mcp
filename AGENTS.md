@@ -19,6 +19,8 @@ Instructions and development workflow for AI coding agents working in the `sw-mc
 
 ## 2. Hard Rules
 
+Design changes must respect the core design principles in [spec 1.3](docs/specifications/product-spec.md#13-core-design-principles): IR-first, CAD-neutral semantics, deterministic execution, semantic references, verifiable output, recoverability.
+
 - **Clean-room implementation (ADR-010):** Never copy code from the reference implementation (SolidPilot). Study its observable behavior, tool contracts, and failure modes only.
 - **Custody of source files (ADR-022):** Never write to source parts, assemblies, or PDM-vaulted files without explicit permission. Never run SOLIDWORKS macros (section 14).
 - **Schema-first contracts (ADR-035):** `schemas/` is the single source of truth for contracts. Generated Python and C# types are build outputs; never edit generated files by hand.

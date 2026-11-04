@@ -1,6 +1,6 @@
 # Open Decisions and Missing Specifications
 
-> Review of specification v1.11 (2026-11-03), updated for v1.21, for decisions that must be settled before implementation, so independent implementers build the same thing. Each item says why it matters, what is recommended, which document records it, and the first increment it blocks.
+> Review of specification v1.11 (2026-11-03), updated for v1.22, for decisions that must be settled before implementation, so independent implementers build the same thing. Each item says why it matters, what is recommended, which document records it, and the first increment it blocks.
 
 **Document types**
 - **ADR** — a choice between real alternatives, recorded once (`docs/adr/`).
@@ -15,7 +15,7 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-One open item. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+Two open items, K3 and J11. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
 
 ### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
 
@@ -27,6 +27,13 @@ One open item. Every decision found in the v1.11 review is recorded below. New g
 - **Recommendation.** When the owner supplies the sheet format, add a `read` locator per field to the mapping in 13.3.4, and calibrate D8 on it.
 - **Document:** Spec (13.3.4, 11.5.3).
 - **Blocks:** `1a` (live read-back only; the snapshot contract and D8 itself are not blocked).
+
+### J11: The snapshot cannot say that a draft-quality view was switched for read-back
+
+- **Why it matters.** 8.4 lets `check_drawing` switch draft-quality views to high quality in memory and says it reports that it did. Neither the `drawing.snapshot` result nor the snapshot schema (11.5.1) has a field for it, and the report's `warnings` are per annotation (11.5.4), so the fact cannot reach the job warnings (8.4). Milestone 5 carries the service-pack warning (from `HelloResult.warnings`) and leaves this one out rather than invent a field.
+- **Recommendation.** When the adapter is built, add an optional per-view `quality_switched: true` to the snapshot's `View` (11.5.1), or a `warnings` list to the `drawing.snapshot` result (8.7), and map it to a `draft_view_switched` job warning. Decide with the live read-back, which shows whether the switch is per view or per sheet.
+- **Document:** Spec (11.5.1 or 8.7, and 8.4).
+- **Blocks:** `1a` (live read-back only).
 
 ---
 
@@ -74,6 +81,16 @@ One open item. Every decision found in the v1.11 review is recorded below. New g
 | K5 | Generating contract types: the tool named in ADR-035 fails on the schemas and C# had no named tool; generated IPC types were unreachable from `cad-application` under G2 (blocked 1a) | [ADR-051](../adr/ADR-051-contract-type-generator.md), [G2](../development/implementation-guidelines.md#g2--python-layering-and-the-backend-port) |
 | K6 | JSON library for the in-process add-in (blocked 1a) | [ADR-052](../adr/ADR-052-csharp-json-library.md) |
 | R1 | Drawing report contents, verdict rule and how it states results are unverified (blocked P0-schemas) | [§11.5.4](../architecture/production-drawings.md#1154-drawing-report-builders-call) |
+| J1 | Lifecycle: no path to ABORTED before RECOVERY, no QUEUED state, `queued_position` undefined, what each state means for `check_drawing`, whether FAILED is final in Phase 1 (blocked 1a) | [§8.4](../architecture/execution-engine.md#84-lifecycle) |
+| J2 | Phase 1a tool contracts were an outline: exact inputs, outputs, errors, `drawing_intent` in 1a, sections, cursors, long-poll, cancel output, the code for invalid arguments and unknown tools (blocked 1a) | [§12.4.2, §12.4.5](../api/tool-contracts.md#1245-phase-1a-contracts), §8.7 (unknown sheets) |
+| J3 | Which `ids` each tool returns, where the one-line summary is made, and the in-process result the transport will carry (blocked 1a) | [§12.4.2](../api/tool-contracts.md#1242-shared-conventions) |
+| J4 | No schema for the contract files themselves; how CI compares them with the 12.4.4 table; annotation defaults (blocked 1a) | [§12.4.1, §12.4.4](../api/tool-contracts.md#1241-contract-file) |
+| J5 | Store port, record contents, a drawing record for drawings the system did not make, lock, atomic writes, journal order and torn lines, recovery in 1a, retention references, finding a job by ID across stores (blocked 1a) | [§13.1](../architecture/data-management.md#131-storage-and-document-identity-builders-call), [§13.2](../architecture/project-store.md) |
+| J6 | Threads or asyncio for the job engine, given a blocking IPC client; long-poll waits without wall-clock waits in tests; cancel from another thread (blocked 1a) | [ADR-053](../adr/ADR-053-job-engine-threading.md) |
+| J7 | Configuration schema absent; error locations; where reading and validation live; loading title-block mappings without inventing one (blocked 1a) | [§13.3](../architecture/configuration.md) |
+| J8 | Path checks as a pure function over a port; the code for a missing file (new `FILE_NOT_FOUND`); store folder hash (blocked 1a) | [§12.5](../api/tool-contracts.md#125-projects-and-file-access), [ADR-037](../adr/ADR-037-error-model.md) |
+| J9 | Logging port and sink; where `request_id`, `job_id` and `operation_id` are made before the front-end exists (blocked 1a) | [G2, G3](../development/implementation-guidelines.md#g3--logging-and-correlation) |
+| J10 | Job-level warnings (newer service pack, draft-view switch) cannot go in a report that is a pure function of its inputs (blocked 1a) | [§8.4](../architecture/execution-engine.md#84-lifecycle), [§11.5.4](../architecture/production-drawings.md#1154-drawing-report-builders-call); the draft-view part stays open as J11 |
 
 ## Recommended order
 

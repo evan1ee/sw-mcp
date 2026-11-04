@@ -1,6 +1,6 @@
 # 13.2 Project Store and Job Journal
 
-> Specification v1.21, section 13.2. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.23, section 13.2. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The layout, write rules and retention of the project store (13.1, ADR-033), and the job journal that lets the core service (ADR-041) account for every job after a crash (ADR-032). Where a project and its store are is 12.5.
 
@@ -21,12 +21,27 @@ The layout, write rules and retention of the project store (13.1, ADR-033), and 
 │   ├── layouts/<drawing_id>/<seq>-planned.json, <seq>-as-built.json   (11.11)
 │   └── plans/<plan_hash>.json                            execution plans
 ├── snapshots/<drawing_id>/<snapshot_id>.json             Drawing Geometry Snapshots (11.5.1)
-├── reports/<report_id>.json
+├── reports/<report_id>.json, <report_id>.meta.json
 ├── jobs/<job_id>/job.json, journal.jsonl
 └── backups/<drawing_id>/<timestamp>.SLDDRW               (ADR-046)
 ```
 
 **IDs** made by the store are a prefix plus a ULID: `job_`, `rep_`, `snap_`, `drw_`. `<part_key>` is `pdm-<id>` for vaulted parts, otherwise `fp-<first 16 hex of the fingerprint>`. `<key_hash>` and `<plan_hash>` are content hashes (3.4.4).
+
+**Records [Builder's call].** Their schemas are `$defs` of `schemas/store/v0.json`; readers are lenient (ADR-042). Times are UTC ISO 8601 with milliseconds; paths are normalized (12.5).
+
+| File | Contents |
+| --- | --- |
+| `store.json` | `store_version` (`0.1`), `created_at`, `project_root`. A store whose major version this core does not know fails to open with `STORE_CORRUPT` (`details.reason: store_version`) |
+| `index.json` | `built_at`, and `drawings`: `drawing_id` → `{path, fingerprint}`. Phase 1a indexes nothing else; jobs and reports are found by their paths |
+| `drawings/<drawing_id>.json` | `drawing_id`, `path`, `fingerprint`, `produced` (`false` for a drawing the system did not make), `drawing_intent` (null in Phase 1a), `latest_snapshot_id`, `latest_report_id`, `updated_at` |
+| `reports/<report_id>.json` | The report (11.5.4), exactly as built; nothing is added to it |
+| `reports/<report_id>.meta.json` | `report_id`, `execution_id`, `drawing_id`, `snapshot_id`, `created_at`, `job_warnings` (8.4). Written once, before the report, and deleted with it |
+| `jobs/<job_id>/job.json` | `job_id`, `job_type`, `state`, `created_at`, `started_at`, `ended_at`, `request_id`, `arguments`, `project_root`, `drawing_id`, `fingerprint`, `progress`, `snapshot_id`, `report_id`, `error`, `warnings`, `documents` (`path`, `owned`, `state`: `known` or `unknown`), `next_op_seq` |
+
+**Matching a drawing** that has no drawing ID property (13.1): a record with the same path is the drawing, and its fingerprint is updated; otherwise a single record with the same fingerprint is the drawing moved, and its path is updated; otherwise a new record is made. Two or more fingerprint matches make a new record and a job warning (`drawing_match_ambiguous`).
+
+**Stores the core knows.** The core lists every store it has opened in `%LOCALAPPDATA%\sw-mcp\known-stores.json` (`store_dir`, `project_root`), written atomically. At start it opens each listed store that still exists, which runs recovery (13.2.3) and clean-up (13.2.4) and lets any front-end find a job or report by ID alone. A store locked by another core is skipped and logged.
 
 ## 13.2.2 Writing
 
@@ -36,15 +51,21 @@ The layout, write rules and retention of the project store (13.1, ADR-033), and 
 - **Index.** `index.json` is a cache. On open, if it is missing, unreadable or older than any file it indexes, the store rebuilds it by scanning. Nothing is stored only in the index.
 - **Serialized writes per document.** Mutating `store` tools that touch the same document run one after another, and each checks `expected_revision` (13.1) at the moment of writing.
 
+**How [Builder's call].** All file effects go through the `FileSystem` port (G2); the store logic is `cad_application.store.FileStore` over that port, and the in-memory `MemoryFileSystem` makes it the `FakeStore` of G2, so tests and production share one store implementation.
+- **Lock.** `.lock` is opened and its first byte locked with a non-blocking exclusive byte-range lock (`msvcrt.locking`, `LK_NBLCK`), held until the store closes. Failure to take it is `STORE_LOCKED`. The lock file stays empty, so nothing about the holder is disclosed.
+- **Atomic write.** Write `<name>.tmp-<8 random hex>`, flush, `fsync`, then `os.replace` over the target; on any error the temporary file is removed. Leftover `*.tmp-*` files are deleted when the store opens. Immutable files (revisions, snapshots, reports and their meta) are written only if absent; an existing one is never replaced, and an attempt is a programming error.
+- **Journal append.** One JSON object and `\n` per record, flushed and `fsync`ed before the call returns. A final line without `\n` is a torn write from a crash and is ignored; any other unreadable line makes that job's records `STORE_CORRUPT`.
+- **Order.** A state change appends its `state` record first and then replaces `job.json`. On open, if the last `state` record and `job.json` disagree, the journal wins and `job.json` is rewritten. Creating a job writes its first `state` record (`from: null`, `to: PLANNED`) before `job.json`.
+
 ## 13.2.3 Job journal
 
 Each job has `jobs/<job_id>/job.json` (current state, replaced atomically) and `journal.jsonl` (append-only, one JSON object per line):
 
 | Record `type` | Written | Fields beyond `type`, `ts`, `job_id` |
 | --- | --- | --- |
-| `state` | On every lifecycle transition (8.4) | `from`, `to`, `reason` |
+| `state` | On every lifecycle transition (8.4) | `from` (null for the first), `to`, `reason`, and `error` (ADR-037 object) when `to` is FAILED or ABORTED |
 | `batch_sent` | Before an `ops.apply` batch is sent | `batch_seq`, `operation_ids`, `documents` |
-| `op_result` | For each operation result received | `operation_id`, `ok`, `error_code` |
+| `op_result` | For each operation result received | `operation_id`, `ok`, `error_code`, and `recovered: true` when learned after a crash |
 | `snapshot` | After a read-back | `snapshot_id`, `sheet` |
 | `document` | When the job opens, saves or closes a document (ADR-046) | `path`, `action`, `owned` |
 | `note` | Diagnostics worth keeping | `message` |
@@ -57,6 +78,8 @@ Each job has `jobs/<job_id>/job.json` (current state, replaced atomically) and `
 2. On reconnecting to the add-in, it asks for the operation IDs the add-in completed (`session.completed_operations`, ADR-036) and records them as `op_result` with `recovered: true`.
 3. It marks each such job FAILED with `EXEC_INTERRUPTED`, lists the documents it touched as "state unknown" in the job record, and never resumes or resends anything.
 4. Queued jobs that never started are marked ABORTED with `EXEC_INTERRUPTED`.
+
+**In Phase 1a [Builder's call].** `check_drawing` writes `state`, `batch_sent` and `op_result` (for its `document.open` and `document.close`, 8.7), `document` (`action`: `open` or `close`, with `owned`), `snapshot` and `note`. Steps 1, 3 and 4 run when the store opens, after the order rule in 13.2.2. In step 3, "documents it touched" are those with a `document` `open` record and no `close` record; they become `documents` entries with `state: unknown`. Step 2 runs on the first backend connection after that: only operation IDs that appear in the job's `batch_sent` records and have no `op_result` are recorded. A crash leaves no job running: a job in VALIDATED, EXECUTING or VERIFYING is FAILED, one in PLANNED is ABORTED.
 
 `recover_execution` (Phase 4) builds on the same journal.
 
@@ -74,6 +97,24 @@ Each job has `jobs/<job_id>/job.json` (current state, replaced atomically) and `
 
 Clean-up runs when the core starts and once a day. It deletes only files nothing kept refers to.
 
+**What "refers to" means [Builder's call].** A drawing record refers to its `latest_report_id` and `latest_snapshot_id`; a report's meta file refers to its `snapshot_id`; a job that is not final refers to everything in its record, and its folder is never deleted. A job's age is counted from `ended_at`, a report's from its meta `created_at`. Snapshots are ranked per drawing by ID (ULIDs sort by time). A report or job read after it was deleted returns `EXEC_NOT_FOUND`, the same as an ID that never existed. Clean-up takes `now` from the `Clock` port.
+
 ## 13.2.5 Version control
 
 The store writes `.cad/.gitignore` on creation. By default, `modules/`, `parts/`, `drawings/`, `config.toml` and `store.json` are meant to be committed: they hold authored intent and the records that identify drawings. `derived/`, `snapshots/`, `reports/`, `jobs/`, `backups/`, `index.json` and `.lock` are ignored, because they are regenerable, large or local. A project that wants its reports under version control removes the line from `.gitignore`.
+
+The file the store writes, exactly **[Builder's call]**:
+
+```
+# Written by sw-mcp (spec 13.2.5). Regenerable, large or local:
+derived/
+snapshots/
+reports/
+jobs/
+backups/
+index.json
+.lock
+*.tmp-*
+```
+
+It is written only when the store is created, never over an existing file.

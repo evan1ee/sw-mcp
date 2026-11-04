@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-ADR-001 to ADR-033 were taken in specification v1.9 (section 19); ADR-034 to ADR-039 were added in v1.10 to settle the toolchain before Phase 0; ADR-040 in v1.11; ADR-041 and ADR-042 in v1.12; ADR-043 to ADR-047 in v1.13; ADR-048 and ADR-049 in v1.14. IDs are stable and match every `ADR-NNN` mention in the docs. Decisions marked **[Builder's call]** were made while writing the specification, not by the owner, and may be revisited.
+ADR-001 to ADR-033 were taken in specification v1.9 (section 19); ADR-034 to ADR-039 were added in v1.10 to settle the toolchain before Phase 0; ADR-040 in v1.11; ADR-041 and ADR-042 in v1.12; ADR-043 to ADR-047 in v1.13; ADR-048 and ADR-049 in v1.14; ADR-054 in v1.23. IDs are stable and match every `ADR-NNN` mention in the docs. Decisions marked **[Builder's call]** were made while writing the specification, not by the owner, and may be revisited.
 
 New decisions: copy [template.md](template.md), take the next free number, and add a row here.
 
@@ -58,3 +58,5 @@ New decisions: copy [template.md](template.md), take the next free number, and a
 | [ADR-050](ADR-050-phase-0-owner-decisions.md) | Phase 0 owner decisions: shared SOLIDWORKS session; `ISO 2768-m` with ISO 22081; note-based QA balloons; part writes (custom properties, `MarkedForDrawing`) only by explicit per-call option; no PDM | Settles the owner decisions of section 18 | Accepted |
 | [ADR-051](ADR-051-contract-type-generator.md) | One project-owned generator emits Python and C# IPC types from the schemas, with a closed set of supported shapes | The named third-party tool fails on the schemas; adds no dependency | Proposed — Builder's call |
 | [ADR-052](ADR-052-csharp-json-library.md) | `Newtonsoft.Json` for IPC in the add-in | No transitive dependencies, so no binding redirects inside `SLDWORKS.exe` | Proposed — Builder's call |
+| [ADR-053](ADR-053-job-engine-threading.md) | A thread-safe synchronous job engine run by one worker thread in the core; long-polls wait through the `Clock` port | Deterministic lifecycle tests over a blocking IPC client; no asyncio | Proposed — Builder's call |
+| [ADR-054](ADR-054-core-architectural-principles.md) | The 1.3 core principles are binding; departing from one needs an ADR | Keeps IR-first, CAD-neutral, deterministic, semantic-reference, verifiable and recoverable design from eroding | Accepted |

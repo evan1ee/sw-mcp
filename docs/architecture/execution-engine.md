@@ -1,6 +1,6 @@
 # 8. Execution Engine
 
-> Specification v1.21, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.23, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 8.1 Purpose
 
@@ -59,18 +59,28 @@ stateDiagram-v2
     VALIDATED --> EXECUTING
     EXECUTING --> VERIFYING
     VERIFYING --> COMMITTED
+    VERIFYING --> EXECUTING
+    PLANNED --> FAILED
+    VALIDATED --> FAILED
     EXECUTING --> FAILED
     VERIFYING --> FAILED
+    PLANNED --> ABORTED
+    VALIDATED --> ABORTED
+    EXECUTING --> ABORTED
+    VERIFYING --> ABORTED
     FAILED --> RECOVERY
     RECOVERY --> EXECUTING
     RECOVERY --> ABORTED
     COMMITTED --> [*]
     ABORTED --> [*]
+    FAILED --> [*]
 ```
+
+Any other transition is a programming error and raises; it is never written to the journal. `VERIFYING → EXECUTING` is for `produce_drawing` only. `FAILED → RECOVERY` exists from Phase 4 (`recover_execution`); in Phase 1, COMMITTED, ABORTED and FAILED are final **[Builder's call]**.
 
 | State | Meaning |
 | --- | --- |
-| PLANNED | Plan generated |
+| PLANNED | Plan generated, or job accepted; waiting in the queue. This is the state `get_execution_status` reports for a queued job; there is no separate QUEUED state |
 | VALIDATED | Preconditions and capabilities checked |
 | EXECUTING | Native operations running |
 | VERIFYING | Result being checked |
@@ -87,8 +97,26 @@ stateDiagram-v2
 | `produce_drawing` | `produce_drawing`, `relayout_drawing` | Apply layout and read back; drawing checks (11.5). A failed check moves the job back to EXECUTING for the next re-layout step (11.6) until the check passes or the limits in 11.6 are reached; then FAILED with the conflict list |
 | `check_drawing` | `check_drawing` | Read back only; checks. Never saves the drawing. It may switch draft-quality views to high quality in memory for read-back (11.5) and reports that it did. It may rebuild in memory for D10 (11.5.3, A16) |
 
-- Jobs run one at a time per SOLIDWORKS session (8.3 rule 13), in one queue shared by every connected agent (ADR-041). A job keeps running when the agent that started it disconnects. Further jobs wait in a queue and report `queued` through `get_execution_status`.
-- `cancel_execution` takes effect between commands, never in the middle of one. A cancelled job ends in ABORTED after the current command finishes; what it changed is listed, and the undo object (8.5) is rolled back unless the caller asks to keep the partial result.
+- Jobs run one at a time per SOLIDWORKS session (8.3 rule 13), in one queue shared by every connected agent (ADR-041). A job keeps running when the agent that started it disconnects. Further jobs wait in the queue in state PLANNED, with a `queued_position`: the number of jobs that will start before this one (the running job, if any, plus earlier PLANNED jobs). `0` means it starts next. It is absent once the job leaves PLANNED.
+- `cancel_execution` takes effect between commands, never in the middle of one. A cancelled job ends in ABORTED after the current command finishes; what it changed is listed, and the undo object (8.5) is rolled back unless the caller asks to keep the partial result. A PLANNED job is ABORTED at once. Cancelling a finished job changes nothing and returns its final state.
+- How the engine is threaded, and how long-polls wait, is ADR-053.
+
+**`check_drawing` lifecycle [Builder's call].** The path checks (12.5), the file fingerprint (13.1) and argument validation happen in the tool call, before a job exists; a failure there is the tool's error and creates no job.
+
+| State | `check_drawing` is |
+| --- | --- |
+| PLANNED | Accepted, `execution_id` returned, waiting for its turn |
+| VALIDATED | Its turn came; the backend was acquired (`BackendProvider`, G2) and has the capabilities `drawing.snapshot` and `ops.apply` with `document.open` and `document.close` (6.6) |
+| EXECUTING | Opening the drawing read-only if it is not open (an owned document, ADR-046), then reading it back with one `drawing.snapshot` (8.7), then storing the snapshot |
+| VERIFYING | Building the report (11.5.4), storing it and updating the drawing record (13.2), then closing the drawing if the job owns it |
+| COMMITTED | Report stored. This includes a report whose verdict is `fail` or `not_evaluated`: a failed check is a result (ADR-037) |
+| FAILED | The job could not produce a report: `BACKEND_LOST`, `BACKEND_SESSION_AMBIGUOUS`, `BACKEND_VERSION_UNSUPPORTED`, `BACKEND_CAPABILITY_MISSING`, `BACKEND_UI_BLOCKED`, `EXEC_TIMEOUT`, `EXEC_INTERRUPTED_BY_USER`, `EXEC_INTERRUPTED` (13.2.3), `IR_REFERENCE_UNRESOLVED` (a requested sheet does not exist), or `IR_SCHEMA_INVALID` / `IR_RULE_VIOLATED` (the add-in returned a snapshot that fails its schema or cannot be canonicalized, 11.5.4) |
+| ABORTED | Cancelled (`EXEC_CANCELLED`), or never started before a core crash (`EXEC_INTERRUPTED`) |
+
+- **Cancel boundaries.** The worker checks the cancel flag before VALIDATED, before EXECUTING, between the open batch and the snapshot, after the snapshot returns, and before writing the report. Once the report write has started, the job ends COMMITTED. A cancelled job still closes the drawing it owns. `keep_partial` has no effect: `check_drawing` changes nothing, so its list of changes is always empty.
+- **Notifications on a blocking client.** `session.ui_blocked` fails the running job with `BACKEND_UI_BLOCKED` (8.6.3), and a `document.event` on the job's drawing that the job did not cause fails it with `EXEC_INTERRUPTED_BY_USER` (8.3 rule 13). Until the client has a reader thread (ADR-053), both are seen only when the current call returns; the result of that call is then discarded and nothing is stored.
+- **No job time limit** beyond each command's own (8.6.3).
+- **Job warnings.** A job may report warnings that are not facts about the snapshot: a SOLIDWORKS service pack newer than the tested one (`HelloResult.warnings`, ADR-045), and, once the snapshot can say so, a draft-quality view switched for read-back (register J11). They go in the job record and the `get_execution_status` and `get_drawing_report` outputs (12.4.5), never in the report file, which stays a pure function of its inputs (11.5.4).
 
 ## 8.5 Transactions and Recovery (P2)
 
@@ -115,7 +143,7 @@ The `session.hello` result holds `protocol`, `addin_version`, `solidworks` (`ver
 
 **Dispatch.** The pipe thread answers `session.ping`, `session.completed_operations` and `job.cancel` itself; every other command goes on the queue (8.6.2).
 
-**`drawing.snapshot`.** `params`: `document` (path) and optional `sheets` (names; all sheets when absent). `result`: one complete Drawing Geometry Snapshot (11.5.1) holding those sheets. It is one command across sheets, so cancellation can fall between sheets (8.6.2).
+**`drawing.snapshot`.** `params`: `document` (path) and optional `sheets` (names; all sheets when absent). `result`: one complete Drawing Geometry Snapshot (11.5.1) holding those sheets. It is one command across sheets, so cancellation can fall between sheets (8.6.2). A requested sheet the drawing does not have fails the command with `IR_REFERENCE_UNRESOLVED`, `details.sheets` naming the missing ones **[Builder's call]**. The document must be open: `check_drawing` sends `ops.apply` with `document.open` (`read_only: true`) first, and `document.close` after, if the open reported `owned: true` (8.4).
 
 **`ops.apply`.** `params.groups` is an ordered list of `{document, operations}`. This is the batch header of 6.5.1, and it lets a batch span documents in order. Each operation is `{operation_id, op, params}`. `result.outcomes` lists the attempted operations in order, each `{operation_id, result}` or `{operation_id, error}`. Operations after the first error are not attempted and not listed (6.5.1). A repeated ID stops the batch like any other error: its outcome has `error` with code `DUPLICATE_OPERATION` and also `result`, the original result. If cancellation stops a batch, the next operation's outcome has `error` with code `EXEC_CANCELLED`. An unexpected exception ends the batch with a `-32603` error; operations already completed stay in the ledger, so the core can ask for them.
 

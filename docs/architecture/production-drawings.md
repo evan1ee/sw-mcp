@@ -1,6 +1,6 @@
 # 11. Production Drawings (P0)
 
-> Specification v1.21, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.23, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 11.1 Purpose and Bar
 
@@ -220,7 +220,7 @@ Without a Drawing Intent (18), D5's duplicate part, D8 and D10 are pure function
 
 ### 11.5.4 Drawing Report [Builder's call]
 
-The report is the derived artifact behind `get_drawing_report` (12.4.5), schema `schemas/drawing-report/v0.json`, read leniently (ADR-042). It is a pure function of the snapshot, the thresholds and the title-block mappings: it holds no clock reading and no store IDs, so the same inputs give the same bytes. The store names the file by `report_id` and links it from the drawing record (13.2).
+The report is the derived artifact behind `get_drawing_report` (12.4.5), schema `schemas/drawing-report/v0.json`, read leniently (ADR-042). It is a pure function of the snapshot, the thresholds and the title-block mappings: it holds no clock reading and no store IDs, so the same inputs give the same bytes. The store names the file by `report_id` and links it from the drawing record (13.2). Store IDs and job warnings (a newer service pack, a draft-view switch, 8.4) live in the report's meta file and the tool outputs, never in the report, whose `warnings` are per annotation **[Builder's call]**.
 
 | Field | Contents |
 | --- | --- |
