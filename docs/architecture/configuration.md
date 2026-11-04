@@ -1,6 +1,6 @@
 # 13.3 Configuration
 
-> Specification v1.23, section 13.3. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.24, section 13.3. Index and section map: [specifications/README.md](../specifications/README.md).
 
 One configuration format for the core service, the MCP front-end and the add-in's limits, so no module invents its own.
 
@@ -58,7 +58,7 @@ Later sources override earlier ones, key by key:
 
 ## 13.3.4 Title-block mapping
 
-The mapping from title-block fields to value sources (11.1, 11.2) is data, kept beside the template it describes: `standards/iso/title-blocks/<template name>.toml`.
+The mapping from title-block fields to value sources (11.1, 11.2) is data, kept beside the hand-made template it describes: `standards/iso/title-blocks/<template name>.toml`. This mapping applies only to hand-made `.slddrt` sheet formats; generated formats derived from Drawing Template IR (11.12, ADR-055) define their own field sources and geometry directly in the IR and have no TOML file.
 
 ```toml
 config_version = "1.0"

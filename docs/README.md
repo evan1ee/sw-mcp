@@ -2,15 +2,15 @@
 
 Documentation for the AI-native Parametric CAD System: an MCP server and SOLIDWORKS execution engine that lets AI agents build parametric models and production drawings through a deterministic, verified pipeline.
 
-The [specification](specifications/README.md) (v1.23) is split across these folders by topic. Section numbers are kept, so a reference such as "see 11.5" resolves through the [section map](specifications/README.md#how-this-specification-is-organized).
+The [specification](specifications/README.md) (v1.24) is split across these folders by topic. Section numbers are kept, so a reference such as "see 11.5" resolves through the [section map](specifications/README.md#how-this-specification-is-organized).
 
 ```
 docs/
 ├── specifications/   what the product is and when it ships
 ├── architecture/     how the system works, one file per component or IR module
 ├── api/              the MCP tool surface agents call
-├── adr/              architecture decision records, ADR-001 … ADR-053
-└── development/      repository layout and testing
+├── adr/              architecture decision records, ADR-001 … ADR-055
+├── development/      repository layout and testing
 ```
 
 ## Reading order
@@ -45,6 +45,7 @@ docs/
 | [design-intent-ir.md](architecture/design-intent-ir.md) | §4 Design Intent IR (optional) |
 | [drawing-intent-ir.md](architecture/drawing-intent-ir.md) | §11.10 Drawing Intent IR, dimension scheme |
 | [drawing-layout-ir.md](architecture/drawing-layout-ir.md) | §11.11 Drawing Layout IR, pins |
+| [drawing-template-ir.md](architecture/drawing-template-ir.md) | §11.12 Drawing Template IR (optional) |
 | **Pipeline** | |
 | [cad-compiler.md](architecture/cad-compiler.md) | §6 Compiler pipeline and determinism; §6.7 stage contract |
 | [backend-operations.md](architecture/backend-operations.md) | §6.5 Backend operation vocabulary and Execution Plan; §6.6 capability profile |

@@ -3,5 +3,6 @@
   "assembly",
   "design_intent",
   "drawing_intent",
-  "drawing_layout"
+  "drawing_layout",
+  "drawing_template"
 ]

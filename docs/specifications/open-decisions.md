@@ -15,7 +15,7 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-Two open items, K3 and J11. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+Three open items: K3, J11, and K7. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
 
 ### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
 
@@ -24,6 +24,7 @@ Two open items, K3 and J11. Every decision found in the v1.11 review is recorded
   - whether continuation sheets use their own format and carry the full 11.5.3 minimum (D8 now requires it on every sheet);
   - whether placeholder text the format ships with counts as empty;
   - whether the template has a revision table.
+- **Note on Drawing Template IR (11.12, ADR-055):** Generated sheet formats avoid K3 by construction once generation exists (K7), because field locations and sources are defined directly in the IR. K3 remains open for hand-made `.slddrt` formats.
 - **Recommendation.** When the owner supplies the sheet format, add a `read` locator per field to the mapping in 13.3.4, and calibrate D8 on it.
 - **Document:** Spec (13.3.4, 11.5.3).
 - **Blocks:** `1a` (live read-back only; the snapshot contract and D8 itself are not blocked).
@@ -34,6 +35,20 @@ Two open items, K3 and J11. Every decision found in the v1.11 review is recorded
 - **Recommendation.** When the adapter is built, add an optional per-view `quality_switched: true` to the snapshot's `View` (11.5.1), or a `warnings` list to the `drawing.snapshot` result (8.7), and map it to a `draft_view_switched` job warning. Decide with the live read-back, which shows whether the switch is per view or per sheet.
 - **Document:** Spec (11.5.1 or 8.7, and 8.4).
 - **Blocks:** `1a` (live read-back only).
+
+### K7: Sheet format generation path from Drawing Template IR
+
+- **Why it matters.** Drawing Template IR (§11.12, ADR-055) defines paper, border, title block zones, lines, texts, and attribute link fields as pure data. To produce drawings using these templates, the backend must generate `.slddrt` sheet formats or construct sheets in SOLIDWORKS.
+- **Topics to settle:**
+  - The exact SOLIDWORKS API calls to construct sheet format geometry (`ISketchSegment` vs sheet-level lines, note creation on sheet format layer `swSheetFormat` vs drawing sheet layer).
+  - How fields become linked notes (`$PRPSHEET` vs `$PRP`).
+  - Read-back locators and how a generated sheet references its template revision for check D8.
+  - Drawing the first-angle projection symbol geometry.
+  - Where reusable templates across projects are stored and resolved.
+- **Consequence for D8:** Until `sheet_format.generate` and read-back linkage land, a drawing sheet using a generated format reports `not_evaluated` with `title_block_mapping_missing` (11.5.3).
+- **Recommendation.** Address in Phase 1b when implementing backend drawing generation.
+- **Document:** Spec (§6.5.2, §11.12), ADR-055.
+- **Blocks:** `later` (sheet format generation in backend only; Drawing Template IR schema, fixtures, and pure validation are not blocked).
 
 ---
 

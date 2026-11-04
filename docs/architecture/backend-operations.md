@@ -1,6 +1,6 @@
 # 6.5 Backend Operations and Execution Plans, 6.6 Capability Profile
 
-> Specification v1.23, sections 6.5–6.6. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.24, sections 6.5–6.6. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The compiler (section 6) and the drawing pipeline (11.4) change SOLIDWORKS only through **backend operations**, sent in `ops.apply` batches over the add-in pipe (ADR-036). This vocabulary is the contract between the Python side and the C# adapters.
 
@@ -41,6 +41,7 @@ Operation groups and the increment that needs them. Each group's schemas are wri
 | Annotations | `annotation.tag` (pipeline tag, 11.11), `annotation.move`, `note.add`, `hole_callout.add`, `center_mark.add`, `centerline.add`, `gdt.add`, `datum.add`, `surface_finish.add`, `balloon.add`, `table.add` | 1b |
 | Drawing data | `drawing_property.set` (title-block values written to the drawing, 11.1), `drawing.link_store` (the drawing ID property, 13.1) | 1b |
 | Export | `export.pdf`, `export.dxf` (to a temporary path; the core renames, ADR-046) | 1b |
+| Sheet format | `sheet_format.generate` (template `DocumentRef`, destination path) | later (K7) |
 | Part model | `sketch.create` (plane, entities, relations, dimensions, 5.7), `feature.create` (type, lowered parameters, pinned references), `feature.update`, `feature.suppress`, `feature.delete`, `body.delete`, `material.set` | 1c (create subset, ADR-029), 2 (rest) |
 | Part data | `custom_property.set`, `marked_for_drawing.set` — only with the explicit permission of ADR-022 | 1b, behind the permission option |
 | Undo | `undo.begin`, `undo.end`, `undo.rollback` (8.5) | 1c |

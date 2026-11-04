@@ -17,6 +17,7 @@ COMMON_ID = "https://sw-mcp.invalid/schemas/common/v0.json"
 BUNDLE_ID = "https://sw-mcp.invalid/schemas/bundle/v1.json"
 SNAPSHOT_ID = "https://sw-mcp.invalid/schemas/drawing-geometry-snapshot/v0.json"
 REPORT_ID = "https://sw-mcp.invalid/schemas/drawing-report/v0.json"
+TEMPLATE_ID = "https://sw-mcp.invalid/schemas/drawing-template/v0.json"
 
 type Json = Any
 
@@ -414,3 +415,39 @@ def test_store_ids_are_one_def_per_prefix() -> None:
         ("RequestId", "req"),
     ):
         assert defs[name]["pattern"] == f"^{prefix}_[0-9A-HJKMNP-TV-Z]{{26}}$"
+
+
+def _template_cases(kind: str) -> list[Json]:
+    return [
+        pytest.param(path, id=path.stem)
+        for path in sorted((FIXTURES_DIR / "drawing-template" / kind).glob("*.json"))
+    ]
+
+
+def test_template_fixtures_exist_for_both_kinds() -> None:
+    valid = {p.stem for p in (FIXTURES_DIR / "drawing-template" / "valid").glob("*.json")}
+    invalid = {p.stem for p in (FIXTURES_DIR / "drawing-template" / "invalid").glob("*.json")}
+    assert {"full", "minimal"} <= valid
+    assert {
+        "wrong_module",
+        "units_inches",
+        "unknown_key",
+        "bad_paper_size",
+        "margin_zero",
+        "no_zones",
+        "zone_three_coords",
+        "bad_item_key",
+        "source_empty",
+        "source_unknown_kind",
+        "height_zero",
+    } <= invalid
+
+
+@pytest.mark.parametrize("path", _template_cases("valid"))
+def test_template_valid_accepted(path: Path) -> None:
+    assert _issues(_load(path), TEMPLATE_ID) == []
+
+
+@pytest.mark.parametrize("path", _template_cases("invalid"))
+def test_template_invalid_rejected(path: Path) -> None:
+    assert _issues(_load(path), TEMPLATE_ID) != []

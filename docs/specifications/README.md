@@ -2,7 +2,7 @@
 
 ## Product & Technical Specification
 
-**Document Version:** 1.23
+**Document Version:** 1.24
 **Date:** November 4, 2026
 **Status:** Proposed Architecture (refined after owner interview, two SOLIDWORKS reviews, an architecture review and a development-readiness review)
 **Reference Implementation:** SolidPilot — a behavioral reference only. This system is implemented independently: no SolidPilot code is copied into it. The reference may be studied for behavior, tool contracts and lessons learned, and its observable behavior may be matched. Everywhere else, this document calls it "the reference implementation".
@@ -54,6 +54,7 @@ Subsections that live in their own file:
 | 8.6 | Add-in Runtime | [architecture/addin-runtime.md](../architecture/addin-runtime.md) |
 | 11.10 | Drawing Intent IR | [architecture/drawing-intent-ir.md](../architecture/drawing-intent-ir.md) |
 | 11.11 | Drawing Layout IR | [architecture/drawing-layout-ir.md](../architecture/drawing-layout-ir.md) |
+| 11.12 | Drawing Template IR | [architecture/drawing-template-ir.md](../architecture/drawing-template-ir.md) |
 | 12.4–12.5 | Tool Contracts; Projects and File Access | [api/tool-contracts.md](../api/tool-contracts.md) |
 | 13.2 | Project Store and Job Journal | [architecture/project-store.md](../architecture/project-store.md) |
 | 13.3 | Configuration | [architecture/configuration.md](../architecture/configuration.md) |

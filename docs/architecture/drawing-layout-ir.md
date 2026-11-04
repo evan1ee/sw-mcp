@@ -1,6 +1,6 @@
 # 11.11 Drawing Layout IR
 
-> Specification v1.23, section 11.11. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.24, section 11.11. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## Purpose
 
@@ -20,11 +20,11 @@ Drawing checks run on the Drawing Geometry Snapshot behind the as-built layout, 
 | Element | Fields |
 | --- | --- |
 | drawing | schema_version, units (`mm`, sheet coordinates), drafting standard, template, part path, `intent` (`DocumentRef` pinned to a revision, e.g. `drawing_intent:BRK-001-DI@3`) |
-| sheets | Keyed by sheet ID (3.4.1): size (ISO 5457), orientation, sheet format, `scale` (the sheet's default scale; a view may override it) |
+| sheets | Keyed by sheet ID (3.4.1): exactly one of `template` (`DocumentRef` to a `drawing_template` document) or `sheet_format` (path to a hand-made `.slddrt` file). When `sheet_format` is used: size (ISO 5457), orientation; a sheet naming a `template` defines neither `size` nor `orientation`. `scale` (the sheet's default scale; a view may override it) |
 | views | Keyed by view ID: sheet, type (`base`, `projected`, `section`, `aligned_section`, `removed_section`, `broken_out_section`, `detail`, `auxiliary`, `flat_pattern`, `isometric`), modifiers (`broken`: break lines and gap, for long parts such as shafts; `crop`: crop profile), parent view, orientation, configuration, scale (ISO 5455), position (view center), display (hidden lines, tangent edges), section line or detail circle with label |
 | annotations | Keyed by annotation ID: kind (`dimension`, `callout`, `note`, `gdt`, `datum`, `surface_finish`, `center_mark`, `centerline`, `balloon`), `intent_ref` (an `IntentItemRef`, 3.4.2, or null for pure drafting elements), view, text position, dimension-line side/offset, leader points, text (height, alignment, wrap width), `tag` (pipeline-written identity used to match across runs, see Pins), `native_id` (SOLIDWORKS annotation name, for reporting), `placed_by` (`pipeline` \| `manual` \| `agent`), `pinned` |
-| tables | Bend table, hole table, inspection table, revision table: sheet, anchor, position |
-| title_block | Field → value source (part property, drawing property, Design Intent or Drawing Intent path). Values themselves are not stored here |
+| tables | Bend table, hole table, inspection table; revision table for hand-made formats only (generated templates place their own revision table box, 11.12): sheet, anchor, position |
+| title_block | For hand-made formats only: Field → value source (part property, drawing property, Design Intent or Drawing Intent path). Generated formats define their own sources directly in Drawing Template IR (11.12). Values themselves are not stored here |
 
 Coordinates are sheet millimetres from the lower-left sheet corner, and angles are in degrees. The adapter converts them to and from SOLIDWORKS metres (8.3).
 

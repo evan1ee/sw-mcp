@@ -1,6 +1,6 @@
 # 18. Roadmap
 
-> Specification v1.23, section 18. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.24, section 18. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## Phase 0 — Audit and Contracts
 
