@@ -56,6 +56,9 @@
       "additionalProperties": {
         "$ref": "#/$defs/Sheet"
       }
+    },
+    "rebuild": {
+      "$ref": "#/$defs/Rebuild"
     }
   },
   "required": [
@@ -285,6 +288,18 @@
           "items": {
             "$ref": "#/$defs/TextBox"
           }
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true,
+          "x-unordered": true
+        },
+        "parenthesized": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -378,6 +393,46 @@
           "additionalProperties": {
             "$ref": "#/$defs/Annotation"
           }
+        },
+        "sheet_format": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "title_block_fields": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "../common/v0.json#/$defs/ItemId"
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "revision_table": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "entries": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "entries"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -388,6 +443,90 @@
         "title_block",
         "views",
         "annotations"
+      ]
+    },
+    "Rebuild": {
+      "type": "object",
+      "properties": {
+        "completed": {
+          "type": "boolean"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "enum": [
+                  "dangling",
+                  "annotation_error",
+                  "rebuild_error"
+                ]
+              },
+              "sheet": {
+                "anyOf": [
+                  {
+                    "$ref": "../common/v0.json#/$defs/ItemId"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "annotation": {
+                "anyOf": [
+                  {
+                    "$ref": "../common/v0.json#/$defs/ItemId"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "sheet",
+              "annotation",
+              "message"
+            ]
+          }
+        },
+        "silhouette_attachments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sheet": {
+                "$ref": "../common/v0.json#/$defs/ItemId"
+              },
+              "annotation": {
+                "$ref": "../common/v0.json#/$defs/ItemId"
+              }
+            },
+            "required": [
+              "sheet",
+              "annotation"
+            ]
+          },
+          "x-unordered": true
+        },
+        "reopen": {
+          "enum": [
+            "verified",
+            "failed",
+            "not_checked"
+          ]
+        }
+      },
+      "required": [
+        "completed",
+        "errors",
+        "silhouette_attachments",
+        "reopen"
       ]
     }
   }

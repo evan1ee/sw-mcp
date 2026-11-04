@@ -1,0 +1,551 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/drawing-report/v0.json",
+  "title": "Drawing Report (spec 11.5.4)",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "$ref": "../common/v0.json#/$defs/SchemaVersion",
+      "pattern": "^0\\.(0|[1-9][0-9]*)$"
+    },
+    "drawing": {
+      "type": "object",
+      "properties": {
+        "document": {
+          "type": "string"
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "$ref": "../common/v0.json#/$defs/Revision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "document",
+        "revision"
+      ]
+    },
+    "solidworks": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "service_pack": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "service_pack"
+      ]
+    },
+    "snapshot": {
+      "type": "object",
+      "properties": {
+        "hash": {
+          "$ref": "../common/v0.json#/$defs/ContentHash"
+        },
+        "schema_version": {
+          "$ref": "../common/v0.json#/$defs/SchemaVersion"
+        },
+        "captured_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "hash",
+        "schema_version",
+        "captured_at"
+      ]
+    },
+    "calibration": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "unverified"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "note"
+      ]
+    },
+    "verdict": {
+      "enum": [
+        "done",
+        "fail",
+        "not_evaluated"
+      ]
+    },
+    "checks": {
+      "type": "object",
+      "properties": {
+        "D1": {
+          "$ref": "#/$defs/Check"
+        },
+        "D2": {
+          "$ref": "#/$defs/Check"
+        },
+        "D3": {
+          "$ref": "#/$defs/Check"
+        },
+        "D4": {
+          "$ref": "#/$defs/Check"
+        },
+        "D5": {
+          "$ref": "#/$defs/CheckWithParts"
+        },
+        "D6": {
+          "$ref": "#/$defs/Check"
+        },
+        "D7": {
+          "$ref": "#/$defs/Check"
+        },
+        "D8": {
+          "$ref": "#/$defs/Check"
+        },
+        "D9": {
+          "$ref": "#/$defs/Check"
+        },
+        "D10": {
+          "$ref": "#/$defs/Check"
+        }
+      },
+      "required": [
+        "D1",
+        "D2",
+        "D3",
+        "D4",
+        "D5",
+        "D6",
+        "D7",
+        "D8",
+        "D9",
+        "D10"
+      ]
+    },
+    "conflict_count": {
+      "$ref": "../common/v0.json#/$defs/Count"
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/GeometricFailure"
+          },
+          {
+            "$ref": "#/$defs/RuleFailure"
+          }
+        ]
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "sheet": {
+            "$ref": "../common/v0.json#/$defs/ItemId"
+          },
+          "annotation": {
+            "$ref": "../common/v0.json#/$defs/ItemId"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "sheet",
+          "annotation",
+          "message"
+        ]
+      }
+    },
+    "sheets": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "../common/v0.json#/$defs/ItemId"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/SheetSummary"
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "properties": {
+        "epsilon_mm": {
+          "$ref": "../common/v0.json#/$defs/Length"
+        },
+        "text_clearance_mm": {
+          "$ref": "../common/v0.json#/$defs/Length"
+        },
+        "line_clearance_mm": {
+          "$ref": "../common/v0.json#/$defs/Length"
+        },
+        "edge_clearance_mm": {
+          "$ref": "../common/v0.json#/$defs/Length"
+        },
+        "font_metric_margin": {
+          "$ref": "../common/v0.json#/$defs/Ratio"
+        },
+        "arc_chord_error_mm": {
+          "$ref": "../common/v0.json#/$defs/Length"
+        },
+        "parallel_deg": {
+          "$ref": "../common/v0.json#/$defs/Angle"
+        }
+      },
+      "required": [
+        "epsilon_mm",
+        "text_clearance_mm",
+        "line_clearance_mm",
+        "edge_clearance_mm",
+        "font_metric_margin",
+        "arc_chord_error_mm",
+        "parallel_deg"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "drawing",
+    "solidworks",
+    "snapshot",
+    "calibration",
+    "verdict",
+    "checks",
+    "conflict_count",
+    "failures",
+    "warnings",
+    "sheets",
+    "thresholds"
+  ],
+  "$defs": {
+    "Check": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "pass",
+            "fail",
+            "not_evaluated"
+          ]
+        },
+        "failure_count": {
+          "$ref": "../common/v0.json#/$defs/Count"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "drawing_intent_required",
+              "dimension_data_missing",
+              "title_block_mapping_missing",
+              "title_block_data_missing",
+              "rebuild_data_missing",
+              "reopen_not_checked"
+            ]
+          }
+        }
+      },
+      "required": [
+        "status",
+        "failure_count",
+        "reasons"
+      ]
+    },
+    "CheckWithParts": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "pass",
+            "fail",
+            "not_evaluated"
+          ]
+        },
+        "failure_count": {
+          "$ref": "../common/v0.json#/$defs/Count"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "drawing_intent_required",
+              "dimension_data_missing",
+              "title_block_mapping_missing",
+              "title_block_data_missing",
+              "rebuild_data_missing",
+              "reopen_not_checked"
+            ]
+          }
+        },
+        "parts": {
+          "type": "object",
+          "properties": {
+            "auxiliary_marking": {
+              "enum": [
+                "pass",
+                "fail",
+                "not_evaluated"
+              ]
+            },
+            "duplicates": {
+              "enum": [
+                "pass",
+                "fail",
+                "not_evaluated"
+              ]
+            }
+          },
+          "required": [
+            "auxiliary_marking",
+            "duplicates"
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "failure_count",
+        "reasons",
+        "parts"
+      ]
+    },
+    "GeometricFailure": {
+      "type": "object",
+      "properties": {
+        "check": {
+          "enum": [
+            "D1",
+            "D2",
+            "D3",
+            "D7"
+          ]
+        },
+        "sheet": {
+          "$ref": "../common/v0.json#/$defs/ItemId"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "enum": [
+                  "annotation",
+                  "edge",
+                  "view"
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "index": {
+                "$ref": "../common/v0.json#/$defs/Count"
+              }
+            },
+            "required": [
+              "kind",
+              "id"
+            ]
+          }
+        },
+        "distance_mm": {
+          "$ref": "../common/v0.json#/$defs/Length"
+        },
+        "threshold_mm": {
+          "$ref": "../common/v0.json#/$defs/Length"
+        },
+        "location": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/v0.json#/$defs/Length"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "methods": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "enum": [
+                  "display_data",
+                  "font_metrics"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "check",
+        "sheet",
+        "items",
+        "distance_mm",
+        "threshold_mm",
+        "location",
+        "methods"
+      ],
+      "not": {
+        "required": [
+          "code"
+        ]
+      }
+    },
+    "RuleFailure": {
+      "type": "object",
+      "properties": {
+        "check": {
+          "enum": [
+            "D5",
+            "D8",
+            "D10"
+          ]
+        },
+        "sheet": {
+          "anyOf": [
+            {
+              "$ref": "../common/v0.json#/$defs/ItemId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "enum": [
+                  "annotation",
+                  "title_field"
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "sheet": {
+                "anyOf": [
+                  {
+                    "$ref": "../common/v0.json#/$defs/ItemId"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "id",
+              "sheet"
+            ]
+          }
+        },
+        "detail": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "check",
+        "sheet",
+        "code",
+        "items",
+        "detail",
+        "message"
+      ],
+      "not": {
+        "required": [
+          "distance_mm"
+        ]
+      }
+    },
+    "SheetSummary": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "$ref": "../common/v0.json#/$defs/Count"
+        },
+        "soft_metrics": {
+          "type": "object",
+          "properties": {
+            "extension_crossings": {
+              "$ref": "../common/v0.json#/$defs/Count"
+            },
+            "dimension_lines_over_edges": {
+              "$ref": "../common/v0.json#/$defs/Count"
+            },
+            "view_count": {
+              "$ref": "../common/v0.json#/$defs/Count"
+            },
+            "sheet_size_mm": {
+              "type": "array",
+              "items": {
+                "$ref": "../common/v0.json#/$defs/Length"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "extension_crossings",
+            "dimension_lines_over_edges",
+            "view_count",
+            "sheet_size_mm"
+          ]
+        },
+        "text_extents": {
+          "type": "object",
+          "properties": {
+            "display_data": {
+              "$ref": "../common/v0.json#/$defs/Count"
+            },
+            "font_metrics": {
+              "$ref": "../common/v0.json#/$defs/Count"
+            }
+          },
+          "required": [
+            "display_data",
+            "font_metrics"
+          ]
+        }
+      },
+      "required": [
+        "index",
+        "soft_metrics",
+        "text_extents"
+      ]
+    }
+  }
+}

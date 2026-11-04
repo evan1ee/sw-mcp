@@ -1,0 +1,107 @@
+{
+  "schema_version": "0.1",
+  "drawing": {
+    "document": "bracket_dwg",
+    "revision": 3
+  },
+  "solidworks": {
+    "version": "2025",
+    "service_pack": "SP3.0"
+  },
+  "snapshot": {
+    "hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "schema_version": "0.1",
+    "captured_at": "2026-11-04T10:00:00Z"
+  },
+  "calibration": {
+    "status": "unverified",
+    "note": "Checks have run only on synthetic snapshots; results are unverified on real SOLIDWORKS data."
+  },
+  "verdict": "pass",
+  "checks": {
+    "D1": {
+      "status": "pass",
+      "failure_count": 0,
+      "reasons": []
+    },
+    "D2": {
+      "status": "pass",
+      "failure_count": 0,
+      "reasons": []
+    },
+    "D3": {
+      "status": "pass",
+      "failure_count": 0,
+      "reasons": []
+    },
+    "D4": {
+      "status": "pass",
+      "failure_count": 0,
+      "reasons": []
+    },
+    "D5": {
+      "status": "pass",
+      "failure_count": 0,
+      "reasons": [],
+      "parts": {
+        "auxiliary_marking": "pass",
+        "duplicates": "pass"
+      }
+    },
+    "D6": {
+      "status": "pass",
+      "failure_count": 0,
+      "reasons": []
+    },
+    "D7": {
+      "status": "pass",
+      "failure_count": 0,
+      "reasons": []
+    },
+    "D8": {
+      "status": "pass",
+      "failure_count": 0,
+      "reasons": []
+    },
+    "D9": {
+      "status": "pass",
+      "failure_count": 0,
+      "reasons": []
+    },
+    "D10": {
+      "status": "pass",
+      "failure_count": 0,
+      "reasons": []
+    }
+  },
+  "conflict_count": 0,
+  "failures": [],
+  "warnings": [],
+  "sheets": {
+    "s_0123456789": {
+      "index": 0,
+      "soft_metrics": {
+        "extension_crossings": 0,
+        "dimension_lines_over_edges": 0,
+        "view_count": 1,
+        "sheet_size_mm": [
+          297,
+          210
+        ]
+      },
+      "text_extents": {
+        "display_data": 2,
+        "font_metrics": 0
+      }
+    }
+  },
+  "thresholds": {
+    "epsilon_mm": 0.01,
+    "text_clearance_mm": 0.5,
+    "line_clearance_mm": 0.25,
+    "edge_clearance_mm": 0.25,
+    "font_metric_margin": 0.1,
+    "arc_chord_error_mm": 0.005,
+    "parallel_deg": 0.01
+  }
+}

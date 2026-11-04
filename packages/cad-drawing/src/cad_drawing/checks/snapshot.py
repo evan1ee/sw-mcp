@@ -6,6 +6,7 @@ points, radii and text heights are lengths, arc ends are angles, the view scale 
 the checks run on the snapshot as stored. The input document is never modified.
 """
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Final, Literal, cast
 
@@ -37,6 +38,8 @@ type AnnotationKind = Literal[
     "balloon",
 ]
 type EdgeKind = Literal["visible", "silhouette", "hidden", "centerline", "center_mark"]
+type RebuildErrorKind = Literal["dangling", "annotation_error", "rebuild_error"]
+type ReopenState = Literal["verified", "failed", "not_checked"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +98,8 @@ class Annotation:
     arrowheads: tuple[Arrowhead, ...]
     leaders: tuple[tuple[Vec, ...], ...]
     text_boxes: tuple[TextBox, ...]
+    parameters: tuple[str, ...] | None = None
+    parenthesized: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +118,11 @@ class View:
 
 
 @dataclass(frozen=True, slots=True)
+class RevisionTable:
+    entries: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class Sheet:
     key: str
     index: int
@@ -122,6 +132,31 @@ class Sheet:
     title_block: tuple[Rect, ...]
     views: tuple[View, ...]
     annotations: tuple[Annotation, ...]
+    sheet_format: str | None = None
+    title_block_fields: tuple[tuple[str, str], ...] | None = None
+    revision_table: RevisionTable | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RebuildError:
+    kind: RebuildErrorKind
+    sheet: str | None
+    annotation: str | None
+    message: str
+
+
+@dataclass(frozen=True, slots=True)
+class AnnotationRef:
+    sheet: str
+    annotation: str
+
+
+@dataclass(frozen=True, slots=True)
+class Rebuild:
+    completed: bool
+    errors: tuple[RebuildError, ...]
+    silhouette_attachments: tuple[AnnotationRef, ...]
+    reopen: ReopenState
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,6 +168,7 @@ class Snapshot:
     service_pack: str
     captured_at: str
     sheets: tuple[Sheet, ...]
+    rebuild: Rebuild | None = None
 
 
 # The helpers below read a document that already passed schema validation, so a type mismatch
@@ -180,6 +216,14 @@ def _str(value: JsonValue | None) -> str:
 
 def _opt_str(value: JsonValue | None) -> str | None:
     return None if value is None else _str(value)
+
+
+def _opt_bool(value: JsonValue | None) -> bool | None:
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        raise TypeError(f"expected a boolean, got {type(value).__name__}")
+    return value
 
 
 def _vec(value: JsonValue) -> Vec:
@@ -238,7 +282,15 @@ def _annotation(key: str, value: JsonValue) -> Annotation:
         arrowheads=tuple(Arrowhead(_vecs(_obj(a)["polygon"])) for a in _arr(o.get("arrowheads"))),
         leaders=tuple(_vecs(leader) for leader in _arr(o.get("leaders"))),
         text_boxes=tuple(_text_box(t) for t in _arr(o.get("text_boxes"))),
+        parameters=_parameters(o.get("parameters")),
+        parenthesized=_opt_bool(o.get("parenthesized")),
     )
+
+
+def _parameters(value: JsonValue | None) -> tuple[str, ...] | None:
+    if value is None:
+        return None
+    return tuple(sorted(_str(p) for p in _arr(value)))
 
 
 def _view(key: str, value: JsonValue) -> View:
@@ -266,7 +318,46 @@ def _sheet(key: str, value: JsonValue) -> Sheet:
         title_block=tuple(_rect(r) for r in _arr(o["title_block"])),
         views=tuple(_view(k, views[k]) for k in sorted(views)),
         annotations=tuple(_annotation(k, annotations[k]) for k in sorted(annotations)),
+        sheet_format=_opt_str(o.get("sheet_format")),
+        title_block_fields=_title_fields(o.get("title_block_fields")),
+        revision_table=_revision_table(o.get("revision_table")),
     )
+
+
+def _title_fields(value: JsonValue | None) -> tuple[tuple[str, str], ...] | None:
+    if value is None:
+        return None
+    fields = _obj(value)
+    return tuple((name, _str(fields[name])) for name in sorted(fields))
+
+
+def _revision_table(value: JsonValue | None) -> RevisionTable | None:
+    if value is None:
+        return None
+    return RevisionTable(tuple(_str(e) for e in _arr(_obj(value)["entries"])))
+
+
+def _rebuild(value: JsonValue | None) -> Rebuild | None:
+    if value is None:
+        return None
+    o = _obj(value)
+    errors = tuple(
+        RebuildError(
+            cast(RebuildErrorKind, _str(_obj(e)["kind"])),
+            _opt_str(_obj(e)["sheet"]),
+            _opt_str(_obj(e)["annotation"]),
+            _str(_obj(e)["message"]),
+        )
+        for e in _arr(o["errors"])
+    )
+    refs = tuple(
+        AnnotationRef(_str(_obj(r)["sheet"]), _str(_obj(r)["annotation"]))
+        for r in _arr(o["silhouette_attachments"])
+    )
+    completed = o["completed"]
+    if not isinstance(completed, bool):
+        raise TypeError("rebuild.completed must be a boolean")
+    return Rebuild(completed, errors, refs, cast(ReopenState, _str(o["reopen"])))
 
 
 def _inverted(rect: Rect) -> bool:
@@ -293,6 +384,46 @@ def _rect_issues(sheet: Sheet) -> list[ValidationIssue]:
     ]
 
 
+def _unknown(pointer: tuple[str | int, ...], what: str) -> ValidationIssue:
+    return ValidationIssue(
+        code=ErrorCode.IR_RULE_VIOLATED,
+        pointer=json_pointer(*pointer),
+        message=what,
+    )
+
+
+def _ref_issues(
+    base: tuple[str | int, ...],
+    sheet: str | None,
+    annotation: str | None,
+    known: Mapping[str, frozenset[str]],
+) -> list[ValidationIssue]:
+    if sheet is not None and sheet not in known:
+        return [_unknown((*base, "sheet"), "sheet names no sheet in the snapshot")]
+    if annotation is None:
+        return []
+    if sheet is None:
+        return [_unknown((*base, "annotation"), "an annotation reference needs its sheet")]
+    if annotation not in known[sheet]:
+        return [_unknown((*base, "annotation"), "annotation names no annotation on the sheet")]
+    return []
+
+
+def _rebuild_issues(rebuild: Rebuild | None, sheets: Sequence[Sheet]) -> list[ValidationIssue]:
+    """References in ``rebuild`` must name items of the snapshot."""
+    if rebuild is None:
+        return []
+    known = {s.key: frozenset(a.key for a in s.annotations) for s in sheets}
+    issues: list[ValidationIssue] = []
+    for i, error in enumerate(rebuild.errors):
+        base = ("rebuild", "errors", i)
+        issues.extend(_ref_issues(base, error.sheet, error.annotation, known))
+    for i, ref in enumerate(rebuild.silhouette_attachments):
+        base = ("rebuild", "silhouette_attachments", i)
+        issues.extend(_ref_issues(base, ref.sheet, ref.annotation, known))
+    return issues
+
+
 def parse_snapshot(doc: JsonValue) -> Snapshot | IssueReport:
     """Validate ``doc`` against the snapshot schema, then build the quantized model."""
     issues = validate_against_schema(doc, SNAPSHOT_SCHEMA_ID)
@@ -304,7 +435,9 @@ def parse_snapshot(doc: JsonValue) -> Snapshot | IssueReport:
     revision = drawing.get("revision")
     sheets = _obj(root["sheets"])
     parsed = sorted((_sheet(k, sheets[k]) for k in sheets), key=lambda s: (s.index, s.key))
+    rebuild = _rebuild(root.get("rebuild"))
     rule_issues = [issue for sheet in parsed for issue in _rect_issues(sheet)]
+    rule_issues.extend(_rebuild_issues(rebuild, parsed))
     if rule_issues:
         return build_report(rule_issues)
     return Snapshot(
@@ -315,4 +448,5 @@ def parse_snapshot(doc: JsonValue) -> Snapshot | IssueReport:
         service_pack=_str(solidworks["service_pack"]),
         captured_at=_str(root["captured_at"]),
         sheets=tuple(parsed),
+        rebuild=rebuild,
     )

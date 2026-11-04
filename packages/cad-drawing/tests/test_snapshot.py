@@ -7,8 +7,12 @@ from pathlib import Path
 import pytest
 from cad_drawing.checks.snapshot import (
     SNAPSHOT_SCHEMA_ID,
+    AnnotationRef,
     ArcCurve,
     PolylineCurve,
+    Rebuild,
+    RebuildError,
+    RevisionTable,
     Snapshot,
     parse_snapshot,
 )
@@ -22,6 +26,8 @@ REVISION = 3
 EDGE_COUNT = 4
 HALF_OF_EPSILON = 0.02
 TEXT_HEIGHT = 2.0
+MINIMUM_FIELDS = 8
+PARALLEL_DEG = 0.01
 SCALE = 0.5
 
 
@@ -145,6 +151,7 @@ def test_thresholds_defaults_and_json() -> None:
         "edge_clearance_mm": 0.25,
         "font_metric_margin": 0.1,
         "arc_chord_error_mm": 0.005,
+        "parallel_deg": 0.01,
     }
 
 
@@ -230,3 +237,142 @@ def test_rectangle_that_only_inverts_after_quantizing_is_not_repaired() -> None:
     sheet = _first_sheet(doc)
     sheet["border"] = {"min": [10, 5], "max": [9.9999996, 205]}  # quantizes to 10.0: equal is ok
     assert isinstance(parse_snapshot(doc), Snapshot)
+
+
+def test_parse_new_fields() -> None:
+    snap = parsed("checks_data")
+    sheet = snap.sheets[0]
+    assert sheet.sheet_format == "Test-A3.slddrt"
+    assert sheet.revision_table == RevisionTable(("A", "B"))
+    assert sheet.title_block_fields is not None
+    names = [name for name, _ in sheet.title_block_fields]
+    assert names == sorted(names)
+    assert dict(sheet.title_block_fields)["material"] == "AISI 304"
+    assert len(sheet.title_block_fields) == MINIMUM_FIELDS
+    width, height = sheet.annotations[1], sheet.annotations[0]
+    assert width.parameters == ("D1@Sketch1",)
+    assert height.parameters == ("D2@Sketch1",)
+    assert width.parenthesized is False
+    assert snap.rebuild == Rebuild(
+        completed=True, errors=(), silhouette_attachments=(), reopen="verified"
+    )
+    hash(sheet)
+
+
+def test_parameters_are_sorted_when_parsed() -> None:
+    doc = load_dict("valid", "checks_data")
+    annotation = _annotation(doc, "dim_width")
+    annotation["parameters"] = ["b@S", "a@S"]
+    result = parse_snapshot(doc)
+    assert isinstance(result, Snapshot)
+    assert result.sheets[0].annotations[1].parameters == ("a@S", "b@S")
+
+
+def test_parse_rebuild_entries() -> None:
+    doc = load_dict("valid", "checks_data")
+    doc["rebuild"] = {
+        "completed": False,
+        "errors": [
+            {
+                "kind": "dangling",
+                "sheet": "s_0123456789",
+                "annotation": "dim_width",
+                "message": "m",
+            },
+            {"kind": "rebuild_error", "sheet": None, "annotation": None, "message": "n"},
+        ],
+        "silhouette_attachments": [{"sheet": "s_0123456789", "annotation": "dim_height"}],
+        "reopen": "not_checked",
+    }
+    result = parse_snapshot(doc)
+    assert isinstance(result, Snapshot)
+    assert result.rebuild == Rebuild(
+        completed=False,
+        errors=(
+            RebuildError("dangling", "s_0123456789", "dim_width", "m"),
+            RebuildError("rebuild_error", None, None, "n"),
+        ),
+        silhouette_attachments=(AnnotationRef("s_0123456789", "dim_height"),),
+        reopen="not_checked",
+    )
+
+
+def test_new_fields_default_to_none() -> None:
+    snap = parsed("two_dimensions")
+    sheet = snap.sheets[0]
+    assert (sheet.sheet_format, sheet.title_block_fields, sheet.revision_table) == (
+        None,
+        None,
+        None,
+    )
+    assert all(a.parameters is None and a.parenthesized is None for a in sheet.annotations)
+    assert snap.rebuild is None
+
+
+def _annotation(doc: dict[str, JsonValue], key: str) -> dict[str, JsonValue]:
+    annotations = _first_sheet(doc)["annotations"]
+    assert isinstance(annotations, dict)
+    annotation = annotations[key]
+    assert isinstance(annotation, dict)
+    return annotation
+
+
+def _rule_pointers(doc: dict[str, JsonValue]) -> list[str]:
+    result = parse_snapshot(doc)
+    assert isinstance(result, IssueReport)
+    assert {i.code for i in result.issues} == {ErrorCode.IR_RULE_VIOLATED}
+    return [i.pointer for i in result.issues]
+
+
+def test_rebuild_unknown_sheet_is_rule_issue() -> None:
+    doc = load_dict("valid", "checks_data")
+    doc["rebuild"] = {
+        "completed": True,
+        "errors": [],
+        "silhouette_attachments": [{"sheet": "s_nope", "annotation": "dim_width"}],
+        "reopen": "verified",
+    }
+    assert _rule_pointers(doc) == ["/rebuild/silhouette_attachments/0/sheet"]
+
+
+def test_rebuild_unknown_annotation_is_rule_issue() -> None:
+    doc = load_dict("valid", "checks_data")
+    doc["rebuild"] = {
+        "completed": True,
+        "errors": [
+            {"kind": "dangling", "sheet": "s_0123456789", "annotation": "nope", "message": "m"}
+        ],
+        "silhouette_attachments": [],
+        "reopen": "verified",
+    }
+    assert _rule_pointers(doc) == ["/rebuild/errors/0/annotation"]
+
+
+def test_rebuild_unknown_sheet_in_error_is_rule_issue() -> None:
+    doc = load_dict("valid", "checks_data")
+    doc["rebuild"] = {
+        "completed": True,
+        "errors": [
+            {"kind": "rebuild_error", "sheet": "s_nope", "annotation": None, "message": "m"}
+        ],
+        "silhouette_attachments": [],
+        "reopen": "verified",
+    }
+    assert _rule_pointers(doc) == ["/rebuild/errors/0/sheet"]
+
+
+def test_rebuild_annotation_needs_sheet() -> None:
+    doc = load_dict("valid", "checks_data")
+    doc["rebuild"] = {
+        "completed": True,
+        "errors": [{"kind": "dangling", "sheet": None, "annotation": "dim_width", "message": "m"}],
+        "silhouette_attachments": [],
+        "reopen": "verified",
+    }
+    assert _rule_pointers(doc) == ["/rebuild/errors/0/annotation"]
+
+
+def test_thresholds_parallel_deg() -> None:
+    t = CheckThresholds()
+    assert t.parallel_deg == PARALLEL_DEG
+    assert t.to_json()["parallel_deg"] == PARALLEL_DEG
