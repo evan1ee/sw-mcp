@@ -1,0 +1,166 @@
+[
+  {
+    "job_type": "check_drawing",
+    "state": "PLANNED",
+    "created_at": "2026-11-04T09:30:15.123Z",
+    "started_at": null,
+    "ended_at": null,
+    "request_id": "req_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "arguments": {
+      "path": "C:\\w\\a.SLDDRW",
+      "sheets": null
+    },
+    "project_root": "C:\\w",
+    "drawing_id": "drw_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "fingerprint": "sha256:abababababababababababababababababababababababababababababababab",
+    "progress": null,
+    "snapshot_id": null,
+    "report_id": null,
+    "error": null,
+    "warnings": [],
+    "documents": [],
+    "next_op_seq": 1
+  },
+  {
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "job_type": "check_drawing",
+    "state": "DONE",
+    "created_at": "2026-11-04T09:30:15.123Z",
+    "started_at": null,
+    "ended_at": null,
+    "request_id": "req_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "arguments": {
+      "path": "C:\\w\\a.SLDDRW",
+      "sheets": null
+    },
+    "project_root": "C:\\w",
+    "drawing_id": "drw_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "fingerprint": "sha256:abababababababababababababababababababababababababababababababab",
+    "progress": null,
+    "snapshot_id": null,
+    "report_id": null,
+    "error": null,
+    "warnings": [],
+    "documents": [],
+    "next_op_seq": 1
+  },
+  {
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "job_type": "other",
+    "state": "PLANNED",
+    "created_at": "2026-11-04T09:30:15.123Z",
+    "started_at": null,
+    "ended_at": null,
+    "request_id": "req_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "arguments": {
+      "path": "C:\\w\\a.SLDDRW",
+      "sheets": null
+    },
+    "project_root": "C:\\w",
+    "drawing_id": "drw_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "fingerprint": "sha256:abababababababababababababababababababababababababababababababab",
+    "progress": null,
+    "snapshot_id": null,
+    "report_id": null,
+    "error": null,
+    "warnings": [],
+    "documents": [],
+    "next_op_seq": 1
+  },
+  {
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "job_type": "check_drawing",
+    "state": "PLANNED",
+    "created_at": "2026-11-04T09:30:15.123Z",
+    "started_at": null,
+    "ended_at": null,
+    "request_id": "req_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "arguments": {
+      "path": "C:\\w\\a.SLDDRW",
+      "sheets": null
+    },
+    "project_root": "C:\\w",
+    "drawing_id": "drw_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "fingerprint": "sha256:abababababababababababababababababababababababababababababababab",
+    "progress": null,
+    "snapshot_id": null,
+    "report_id": null,
+    "error": null,
+    "warnings": [],
+    "documents": [],
+    "next_op_seq": 0
+  },
+  {
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "job_type": "check_drawing",
+    "state": "PLANNED",
+    "created_at": "2026-11-04T09:30:15.123Z",
+    "started_at": null,
+    "ended_at": null,
+    "request_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "arguments": {
+      "path": "C:\\w\\a.SLDDRW",
+      "sheets": null
+    },
+    "project_root": "C:\\w",
+    "drawing_id": "drw_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "fingerprint": "sha256:abababababababababababababababababababababababababababababababab",
+    "progress": null,
+    "snapshot_id": null,
+    "report_id": null,
+    "error": null,
+    "warnings": [],
+    "documents": [],
+    "next_op_seq": 1
+  },
+  {
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "job_type": "check_drawing",
+    "state": "PLANNED",
+    "created_at": "2026-11-04T09:30:15.123Z",
+    "started_at": null,
+    "ended_at": null,
+    "request_id": "req_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "arguments": {
+      "path": "C:\\w\\a.SLDDRW",
+      "sheets": null
+    },
+    "project_root": "C:\\w",
+    "drawing_id": "drw_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "fingerprint": "sha256:abababababababababababababababababababababababababababababababab",
+    "progress": null,
+    "snapshot_id": null,
+    "report_id": null,
+    "error": {
+      "code": "NOT_A_CODE",
+      "message": "m",
+      "retryable": "never"
+    },
+    "warnings": [],
+    "documents": [],
+    "next_op_seq": 1
+  },
+  {
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "job_type": "check_drawing",
+    "state": "PLANNED",
+    "created_at": "2026-11-04T09:30:15.123Z",
+    "started_at": "yesterday",
+    "ended_at": null,
+    "request_id": "req_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "arguments": {
+      "path": "C:\\w\\a.SLDDRW",
+      "sheets": null
+    },
+    "project_root": "C:\\w",
+    "drawing_id": "drw_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "fingerprint": "sha256:abababababababababababababababababababababababababababababababab",
+    "progress": null,
+    "snapshot_id": null,
+    "report_id": null,
+    "error": null,
+    "warnings": [],
+    "documents": [],
+    "next_op_seq": 1
+  }
+]

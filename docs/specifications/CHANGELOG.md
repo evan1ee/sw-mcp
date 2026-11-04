@@ -11,6 +11,17 @@ Records the six long-term architectural principles in 1.3. Numbers 1–11 are un
 - **Overview** (3): points to the principles.
 - **New ADR-054**: the principles are binding; departing from one needs an ADR.
 
+Also in 1.23 (nothing was released between 1.22 and 1.23): gaps found while building milestone 5 ([register](open-decisions.md), J12–J20 closed, J21 open). All **[Builder's call]**.
+
+- **Errors** (ADR-037, 12.5, 13.2.2): new code `STORE_UNAVAILABLE` (`after_fix`) for a store file that cannot be read or written; a file that exists but cannot be read is `FILE_NOT_FOUND` with `details.reason: unreadable`; an unexpected exception in a tool call is a protocol error, not an envelope; in a job it is FAILED with `EXEC_INTERRUPTED`.
+- **Tool contracts** (12.4.2, 12.4.5): an unknown tool name raises to the transport (protocol error); `elapsed_ms` is absent while `started_at` is null.
+- **Paths** (12.5): alternate data streams (a `:` after the drive) are refused; a `$` is refused only as an environment reference; a store folder that resolves outside the project's allowed root is refused.
+- **Lifecycle** (8.4): which `document.event` the job caused (the add-in tags events with the command's `_meta`); when the drawing is not closed, and what a failed close does; `STORE_UNAVAILABLE` as a failure.
+- **Store** (13.2): I/O error rule, strict JSON, `job_id` must match its folder; recovery when a store is first opened at any time, the journal-wins rule bounded by the 8.4 table, RECOVERY jobs, orphan job folders, unreadable known-stores list; snapshots validated before they are stored; when clean-up runs in Phase 1a.
+- **Configuration** (13.3): a relative `drawing.standard_dir` resolves against the installation root given to the core service.
+- **ADR-053:** the engine lock is held across small record writes (never a `Backend` call), and what that costs on a slow disk.
+- **G3:** `store` joins the allowed log fields; emitters use `error_code` and `reason`.
+
 ## What changed in 1.22
 
 Closes gaps found when planning `check_drawing` and `get_drawing_report` over the store and jobs ([register](open-decisions.md), J1–J10), and logs one for the live read-back (J11). All **[Builder's call]**.

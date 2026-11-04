@@ -307,3 +307,110 @@ def test_ops_schemas_declare_annotations(path: Path) -> None:
     assert len(set(errors)) == len(errors)
     defs: dict[str, Json] = doc["$defs"]
     assert {"Params", "Result"} <= set(defs)
+
+
+STORE_ID = "https://sw-mcp.invalid/schemas/store/v0.json"
+CONFIG_ID = "https://sw-mcp.invalid/schemas/config/v1.json"
+TITLE_BLOCK_ID = "https://sw-mcp.invalid/schemas/config/title-block/v1.json"
+CONTRACT_META_ID = "https://sw-mcp.invalid/schemas/mcp/contract/v0.json"
+TITLE_BLOCK_PREFIX = "title_block_"
+
+
+def _store_defs() -> set[str]:
+    return set(_load(SCHEMAS_DIR / "store" / "v0.json")["$defs"])
+
+
+def _store_cases(kind: str) -> list[Json]:
+    cases: list[Json] = []
+    for path in sorted((FIXTURES_DIR / "store" / kind).glob("*.json")):
+        for index, instance in enumerate(_load(path)):
+            cases.append(pytest.param(path.stem, instance, id=f"{path.stem}[{index}]"))
+    return cases
+
+
+def test_every_store_def_has_both_kinds_of_fixture() -> None:
+    valid = {p.stem for p in (FIXTURES_DIR / "store" / "valid").glob("*.json")}
+    invalid = {p.stem for p in (FIXTURES_DIR / "store" / "invalid").glob("*.json")}
+    assert valid == invalid == _store_defs()
+
+
+@pytest.mark.parametrize(("name", "instance"), _store_cases("valid"))
+def test_store_valid_accepted(name: str, instance: Json) -> None:
+    assert _issues(instance, f"{STORE_ID}#/$defs/{name}") == []
+
+
+@pytest.mark.parametrize(("name", "instance"), _store_cases("invalid"))
+def test_store_invalid_rejected(name: str, instance: Json) -> None:
+    assert _issues(instance, f"{STORE_ID}#/$defs/{name}") != []
+
+
+def _single_cases(group: str, kind: str, *, title_block: bool = False) -> list[Json]:
+    directory = FIXTURES_DIR / group / kind
+    paths = [
+        p
+        for p in sorted(directory.glob("*.json"))
+        if p.stem.startswith(TITLE_BLOCK_PREFIX) == title_block
+    ]
+    return [pytest.param(path, id=path.stem) for path in paths]
+
+
+@pytest.mark.parametrize("path", _single_cases("config", "valid"))
+def test_config_valid_accepted(path: Path) -> None:
+    assert _issues(_load(path), CONFIG_ID) == []
+
+
+@pytest.mark.parametrize("path", _single_cases("config", "invalid"))
+def test_config_invalid_rejected(path: Path) -> None:
+    """Unknown keys, wrong types and a missing or wrong ``config_version`` are all errors."""
+    assert _issues(_load(path), CONFIG_ID) != []
+
+
+def test_config_invalid_cases_cover_the_named_failures() -> None:
+    names = {p.stem for p in (FIXTURES_DIR / "config" / "invalid").glob("*.json")}
+    assert {"unknown_top_key", "wrong_type", "missing_config_version"} <= names
+
+
+@pytest.mark.parametrize("path", _single_cases("config", "valid", title_block=True))
+def test_title_block_mapping_schema(path: Path) -> None:
+    assert _issues(_load(path), TITLE_BLOCK_ID) == []
+
+
+@pytest.mark.parametrize("path", _single_cases("config", "invalid", title_block=True))
+def test_title_block_mapping_schema_rejects(path: Path) -> None:
+    assert _issues(_load(path), TITLE_BLOCK_ID) != []
+
+
+@pytest.mark.parametrize("path", _single_cases("mcp-contract", "valid"))
+def test_contract_meta_schema_valid(path: Path) -> None:
+    assert _issues(_load(path), CONTRACT_META_ID) == []
+
+
+@pytest.mark.parametrize("path", _single_cases("mcp-contract", "invalid"))
+def test_contract_meta_schema_invalid(path: Path) -> None:
+    assert _issues(_load(path), CONTRACT_META_ID) != []
+
+
+def test_contract_meta_schema_valid_and_invalid() -> None:
+    """The named failures of 12.4.1 each have a fixture."""
+    names = {p.stem for p in (FIXTURES_DIR / "mcp-contract" / "invalid").glob("*.json")}
+    assert {
+        "bad_name",
+        "description_too_long",
+        "unknown_toolset",
+        "unknown_error_code",
+        "empty_examples",
+        "non_boolean_deprecated",
+    } <= names
+    assert {p.stem for p in (FIXTURES_DIR / "mcp-contract" / "valid").glob("*.json")}
+
+
+def test_store_ids_are_one_def_per_prefix() -> None:
+    defs = _load(SCHEMAS_DIR / "store" / "v0.json")["$defs"]
+    for name, prefix in (
+        ("JobId", "job"),
+        ("ReportId", "rep"),
+        ("SnapshotId", "snap"),
+        ("DrawingId", "drw"),
+        ("RequestId", "req"),
+    ):
+        assert defs[name]["pattern"] == f"^{prefix}_[0-9A-HJKMNP-TV-Z]{{26}}$"

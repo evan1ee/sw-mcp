@@ -1,0 +1,13 @@
+{
+  "config_version": "1.0",
+  "template": "Company-A3.slddrt",
+  "revision_table": true,
+  "fields": {
+    "Part Number": {
+      "source": [
+        "x"
+      ],
+      "required": true
+    }
+  }
+}

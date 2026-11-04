@@ -12,7 +12,7 @@ from typing import Any, Final, cast
 from cad_ir.core.json_types import JsonValue
 
 from cad_protocol.backend import IpcBackend
-from cad_protocol.client.ipc_client import IpcClient
+from cad_protocol.client.ipc_client import IpcClient, NotificationHandler
 from cad_protocol.client.transport import TransportClosed, TransportTimeout
 
 TRANSCRIPT_VERSION: Final = "0.1"
@@ -221,12 +221,18 @@ class ReplayTransport:
         self._closed = True
 
 
-def replay_backend(transcript: Transcript) -> IpcBackend:
-    """A backend over a transcript; the handshake is already done."""
+def replay_backend(
+    transcript: Transcript, *, on_notification: NotificationHandler | None = None
+) -> IpcBackend:
+    """A backend over a transcript; the handshake is already done.
+
+    ``on_notification`` receives each notification of the add-in, as ``IpcClient`` delivers it.
+    """
     # A frozen clock: the transcript's t_ms is the only time, so real elapsed time never counts.
     client = IpcClient(
         ReplayTransport(transcript),
         token=transcript.header.config["token"],
+        on_notification=on_notification,
         monotonic=lambda: 0.0,
     )
     return IpcBackend(client)

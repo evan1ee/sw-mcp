@@ -1,0 +1,249 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/store/v0.json",
+  "title": "Project store records and job journal (spec 13.2.1, 13.2.3)",
+  "$defs": {
+    "JobId": { "type": "string", "pattern": "^job_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "ReportId": { "type": "string", "pattern": "^rep_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "SnapshotId": { "type": "string", "pattern": "^snap_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "DrawingId": { "type": "string", "pattern": "^drw_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "RequestId": { "type": "string", "pattern": "^req_[0-9A-HJKMNP-TV-Z]{26}$" },
+    "Timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+    },
+    "JobState": {
+      "enum": [
+        "PLANNED",
+        "VALIDATED",
+        "EXECUTING",
+        "VERIFYING",
+        "COMMITTED",
+        "FAILED",
+        "RECOVERY",
+        "ABORTED"
+      ]
+    },
+    "JobWarning": {
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "required": ["code", "message"]
+    },
+    "JobProgress": {
+      "type": "object",
+      "properties": {
+        "step": { "type": "integer", "minimum": 1 },
+        "of": { "type": "integer", "minimum": 1 },
+        "message": { "type": "string" }
+      },
+      "required": ["step", "of", "message"]
+    },
+    "JobDocument": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "owned": { "type": "boolean" },
+        "state": { "enum": ["known", "unknown"] }
+      },
+      "required": ["path", "owned", "state"]
+    },
+    "StoreManifest": {
+      "type": "object",
+      "properties": {
+        "store_version": { "$ref": "../common/v0.json#/$defs/SchemaVersion" },
+        "created_at": { "$ref": "#/$defs/Timestamp" },
+        "project_root": { "type": "string" }
+      },
+      "required": ["store_version", "created_at", "project_root"]
+    },
+    "Index": {
+      "type": "object",
+      "properties": {
+        "built_at": { "$ref": "#/$defs/Timestamp" },
+        "drawings": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/DrawingId" },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "fingerprint": { "$ref": "../common/v0.json#/$defs/ContentHash" }
+            },
+            "required": ["path", "fingerprint"]
+          }
+        }
+      },
+      "required": ["built_at", "drawings"]
+    },
+    "DrawingRecord": {
+      "type": "object",
+      "properties": {
+        "drawing_id": { "$ref": "#/$defs/DrawingId" },
+        "path": { "type": "string" },
+        "fingerprint": { "$ref": "../common/v0.json#/$defs/ContentHash" },
+        "produced": { "type": "boolean" },
+        "drawing_intent": true,
+        "latest_snapshot_id": { "anyOf": [{ "$ref": "#/$defs/SnapshotId" }, { "type": "null" }] },
+        "latest_report_id": { "anyOf": [{ "$ref": "#/$defs/ReportId" }, { "type": "null" }] },
+        "updated_at": { "$ref": "#/$defs/Timestamp" }
+      },
+      "required": [
+        "drawing_id",
+        "path",
+        "fingerprint",
+        "produced",
+        "latest_snapshot_id",
+        "latest_report_id",
+        "updated_at"
+      ]
+    },
+    "ReportMeta": {
+      "type": "object",
+      "properties": {
+        "report_id": { "$ref": "#/$defs/ReportId" },
+        "execution_id": { "$ref": "#/$defs/JobId" },
+        "drawing_id": { "$ref": "#/$defs/DrawingId" },
+        "snapshot_id": { "$ref": "#/$defs/SnapshotId" },
+        "created_at": { "$ref": "#/$defs/Timestamp" },
+        "job_warnings": { "type": "array", "items": { "$ref": "#/$defs/JobWarning" } }
+      },
+      "required": [
+        "report_id",
+        "execution_id",
+        "drawing_id",
+        "snapshot_id",
+        "created_at",
+        "job_warnings"
+      ]
+    },
+    "JobRecord": {
+      "type": "object",
+      "properties": {
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "job_type": { "enum": ["plan", "produce_drawing", "check_drawing"] },
+        "state": { "$ref": "#/$defs/JobState" },
+        "created_at": { "$ref": "#/$defs/Timestamp" },
+        "started_at": { "anyOf": [{ "$ref": "#/$defs/Timestamp" }, { "type": "null" }] },
+        "ended_at": { "anyOf": [{ "$ref": "#/$defs/Timestamp" }, { "type": "null" }] },
+        "request_id": { "$ref": "#/$defs/RequestId" },
+        "arguments": { "type": "object" },
+        "project_root": { "type": "string" },
+        "drawing_id": { "anyOf": [{ "$ref": "#/$defs/DrawingId" }, { "type": "null" }] },
+        "fingerprint": {
+          "anyOf": [{ "$ref": "../common/v0.json#/$defs/ContentHash" }, { "type": "null" }]
+        },
+        "progress": { "anyOf": [{ "$ref": "#/$defs/JobProgress" }, { "type": "null" }] },
+        "snapshot_id": { "anyOf": [{ "$ref": "#/$defs/SnapshotId" }, { "type": "null" }] },
+        "report_id": { "anyOf": [{ "$ref": "#/$defs/ReportId" }, { "type": "null" }] },
+        "error": { "anyOf": [{ "$ref": "../common/v0.json#/$defs/Error" }, { "type": "null" }] },
+        "warnings": { "type": "array", "items": { "$ref": "#/$defs/JobWarning" } },
+        "documents": { "type": "array", "items": { "$ref": "#/$defs/JobDocument" } },
+        "next_op_seq": { "type": "integer", "minimum": 1 }
+      },
+      "required": [
+        "job_id",
+        "job_type",
+        "state",
+        "created_at",
+        "started_at",
+        "ended_at",
+        "request_id",
+        "arguments",
+        "project_root",
+        "drawing_id",
+        "fingerprint",
+        "progress",
+        "snapshot_id",
+        "report_id",
+        "error",
+        "warnings",
+        "documents",
+        "next_op_seq"
+      ]
+    },
+    "StateRecord": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "state" },
+        "ts": { "$ref": "#/$defs/Timestamp" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "from": { "anyOf": [{ "$ref": "#/$defs/JobState" }, { "type": "null" }] },
+        "to": { "$ref": "#/$defs/JobState" },
+        "reason": { "type": "string" },
+        "error": { "anyOf": [{ "$ref": "../common/v0.json#/$defs/Error" }, { "type": "null" }] }
+      },
+      "required": ["type", "ts", "job_id", "from", "to", "reason"]
+    },
+    "BatchSentRecord": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "batch_sent" },
+        "ts": { "$ref": "#/$defs/Timestamp" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "batch_seq": { "type": "integer", "minimum": 1 },
+        "operation_ids": { "type": "array", "items": { "type": "string" } },
+        "documents": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["type", "ts", "job_id", "batch_seq", "operation_ids", "documents"]
+    },
+    "OpResultRecord": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "op_result" },
+        "ts": { "$ref": "#/$defs/Timestamp" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "operation_id": { "type": "string" },
+        "ok": { "type": "boolean" },
+        "error_code": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "recovered": { "type": "boolean" }
+      },
+      "required": ["type", "ts", "job_id", "operation_id", "ok", "error_code"]
+    },
+    "SnapshotRecord": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "snapshot" },
+        "ts": { "$ref": "#/$defs/Timestamp" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "snapshot_id": { "$ref": "#/$defs/SnapshotId" },
+        "sheet": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+      },
+      "required": ["type", "ts", "job_id", "snapshot_id", "sheet"]
+    },
+    "DocumentRecord": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "document" },
+        "ts": { "$ref": "#/$defs/Timestamp" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "path": { "type": "string" },
+        "action": { "enum": ["open", "save", "close"] },
+        "owned": { "type": "boolean" }
+      },
+      "required": ["type", "ts", "job_id", "path", "action", "owned"]
+    },
+    "NoteRecord": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "note" },
+        "ts": { "$ref": "#/$defs/Timestamp" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "message": { "type": "string" }
+      },
+      "required": ["type", "ts", "job_id", "message"]
+    },
+    "JournalRecord": {
+      "oneOf": [
+        { "$ref": "#/$defs/StateRecord" },
+        { "$ref": "#/$defs/BatchSentRecord" },
+        { "$ref": "#/$defs/OpResultRecord" },
+        { "$ref": "#/$defs/SnapshotRecord" },
+        { "$ref": "#/$defs/DocumentRecord" },
+        { "$ref": "#/$defs/NoteRecord" }
+      ]
+    }
+  }
+}

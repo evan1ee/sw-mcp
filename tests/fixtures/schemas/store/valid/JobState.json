@@ -1,0 +1,10 @@
+[
+  "PLANNED",
+  "VALIDATED",
+  "EXECUTING",
+  "VERIFYING",
+  "COMMITTED",
+  "FAILED",
+  "RECOVERY",
+  "ABORTED"
+]

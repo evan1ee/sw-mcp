@@ -1,6 +1,6 @@
 # Open Decisions and Missing Specifications
 
-> Review of specification v1.11 (2026-11-03), updated for v1.22, for decisions that must be settled before implementation, so independent implementers build the same thing. Each item says why it matters, what is recommended, which document records it, and the first increment it blocks.
+> Review of specification v1.11 (2026-11-03), updated for v1.23, for decisions that must be settled before implementation, so independent implementers build the same thing. Each item says why it matters, what is recommended, which document records it, and the first increment it blocks.
 
 **Document types**
 - **ADR** — a choice between real alternatives, recorded once (`docs/adr/`).
@@ -15,7 +15,7 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-Two open items, K3 and J11. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+Three open items, K3, J11 and J21. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
 
 ### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
 
@@ -34,6 +34,13 @@ Two open items, K3 and J11. Every decision found in the v1.11 review is recorded
 - **Recommendation.** When the adapter is built, add an optional per-view `quality_switched: true` to the snapshot's `View` (11.5.1), or a `warnings` list to the `drawing.snapshot` result (8.7), and map it to a `draft_view_switched` job warning. Decide with the live read-back, which shows whether the switch is per view or per sheet.
 - **Document:** Spec (11.5.1 or 8.7, and 8.4).
 - **Blocks:** `1a` (live read-back only).
+
+### J21: The C# transcript harness cannot script an error response
+
+- **Why it matters.** `check_drawing_bad_sheet.jsonl` has `drawing.snapshot` answer `IR_REFERENCE_UNRESOLVED`. The C# `ScriptedHandler` can only return results, so the scenario runs on the Python side only, and the add-in's error mapping for an unknown sheet (8.7) is not checked against the transcript.
+- **Recommendation.** In milestone 6, let `ScriptedHandler` return a JSON-RPC error from the transcript frame, then set the scenario's `sides` to `["python", "csharp"]`. Test infrastructure only; no contract changes.
+- **Document:** Spec (15.5) if the harness rule needs saying; otherwise none.
+- **Blocks:** `1a` (C# side of one transcript).
 
 ---
 
@@ -91,6 +98,15 @@ Two open items, K3 and J11. Every decision found in the v1.11 review is recorded
 | J8 | Path checks as a pure function over a port; the code for a missing file (new `FILE_NOT_FOUND`); store folder hash (blocked 1a) | [§12.5](../api/tool-contracts.md#125-projects-and-file-access), [ADR-037](../adr/ADR-037-error-model.md) |
 | J9 | Logging port and sink; where `request_id`, `job_id` and `operation_id` are made before the front-end exists (blocked 1a) | [G2, G3](../development/implementation-guidelines.md#g3--logging-and-correlation) |
 | J10 | Job-level warnings (newer service pack, draft-view switch) cannot go in a report that is a pure function of its inputs (blocked 1a) | [§8.4](../architecture/execution-engine.md#84-lifecycle), [§11.5.4](../architecture/production-drawings.md#1154-drawing-report-builders-call); the draft-view part stays open as J11 |
+| J12 | A relative `drawing.standard_dir` had nothing to resolve against (found in milestone 5) | [§13.3.3](../architecture/configuration.md) |
+| J13 | No code for a file that exists but cannot be read, or for a store that cannot be read or written; an unexpected exception in a tool call had no defined answer (found in milestone 5) | [§12.5](../api/tool-contracts.md#125-projects-and-file-access), [§13.2.2](../architecture/project-store.md#1322-writing), [ADR-037](../adr/ADR-037-error-model.md) |
+| J14 | An unknown tool name answered an envelope, against 12.4.2 (found in milestone 5) | [§12.4.2](../api/tool-contracts.md#1242-shared-conventions) |
+| J15 | ADR-053 said the engine lock is never held across a file write; state changes do hold it (found in milestone 5) | [ADR-053](../adr/ADR-053-job-engine-threading.md) |
+| J16 | Which `document.event` the job "did not cause" (found in milestone 5) | [§8.4](../architecture/execution-engine.md#84-lifecycle) |
+| J17 | Closing the drawing after a lost, blocked, timed-out or user-interrupted job; a failed close (found in milestone 5) | [§8.4](../architecture/execution-engine.md#84-lifecycle) |
+| J18 | Recovery edge cases: RECOVERY jobs, job folders without `job.json`, a store first opened after start, an unreadable known-stores list (found in milestone 5) | [§13.2.3](../architecture/project-store.md#1323-job-journal) |
+| J19 | `elapsed_ms` before the job starts (found in milestone 5) | [§12.4.5](../api/tool-contracts.md#1245-phase-1a-contracts) |
+| J20 | Log fields the engine emits that the sink's allow-list dropped (found in milestone 5) | [G3](../development/implementation-guidelines.md#g3--logging-and-correlation) |
 
 ## Recommended order
 

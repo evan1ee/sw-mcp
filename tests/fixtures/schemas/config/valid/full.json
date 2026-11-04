@@ -1,0 +1,50 @@
+{
+  "config_version": "1.0",
+  "access": {
+    "allowed_roots": [
+      "C:\\work"
+    ],
+    "pdm_vault_roots": [
+      "C:\\vault"
+    ]
+  },
+  "mcp": {
+    "toolsets": [
+      "core",
+      "drawing"
+    ]
+  },
+  "core": {
+    "idle_shutdown_min": 30,
+    "job_retention_days": 7
+  },
+  "solidworks": {
+    "session": "auto",
+    "command_timeout_s": 120,
+    "read_timeout_s": 30,
+    "ui_blocked_s": 30,
+    "heartbeat_s": 10
+  },
+  "drawing": {
+    "job_timeout_min": 10,
+    "relayout_max_iterations": 8,
+    "pin_threshold_mm": 0.5,
+    "standard_dir": "C:\\std",
+    "check": {
+      "epsilon_mm": 0.01,
+      "text_clearance_mm": 0.5,
+      "line_clearance_mm": 0.25,
+      "edge_clearance_mm": 0.25,
+      "font_metric_margin": 0.1,
+      "parallel_deg": 0.01
+    }
+  },
+  "store": {
+    "snapshot_keep": 10,
+    "backup_keep": 5
+  },
+  "logging": {
+    "level": "info",
+    "retention_days": 14
+  }
+}

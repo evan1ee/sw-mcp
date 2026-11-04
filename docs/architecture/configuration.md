@@ -14,7 +14,7 @@ Later sources override earlier ones, key by key:
 4. Environment variables: `SWMCP_<SECTION>__<KEY>`, for example `SWMCP_CORE__IDLE_SHUTDOWN_MIN=60`.
 5. Front-end command-line flags, for `mcp.toolsets` only.
 
-**Security keys come from the user file only.** `access.*`, `solidworks.session` and `drawing.standard_dir` are ignored, with a warning, in project files and environment variables, so a project cannot widen what the core may touch (12.5). `drawing.standard_dir` is on the list because it names a folder the core reads outside the allowed roots **[Builder's call]**.
+**Security keys come from the user file only.** `access.*`, `solidworks.session` and `drawing.standard_dir` are ignored, with a warning, in project files and environment variables, so a project cannot widen what the core may touch (12.5). `drawing.standard_dir` is on the list because it names a folder the core reads outside the allowed roots **[Builder's call]**. A relative `drawing.standard_dir`, including the default, is resolved against the installation root that the core service is started with (`CoreService.start(install_root=…)`; in a source checkout, the repository root); an absolute one is used as given. `cad-application` never resolves it: the core service passes the absolute folder in `Settings` (register J12, **[Builder's call]**).
 
 **Environment values [Builder's call]** are read as TOML values (`60`, `true`, `["a"]`, `"text"`); one that does not parse as a TOML value is taken as a string.
 

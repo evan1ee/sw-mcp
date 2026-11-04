@@ -221,12 +221,16 @@ version = "0.1.0"
 source = { editable = "apps/core-service" }
 dependencies = [
     { name = "cad-application" },
+    { name = "cad-drawing" },
+    { name = "cad-ir" },
     { name = "cad-protocol" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "cad-application", editable = "packages/cad-application" },
+    { name = "cad-drawing", editable = "packages/cad-drawing" },
+    { name = "cad-ir", editable = "packages/cad-ir" },
     { name = "cad-protocol", editable = "packages/cad-protocol" },
 ]
 

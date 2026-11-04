@@ -5,6 +5,8 @@ description = "Long-lived per-user core service (ADR-041)"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "cad-application",
+    "cad-drawing",
+    "cad-ir",
     "cad-protocol",
 ]
 

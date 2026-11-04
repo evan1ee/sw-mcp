@@ -1,0 +1,23 @@
+[
+  {
+    "type": "state",
+    "ts": "2026-11-04T09:30:15.123Z",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "from": null,
+    "to": "PLANNED",
+    "reason": "accepted"
+  },
+  {
+    "type": "state",
+    "ts": "2026-11-04T09:30:15.123Z",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "from": "PLANNED",
+    "to": "FAILED",
+    "reason": "x",
+    "error": {
+      "code": "EXEC_INTERRUPTED",
+      "message": "The core stopped.",
+      "retryable": "after_fix"
+    }
+  }
+]

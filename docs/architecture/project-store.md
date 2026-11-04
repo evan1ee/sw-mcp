@@ -55,6 +55,7 @@ The layout, write rules and retention of the project store (13.1, ADR-033), and 
 - **Lock.** `.lock` is opened and its first byte locked with a non-blocking exclusive byte-range lock (`msvcrt.locking`, `LK_NBLCK`), held until the store closes. Failure to take it is `STORE_LOCKED`. The lock file stays empty, so nothing about the holder is disclosed.
 - **Atomic write.** Write `<name>.tmp-<8 random hex>`, flush, `fsync`, then `os.replace` over the target; on any error the temporary file is removed. Leftover `*.tmp-*` files are deleted when the store opens. Immutable files (revisions, snapshots, reports and their meta) are written only if absent; an existing one is never replaced, and an attempt is a programming error.
 - **Journal append.** One JSON object and `\n` per record, flushed and `fsync`ed before the call returns. A final line without `\n` is a torn write from a crash and is ignored; any other unreadable line makes that job's records `STORE_CORRUPT`.
+- **I/O errors** (register J13). A store file that cannot be read or written for a reason other than the lock (access denied, a full disk, a folder where a file belongs) is `STORE_UNAVAILABLE` (`after_fix`), with `details.reason: io_error` and never the OS message, which can hold paths and user names. A tool call answers it as its error; a running job ends FAILED with it. A file that reads but does not parse, including JSON nested too deeply to decode, is `STORE_CORRUPT`. A `job.json` whose `job_id` differs from its folder name is `STORE_CORRUPT`. Everything written is strict JSON: `NaN` and infinities are refused before writing.
 - **Order.** A state change appends its `state` record first and then replaces `job.json`. On open, if the last `state` record and `job.json` disagree, the journal wins and `job.json` is rewritten. Creating a job writes its first `state` record (`from: null`, `to: PLANNED`) before `job.json`.
 
 ## 13.2.3 Job journal
@@ -81,6 +82,14 @@ Each job has `jobs/<job_id>/job.json` (current state, replaced atomically) and `
 
 **In Phase 1a [Builder's call].** `check_drawing` writes `state`, `batch_sent` and `op_result` (for its `document.open` and `document.close`, 8.7), `document` (`action`: `open` or `close`, with `owned`), `snapshot` and `note`. Steps 1, 3 and 4 run when the store opens, after the order rule in 13.2.2. In step 3, "documents it touched" are those with a `document` `open` record and no `close` record; they become `documents` entries with `state: unknown`. Step 2 runs on the first backend connection after that: only operation IDs that appear in the job's `batch_sent` records and have no `op_result` are recorded. A crash leaves no job running: a job in VALIDATED, EXECUTING or VERIFYING is FAILED, one in PLANNED is ABORTED.
 
+**Edge cases [Builder's call]** (register J18).
+- Recovery runs once per store per core start, whenever the store is first opened: at start for every listed store, and on the first `open_for` of a store that was not listed (a new store, or one missing from an unreadable list). No job of a store is visible through `status` before its recovery has run.
+- The journal wins only with a `state` record whose `from` is the state in `job.json`, or a later record of a chain that starts there; a last record that is not reachable from `job.json` by the 8.4 table makes the job `STORE_CORRUPT`, and recovery leaves it untouched.
+- A job in RECOVERY cannot arise in Phase 1. Recovery leaves it untouched, reports it, and clean-up never deletes it; Phase 4 defines it.
+- A job folder without `job.json` (a crash between the first `state` record and `job.json`) is an orphan: logged, reported as `EXEC_NOT_FOUND`, never resumed and never deleted by clean-up. Its journal cannot be turned into a job, since the arguments are only in `job.json`.
+- An unreadable `known-stores.json` is treated as empty and logged as a warning; it is rewritten on the next store opened. Stores it listed are recovered when next opened (first rule).
+- Snapshot results are validated (11.5.1 schema and the canonical form, 3.4.4) before the snapshot file is written; an invalid one fails the job with the issue's code (8.4) and is not stored.
+
 `recover_execution` (Phase 4) builds on the same journal.
 
 ## 13.2.4 Retention
@@ -95,7 +104,7 @@ Each job has `jobs/<job_id>/job.json` (current state, replaced atomically) and `
 | Resolved Schemes and plans | While a kept report, drawing record or job refers to them | — |
 | Drawing backups | The last 5 per drawing (ADR-046) | `store.backup_keep` |
 
-Clean-up runs when the core starts and once a day. It deletes only files nothing kept refers to.
+Clean-up runs when the core starts and once a day. It deletes only files nothing kept refers to. In Phase 1a it runs for each store right after that store's recovery, and then once a day on the worker thread between jobs, never while a job runs **[Builder's call]**.
 
 **What "refers to" means [Builder's call].** A drawing record refers to its `latest_report_id` and `latest_snapshot_id`; a report's meta file refers to its `snapshot_id`; a job that is not final refers to everything in its record, and its folder is never deleted. A job's age is counted from `ended_at`, a report's from its meta `created_at`. Snapshots are ranked per drawing by ID (ULIDs sort by time). A report or job read after it was deleted returns `EXEC_NOT_FOUND`, the same as an ID that never existed. Clean-up takes `now` from the `Clock` port.
 
