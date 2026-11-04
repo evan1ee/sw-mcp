@@ -6,7 +6,7 @@ Last updated: 2026-11-04. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 - **Phase:** Phase 0 contracts, IPC framing/transcripts, project store, job journal, job engine, Phase 1a tool handlers (`check_drawing`, `get_drawing_report`, `get_execution_status`, `cancel_execution`), and `core-service` composition root. Nothing has run against SOLIDWORKS yet.
 - **Spec:** v1.23, with open items in the [register](docs/specifications/open-decisions.md): K3 (sheet format field mapping), J11 (draft-view switched indicator in snapshot), and J21 (C# transcript harness scripting an error response). Catalogue has 40 codes.
-- **Branches:** milestones 1, 2, 3, and 4 are merged to `main` ([#1](https://github.com/evan1ee/sw-mcp/pull/1), [#2](https://github.com/evan1ee/sw-mcp/pull/2), [#4](https://github.com/evan1ee/sw-mcp/pull/4), [#5](https://github.com/evan1ee/sw-mcp/pull/5)). Milestone 5 is complete on branch `feat/check-drawing-job`, ready for review/merge.
+- **Branches:** milestones 1, 2, 3, and 4 are merged to `main` ([#1](https://github.com/evan1ee/sw-mcp/pull/1), [#2](https://github.com/evan1ee/sw-mcp/pull/2), [#4](https://github.com/evan1ee/sw-mcp/pull/4), [#5](https://github.com/evan1ee/sw-mcp/pull/5)). Milestone 5 is in open PR [#6](https://github.com/evan1ee/sw-mcp/pull/6), branch `feat/check-drawing-job`, ready for review/merge.
 - **Verification on the branch:**
   - `uv run python scripts/generate_contracts.py --check` passes cleanly.
   - `uv run ruff check` and `uv run ruff format --check` pass cleanly (333 files).
