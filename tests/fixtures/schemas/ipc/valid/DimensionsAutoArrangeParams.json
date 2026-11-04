@@ -1,0 +1,9 @@
+[
+  {
+    "view": "Drawing View1"
+  },
+  {
+    "view": "Drawing View2",
+    "spacing_mm": 10.0
+  }
+]

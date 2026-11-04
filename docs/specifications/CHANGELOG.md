@@ -2,6 +2,15 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.27
+
+Adds the Drawing Intent IR schema (§11.10), Resolved Dimension Scheme schema (§11.10.1), and backend annotation and dimension placement operation schemas (§6.5.2) for Phase 1c Annotation & Dimension Placement Pipeline.
+
+- **Drawing Intent IR** (§11.10): authored JSON Schema in `schemas/drawing-intent/v0.json` specifying general tolerance, surface finish, datums, critical dimensions, GD&T callouts, and authored scheme overrides.
+- **Resolved Dimension Scheme** (§11.10.1): authored JSON Schema in `schemas/resolved-scheme/v0.json` defining the full set of derived and authored dimensions shown, hidden, or omitted on drawing views.
+- **Backend Annotation Operations** (§6.5.2): added schemas for `model_items.insert`, `dimensions.auto_arrange`, `center_mark.add`, `dimension.hide`, `dimension.show`, and `dimension.move` in `schemas/ipc/ops/`.
+- **Contract Code Generation**: regenerated Python models (`cad_ir.generated.ipc`, `schemas.py`) and C# contract classes (`Messages.g.cs`).
+
 ## What changed in 1.26
 
 Adds the Drawing Layout IR schema (§11.11) and backend drawing view operation schemas (§6.5.2) for Phase 1b Drawing View Pipeline.

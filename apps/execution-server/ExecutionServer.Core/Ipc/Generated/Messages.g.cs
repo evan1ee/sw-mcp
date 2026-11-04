@@ -39,6 +39,15 @@ public enum DocumentEventParamsEvent
 }
 
 [JsonConverter(typeof(StringEnumConverter))]
+public enum ModelItemsInsertParamsSource
+{
+    [EnumMember(Value = "entire_model")]
+    EntireModel,
+    [EnumMember(Value = "selected_feature")]
+    SelectedFeature
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
 public enum ViewCreateParamsViewType
 {
     [EnumMember(Value = "base")]
@@ -409,6 +418,108 @@ public sealed class ResponseChunkParams
     public string Data { get; set; } = string.Empty;
 }
 
+public sealed class CenterMarkAddParams
+{
+    [JsonProperty("view", Required = Required.Always)]
+    public string View { get; set; } = string.Empty;
+
+    [JsonProperty("hole_centers", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? HoleCenters { get; set; }
+
+    [JsonProperty("slot_centers", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? SlotCenters { get; set; }
+
+    [JsonProperty("use_doc_defaults", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? UseDocDefaults { get; set; }
+
+    [JsonProperty("size_mm", NullValueHandling = NullValueHandling.Ignore)]
+    public double? SizeMm { get; set; }
+
+    [JsonProperty("gap_mm", NullValueHandling = NullValueHandling.Ignore)]
+    public double? GapMm { get; set; }
+}
+
+public sealed class CenterMarkAddResult
+{
+    [JsonProperty("count", Required = Required.Always)]
+    public long Count { get; set; }
+
+    [JsonProperty("view", Required = Required.Always)]
+    public string View { get; set; } = string.Empty;
+}
+
+public sealed class DimensionHideParams
+{
+    [JsonProperty("annotation", Required = Required.Always)]
+    public string Annotation { get; set; } = string.Empty;
+
+    [JsonProperty("reason", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Reason { get; set; }
+}
+
+public sealed class DimensionHideResult
+{
+    [JsonProperty("annotation", Required = Required.Always)]
+    public string Annotation { get; set; } = string.Empty;
+
+    [JsonProperty("hidden", Required = Required.Always)]
+    public bool Hidden { get; set; }
+}
+
+public sealed class DimensionMoveParams
+{
+    [JsonProperty("annotation", Required = Required.Always)]
+    public string Annotation { get; set; } = string.Empty;
+
+    [JsonProperty("position", Required = Required.Always)]
+    public List<double> Position { get; set; } = new List<double>();
+
+    [JsonProperty("center_text", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? CenterText { get; set; }
+}
+
+public sealed class DimensionMoveResult
+{
+    [JsonProperty("annotation", Required = Required.Always)]
+    public string Annotation { get; set; } = string.Empty;
+
+    [JsonProperty("position", Required = Required.Always)]
+    public List<double> Position { get; set; } = new List<double>();
+}
+
+public sealed class DimensionShowParams
+{
+    [JsonProperty("annotation", Required = Required.Always)]
+    public string Annotation { get; set; } = string.Empty;
+}
+
+public sealed class DimensionShowResult
+{
+    [JsonProperty("annotation", Required = Required.Always)]
+    public string Annotation { get; set; } = string.Empty;
+
+    [JsonProperty("shown", Required = Required.Always)]
+    public bool Shown { get; set; }
+}
+
+public sealed class DimensionsAutoArrangeParams
+{
+    [JsonProperty("view", Required = Required.Always)]
+    public string View { get; set; } = string.Empty;
+
+    [JsonProperty("spacing_mm", NullValueHandling = NullValueHandling.Ignore)]
+    public double? SpacingMm { get; set; }
+}
+
+public sealed class DimensionsAutoArrangeResult
+{
+    [JsonProperty("success", Required = Required.Always)]
+    public bool Success { get; set; }
+
+    [JsonProperty("view", Required = Required.Always)]
+    public string View { get; set; } = string.Empty;
+}
+
 public sealed class DocumentCloseParams
 {
     [JsonProperty("path", Required = Required.Always)]
@@ -497,6 +608,42 @@ public sealed class DrawingCreateResult
 
     [JsonProperty("sheet_name", Required = Required.Always)]
     public string SheetName { get; set; } = string.Empty;
+}
+
+public sealed class ModelItemsInsertParams
+{
+    [JsonProperty("view", NullValueHandling = NullValueHandling.Ignore)]
+    public string? View { get; set; }
+
+    [JsonProperty("source", NullValueHandling = NullValueHandling.Ignore)]
+    public ModelItemsInsertParamsSource? Source { get; set; }
+
+    [JsonProperty("duplicate_dims", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? DuplicateDims { get; set; }
+
+    [JsonProperty("hidden_feature_dims", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? HiddenFeatureDims { get; set; }
+
+    [JsonProperty("use_placement_in_sketch", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? UsePlacementInSketch { get; set; }
+
+    [JsonProperty("marked_for_drawing", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? MarkedForDrawing { get; set; }
+
+    [JsonProperty("not_marked_for_drawing", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? NotMarkedForDrawing { get; set; }
+
+    [JsonProperty("hole_callouts", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? HoleCallouts { get; set; }
+}
+
+public sealed class ModelItemsInsertResult
+{
+    [JsonProperty("count", Required = Required.Always)]
+    public long Count { get; set; }
+
+    [JsonProperty("annotations", NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Annotations { get; set; }
 }
 
 public sealed class SheetFormatGenerateParams

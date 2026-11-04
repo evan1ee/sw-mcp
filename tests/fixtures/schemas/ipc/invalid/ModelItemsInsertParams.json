@@ -1,0 +1,8 @@
+[
+  {
+    "source": "invalid_source"
+  },
+  {
+    "duplicate_dims": "not_a_boolean"
+  }
+]

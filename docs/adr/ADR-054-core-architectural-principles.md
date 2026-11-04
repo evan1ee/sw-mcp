@@ -1,7 +1,7 @@
 # ADR-054: Core architectural principles bind design decisions
 
 - **Status:** Accepted (owner, 2026-11-04)
-- **Source:** Specification v1.26, section 1.3 (principles 12 and 13 added; 1, 3, 5, 6 and 7 sharpened)
+- **Source:** Specification v1.27, section 1.3 (principles 12 and 13 added; 1, 3, 5, 6 and 7 sharpened)
 
 ## Context
 
