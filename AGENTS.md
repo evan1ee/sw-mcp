@@ -114,3 +114,18 @@ dotnet build apps/execution-server/ExecutionServer.sln
 ### Live SOLIDWORKS Tests
 - Live suites require a dedicated Windows x64 environment with a licensed SOLIDWORKS 2025+ install, an active interactive user desktop session, and a visible SOLIDWORKS window (Section 15.2, ADR-039).
 - Live tests do not run in headless CI environments.
+
+---
+
+## 5. Session Handoff
+
+[`HANDOFF.md`](HANDOFF.md) carries project state between sessions and agents.
+
+- **At the start of a session:** read it after this file, and check anything you rely on against the repository.
+- **At the end of each session:** update it under these headings:
+  - **Current State:** what is complete and the project's current status.
+  - **Changes Made:** key implementations, decisions and files modified.
+  - **Next Steps:** prioritized tasks and recommended actions.
+  - **Known Issues:** outstanding bugs, blockers and unresolved decisions.
+- **Keep it accurate:** rewrite existing content instead of appending, remove what is outdated, and report only state you verified, including what is unverified.
+- **Keep it concise:** link to the spec, ADRs and plans instead of repeating them. `HANDOFF.md` never overrides `docs/`; decisions still go in the spec or an ADR.
