@@ -46,8 +46,16 @@ def test_document_id_rejects(s: str) -> None:
 
 
 def test_module_keys() -> None:
-    assert MODULE_KEYS == ("part", "assembly", "design_intent", "drawing_intent", "drawing_layout")
+    assert MODULE_KEYS == (
+        "part",
+        "assembly",
+        "design_intent",
+        "drawing_intent",
+        "drawing_layout",
+        "drawing_template",
+    )
     assert is_module_key("part")
+    assert is_module_key("drawing_template")
     assert not is_module_key("PART")
     assert not is_module_key("drawing")
 

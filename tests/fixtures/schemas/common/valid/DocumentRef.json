@@ -1,5 +1,6 @@
 [
   "part:bracket@4",
   "drawing_intent:BRK-001-DI",
-  "assembly:a.b@12"
+  "assembly:a.b@12",
+  "drawing_template:ACME-A3@2"
 ]

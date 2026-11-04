@@ -1,6 +1,6 @@
 # 11. Production Drawings (P0)
 
-> Specification v1.23, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.24, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 11.1 Purpose and Bar
 
@@ -34,10 +34,10 @@ ISO throughout:
 | Size and GPS principle | ISO 8015 (independence principle) referenced in the title block or general notes; ISO 14405-1 for size |
 | GD&T | ISO 1101, datums ISO 5459 |
 | Surface texture | ISO 21920-1 (successor to ISO 1302). Phase 0 checks that SOLIDWORKS 2025 can draw ISO 21920 symbols; if it cannot, ISO 1302-style symbols are used and the gap is recorded |
-| Title block | Owner's company template (supplied by owner); ISO 7200 fields as the baseline |
+| Title block | Owner's company template (supplied by owner) or generated from Drawing Template IR (11.12, ADR-055); ISO 7200 fields as the baseline |
 | Sheet sizes | ISO 5457 (A4 portrait; A3–A0 landscape) |
 
-Implemented through a SOLIDWORKS drafting standard file (`.sldstd`), drawing templates (`.drwdot`), sheet formats (`.slddrt`) and the hole-callout format file. The last one defines ISO thread and hole callouts such as `M6×1-6H` with depth symbols. **Sheet format and title block (owner decision): the owner's company template**, provided by the owner in Phase 0. The pipeline fills it from part custom properties and the intent modules present (3.3 rule 4); the field mapping lives in configuration, not code. Other standards are out of scope but must be addable as new standard files and profiles without code changes to the core **[Builder's call]**.
+Implemented through a SOLIDWORKS drafting standard file (`.sldstd`), drawing templates (`.drwdot`), sheet formats (`.slddrt` or generated from Drawing Template IR, 11.12) and the hole-callout format file. The last one defines ISO thread and hole callouts such as `M6×1-6H` with depth symbols. **Sheet format and title block (owner decision): the owner's company template**, provided by the owner in Phase 0, or generated from Drawing Template IR (11.12, ADR-055). For hand-made formats, the pipeline fills it from part custom properties and the intent modules present (3.3 rule 4); the field mapping lives in configuration, not code. For generated formats, field sources are defined directly in the template IR. Other standards are out of scope but must be addable as new standard files and profiles without code changes to the core **[Builder's call]**.
 
 ## 11.3 Drawing Profiles
 
@@ -211,6 +211,7 @@ Without a Drawing Intent (18), D5's duplicate part, D8 and D10 are pure function
 - A field is filled when its text, after trimming whitespace, is not empty and contains no unresolved `$PRP` link. Code `title_field_unfilled`, one failure per field. D8 checks that a field is filled, not that its value is right.
 - A sheet whose mapping sets `revision_table`, or which has a revision table, must have a latest entry equal to the `revision` field, comparing trimmed NFC text exactly. Codes `revision_table_missing` (table required but null, or no entries) and `revision_table_mismatch`.
 - A sheet with no matching mapping is `not_evaluated` (reason `title_block_mapping_missing`), since the system cannot know what that format requires. A sheet without `title_block_fields` is `not_evaluated` (reason `title_block_data_missing`). A snapshot with no sheets is `not_evaluated` too (same reason).
+- **Generated formats (11.12):** When a sheet uses a generated format from Drawing Template IR, D8's required fields and revision table expectation are derived directly from the template IR document instead of configuration TOML mappings. *(Backend generation and read-back derivation of template mappings is not yet implemented in this increment and is tracked in open decision item K7).* Until generation lands, a generated sheet would report `not_evaluated` with `title_block_mapping_missing`.
 
 **D10** runs on `rebuild`. Without it, D10 is `not_evaluated` (reason `rebuild_data_missing`).
 

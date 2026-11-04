@@ -3,7 +3,9 @@
 import re
 from typing import Final, Literal, TypeGuard
 
-type ModuleKey = Literal["part", "assembly", "design_intent", "drawing_intent", "drawing_layout"]
+type ModuleKey = Literal[
+    "part", "assembly", "design_intent", "drawing_intent", "drawing_layout", "drawing_template"
+]
 
 MODULE_KEYS: Final[tuple[ModuleKey, ...]] = (
     "part",
@@ -11,6 +13,7 @@ MODULE_KEYS: Final[tuple[ModuleKey, ...]] = (
     "design_intent",
     "drawing_intent",
     "drawing_layout",
+    "drawing_template",
 )
 
 DOCUMENT_ID_PATTERN: Final = r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}"

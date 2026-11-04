@@ -1,6 +1,6 @@
 # 3.4 Shared IR Core
 
-> Specification v1.23, section 3.4. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.24, section 3.4. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The shared IR core is what every IR module, derived artifact and tool contract has in common: identifiers, references, units, numbers, revisions and the IR bundle (3.3). It is normative. Schemas in `schemas/common/` implement it (ADR-035), and every example in this specification follows it.
 
@@ -8,7 +8,7 @@ The shared IR core is what every IR module, derived artifact and tool contract h
 
 | Kind | Grammar | Scope | Example |
 | --- | --- | --- | --- |
-| Module key | one of `part`, `assembly`, `design_intent`, `drawing_intent`, `drawing_layout` | Global | `drawing_intent` |
+| Module key | one of `part`, `assembly`, `design_intent`, `drawing_intent`, `drawing_layout`, `drawing_template` | Global | `drawing_intent` |
 | Document ID | `[A-Za-z0-9][A-Za-z0-9._-]{0,127}` | Unique per module key within a project store | `BRK-001-DI` |
 | Item ID | `[a-z][a-z0-9_]{0,63}` | Unique within one module document | `bore_1`, `bore_dia` |
 | Datum label | `[A-Z]{1,2}`, excluding `I`, `O`, `Q` (ISO 5459) | Unique within one Drawing Intent | `A` |
@@ -49,7 +49,7 @@ Rules:
 
    A scoped reference whose document is absent (no `design_intent`, no Design Intent in the bundle) is a validation error, except `realizes`, which is ignored when no Design Intent is present (3.3 rule 4).
 2. **Parameters and roles never share names.** Each feature type's schema defines its parameter names and role names as disjoint sets, so `bore_1.diameter` and `bore_1.axis` cannot be confused even outside a typed field.
-3. **Cross-module references are `DocumentRef`, `ItemRef` or a scoped reference from rule 1** (3.3 rule 3). A module never refers to another module's internals by any other form.
+3. **Cross-module references are `DocumentRef`, `ItemRef` or a scoped reference from rule 1** (3.3 rule 3). A module never refers to another module's internals by any other form. Exception: `drawing_template` field `source` candidates are late-bound lookup paths, not bundle references (11.12).
 4. **Pinned or floating.** A `DocumentRef` or `ItemRef` without `@<revision>` floats to the latest revision when the bundle is validated. Validation records the revision it resolved to, and every stored artifact (plans, Resolved Schemes, reports) records only pinned references.
 5. **Lists are always arrays.** A field that may hold more than one reference is an array, even when it holds one (`targets`, `covers`, `datums`). A field that holds exactly one reference is a single string.
 6. **Unresolvable means error.** A reference that cannot be resolved to exactly one target is a validation error (`IR_REFERENCE_UNRESOLVED`, or `REF_AMBIGUOUS` for geometry, ADR-037). It is never dropped or guessed (7.4).
@@ -118,7 +118,7 @@ A content hash is `sha256:` followed by the lowercase hex SHA-256 of that serial
 }
 ```
 
-- `modules` is a list of `DocumentRef`. At most one document per module key, except `part`, which may list one document per component of an Assembly Graph in the bundle.
+- `modules` is a list of `DocumentRef`. At most one document per module key, except `part`, which may list one document per component of an Assembly Graph in the bundle, and `drawing_template`, which may list multiple documents (one per sheet format used across sheets).
 - Floating references are pinned at validation (3.4.2 rule 4). The validated bundle, with every reference pinned, is what plans and reports record.
 - Validation order (3.3 rule 1): each module against its schema; each module's own semantic rules; declared dependencies present (3.3 rule 2); cross-module references resolved; ownership and fallback rules (3.3 rule 4). Errors from independent modules are all reported.
 - A bundle lists only stored documents. Documents reach the store by value through `create_*` and `apply_*`, and change through JSON Patch `update_*` calls (ADR-048).

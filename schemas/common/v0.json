@@ -9,7 +9,8 @@
         "assembly",
         "design_intent",
         "drawing_intent",
-        "drawing_layout"
+        "drawing_layout",
+        "drawing_template"
       ]
     },
     "DocumentId": {
@@ -45,11 +46,11 @@
     },
     "DocumentRef": {
       "type": "string",
-      "pattern": "^(?:part|assembly|design_intent|drawing_intent|drawing_layout):[A-Za-z0-9][A-Za-z0-9._-]{0,127}(?:@[1-9][0-9]*)?$"
+      "pattern": "^(?:part|assembly|design_intent|drawing_intent|drawing_layout|drawing_template):[A-Za-z0-9][A-Za-z0-9._-]{0,127}(?:@[1-9][0-9]*)?$"
     },
     "ItemRef": {
       "type": "string",
-      "pattern": "^(?:part|assembly|design_intent|drawing_intent|drawing_layout):[A-Za-z0-9][A-Za-z0-9._-]{0,127}(?:@[1-9][0-9]*)?/[a-z][a-z0-9_]{0,63}$"
+      "pattern": "^(?:part|assembly|design_intent|drawing_intent|drawing_layout|drawing_template):[A-Za-z0-9][A-Za-z0-9._-]{0,127}(?:@[1-9][0-9]*)?/[a-z][a-z0-9_]{0,63}$"
     },
     "LocalRef": {
       "type": "string",

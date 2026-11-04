@@ -2,6 +2,19 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.24
+
+Adds the Drawing Template IR module (§11.12, ADR-055), enabling CAD-neutral vector specification of sheet formats, borders, title blocks, and attribute link sources.
+
+- **Drawing Template IR** (new §11.12): authored IR module defining paper size (A4-A0), orientation, border margins, title block zones and lines, static text, attribute link sources, and revision table placement.
+- **New ADR-055**: sheet formats may be generated from Drawing Template IR alongside owner-supplied binary `.slddrt` files, extending ADR-050.
+- **Shared IR Core** (§3.4.1, §3.4.2, §3.4.5): added `drawing_template` to `ModuleKey`, `DocumentRef`, and `ItemRef` in `schemas/common/v0.json` and `cad_ir.core.ids`. Late-bound `source` candidates exempted from bundle cross-module resolution. Multiple `drawing_template` documents allowed in an IR bundle.
+- **Drawing Layout IR** (§11.11): a sheet specifies mutually exclusive `template` (`DocumentRef`) or `sheet_format` (path to `.slddrt`). Template-backed sheets omit redundant `size` and `orientation`.
+- **Production Drawings & D8** (§11.2, §11.5.3): title block allows generated formats; D8 derives required fields and revision table checks from the template IR for generated sheets.
+- **Configuration** (§13.3.4): TOML mapping files apply only to hand-made formats; generated formats require no TOML file.
+- **Backend Operations** (§6.5.2): added `sheet_format.generate` operation, needed by `later`.
+- **Open Decisions** ([register](open-decisions.md)): logged item **K7** (backend sheet format generation path); updated note on K3.
+
 ## What changed in 1.23
 
 Records the six long-term architectural principles in 1.3. Numbers 1–11 are unchanged, so existing references ("principle 9") still resolve.
