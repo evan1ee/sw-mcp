@@ -1,6 +1,6 @@
 # 8. Execution Engine
 
-> Specification v1.20, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.21, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 8.1 Purpose
 
@@ -95,3 +95,41 @@ stateDiagram-v2
 SOLIDWORKS has no general atomic transaction across modeling operations. It does offer undo objects: `IModelDocExtension.StartRecordingUndoObject` and `FinishRecordingUndoObject2` group a sequence of operations into one undo step. The executor wraps each plan in an undo object, which gives a cheap rollback before the document is saved. Undo objects do not survive save or close and are bounded by the undo stack, so they complement checkpoints rather than replace them. Beyond that, the system uses controlled recovery: operation IDs, execution journal, before/after inspection, checkpoints and Save Copy, retry classification, idempotency checks, compensation strategies, diagnostics. Recovery never blindly repeats operations that may have succeeded.
 
 Example: a 10-feature graph fails at feature 7. The system must determine which features exist, whether feature 7 partially executed, whether to skip, resume or roll back to a checkpoint, and whether a retry would duplicate features.
+
+## 8.7 IPC Messages [Builder's call]
+
+What ADR-036 leaves open, so the Python client and C# `Core` build the same protocol. The schema is `schemas/ipc/v0.json`; each operation type adds `schemas/ipc/ops/<op>.json` (6.5.1). The protocol version is `0.1` while the schema is at major 0 (3.4.8).
+
+**Errors.** JSON-RPC `error.code` is `-32000` for every catalogue error, with the ADR-037 error object in `error.data`. The other codes are the standard ones, used only for protocol faults: `-32700` unparsable frame, `-32600` not a valid request, `-32601` unknown method, `-32602` invalid `params`, and `-32603` for an unexpected exception in the add-in, whose stack trace goes to the log only. `error.data` is absent on those.
+
+**Handshake.** Everything before a successful `session.hello` is checked in this order:
+
+| Condition | Add-in's response |
+| --- | --- |
+| First frame is not `session.hello`, or the token is wrong | Closes the pipe without a reply, so an unauthenticated client learns nothing. The token comparison takes constant time |
+| Protocol major differs | `BACKEND_VERSION_UNSUPPORTED`, then closes |
+| SOLIDWORKS version unsupported (ADR-045) | `BACKEND_VERSION_UNSUPPORTED`. The pipe stays open and the session stays unauthenticated (8.6.1) |
+| Otherwise | The result below; the session is ready |
+
+The `session.hello` result holds `protocol`, `addin_version`, `solidworks` (`version`, `service_pack`, `ui_language`), `capabilities`, `operations` (`op`, `schema_version`), `licensed_modules` and `warnings` (6.6, ADR-045). The client closes the pipe if the returned major differs from its own.
+
+**Dispatch.** The pipe thread answers `session.ping`, `session.completed_operations` and `job.cancel` itself; every other command goes on the queue (8.6.2).
+
+**`drawing.snapshot`.** `params`: `document` (path) and optional `sheets` (names; all sheets when absent). `result`: one complete Drawing Geometry Snapshot (11.5.1) holding those sheets. It is one command across sheets, so cancellation can fall between sheets (8.6.2).
+
+**`ops.apply`.** `params.groups` is an ordered list of `{document, operations}`. This is the batch header of 6.5.1, and it lets a batch span documents in order. Each operation is `{operation_id, op, params}`. `result.outcomes` lists the attempted operations in order, each `{operation_id, result}` or `{operation_id, error}`. Operations after the first error are not attempted and not listed (6.5.1). A repeated ID stops the batch like any other error: its outcome has `error` with code `DUPLICATE_OPERATION` and also `result`, the original result. If cancellation stops a batch, the next operation's outcome has `error` with code `EXEC_CANCELLED`. An unexpected exception ends the batch with a `-32603` error; operations already completed stay in the ledger, so the core can ask for them.
+
+**Operation ledger.** The add-in records each completed operation's ID, result and document, in completion order, and forgets a document's entries when the add-in sees that document destroyed (`DestroyNotify`). A `document.close` operation records its own ID after that event, so its entry stays and earlier ones go. A failed operation is not recorded. The ledger outlives a pipe connection, so a reconnecting core can ask for it. `session.completed_operations` returns `operation_ids` in completion order. A command still running when the pipe closes finishes and records its result (8.6.3).
+
+**`job.cancel`.** The add-in sets the cancel flag and removes queued commands, answering each with `EXEC_CANCELLED`. If a command is running, the cancel response waits until that command has answered. The result is `{cancelled}`: true if a command was running or queued when the request arrived. A running command may still finish normally, so its own response says what happened. The client's wait for this response therefore uses the command time limit, not the read limit. The running command checks the flag between operations or sheets (8.6.2) and, if it stops early, answers `EXEC_CANCELLED`.
+
+**Chunks.** A response larger than the frame limit (64 MiB) is sent as notifications with method `response.chunk` and `params` `{id, index, count, data}`, where `id` is the request's and `index` counts from 0. `data` is base64 of a piece of the UTF-8 bytes of the complete response frame; joined in `index` order they give that frame. Other notifications may fall between chunks. Base64 keeps the size exact, since a JSON string's escapes could overflow a frame. A client discards a chunk or response whose `id` it is no longer waiting for.
+
+**Client behaviour.** A command's time limit (8.6.3) covers the whole call, so progress notifications do not extend it. After a timeout the client reports `EXEC_TIMEOUT`, never resends (8.3 rule 8), and discards the late response when it arrives. When the pipe closes, every waiting call fails with `BACKEND_LOST`. Readers ignore unknown fields; an unknown error code in `error.data` is kept as text, not treated as a client error (ADR-042).
+
+**Transcripts** (15.5) are JSON Lines in `tests/fixtures/ipc/<scenario>.jsonl`.
+
+- The first line is a header: `{"transcript": "0.1", "scenario", "source", "sides", "config"}`. `source` is `synthetic` (hand-written) or `recorded` (from a live run). `sides` lists who replays it (`python`, `csharp`), since some faults only one side can produce. `config` holds the session settings the scenario assumes (`token`, `max_frame_bytes`, and for C# the `backend` values and version status).
+- Every other line is `{"dir": "core_to_addin" | "addin_to_core", "t_ms", "frame"}` or `{"dir": "addin_to_core", "t_ms", "close": true}`.
+- **Masking.** Comparison ignores `_meta` and the `message` of every error, since agents act on codes (ADR-037), and `response.chunk` frames are joined first, so comparison is on the parsed JSON of whole responses, not on bytes or on how a response was split.
+- `t_ms` decides replayed timeouts: a Python call times out when the next add-in frame is later than its limit, with no real waiting.

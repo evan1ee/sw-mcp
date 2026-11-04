@@ -1,6 +1,6 @@
 # 17. Repository Architecture
 
-> Specification v1.20, section 17. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.21, section 17. Index and section map: [specifications/README.md](../specifications/README.md).
 
 Target structure for the new implementation (ADR-039). Python lives in `apps/mcp-server/`, `apps/core-service/` and `packages/` (ADR-034, ADR-041); C# lives only in `apps/execution-server/` (ADR-038); `schemas/` is the contract both sides are generated from (ADR-035).
 
@@ -22,7 +22,7 @@ sw-mcp/
 │   ├── cad-geometry/                  signatures, topology, measurements
 │   ├── cad-references/                semantic, persistent, resolver
 │   ├── cad-verification/              api, geometry, design-intent
-│   ├── cad-protocol/                  IPC client and generated message types (ADR-036)
+│   ├── cad-protocol/                  IPC client and ReplayBackend (ADR-036); message types are generated into cad-ir (G2, ADR-051)
 │   └── cad-application/               tool handlers, design, graph, compilation, execution, jobs, synchronization, recovery, store (13.1)
 ├── schemas/                           JSON Schema 2020-12 (ADR-035)
 │   ├── common/                        shared-core types, geometry-reference, errors (ADR-037)

@@ -28,7 +28,7 @@ Principle 9 (core logic testable without CAD) only holds if nothing below the ap
   cad-ir                 → nothing else of ours
   ```
 
-- **Ports.** `Backend` is the operation vocabulary of 6.5 (`apply_batch`, `snapshot_sheet`, `read_features`, `geometry_candidates`, document actions), typed with the generated IPC models. `Store` is section 13.2. `Clock` and `IdSource` make time and ULIDs injectable for determinism tests (15.6).
+- **Ports.** `Backend` is the operation vocabulary of 6.5 (`apply_batch`, `snapshot_drawing`, `read_features`, `geometry_candidates`, document actions), typed with the generated IPC models. Those live in `cad_ir.generated.ipc`, because `cad-application` may import `cad-ir` but never `cad-protocol`. It is declared as a `typing.Protocol` in `cad_application.ports`, and `cad-protocol` implements it structurally without importing it. `Store` is section 13.2. `Clock` and `IdSource` make time and ULIDs injectable for determinism tests (15.6).
 - **Test doubles.** `ReplayBackend` plays recorded transcripts (15.5); `FakeStore` is an in-memory store with the same atomicity rules. Tests never patch `cad-protocol` internals.
 - **Pure core.** `cad-ir`, `cad-compiler`, `cad-drawing` checks and placement are pure functions of their inputs: no file I/O, no clock, no globals. Effects happen in `cad-application`.
 

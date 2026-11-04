@@ -1,0 +1,17 @@
+[
+  {
+    "message": "m"
+  },
+  {
+    "code": -32000
+  },
+  {
+    "code": "abc",
+    "message": "m"
+  },
+  {
+    "code": -32000,
+    "message": "m",
+    "data": "x"
+  }
+]

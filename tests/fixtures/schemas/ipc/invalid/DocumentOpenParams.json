@@ -1,0 +1,19 @@
+[
+  {
+    "read_only": true,
+    "fully_resolved": false
+  },
+  {
+    "path": "C:/d/a.sldprt",
+    "fully_resolved": false
+  },
+  {
+    "path": "C:/d/a.sldprt",
+    "read_only": true
+  },
+  {
+    "path": "C:/d/a.sldprt",
+    "read_only": "yes",
+    "fully_resolved": false
+  }
+]

@@ -1,6 +1,6 @@
 # Open Decisions and Missing Specifications
 
-> Review of specification v1.11 (2026-11-03), updated for v1.20, for decisions that must be settled before implementation, so independent implementers build the same thing. Each item says why it matters, what is recommended, which document records it, and the first increment it blocks.
+> Review of specification v1.11 (2026-11-03), updated for v1.21, for decisions that must be settled before implementation, so independent implementers build the same thing. Each item says why it matters, what is recommended, which document records it, and the first increment it blocks.
 
 **Document types**
 - **ADR** — a choice between real alternatives, recorded once (`docs/adr/`).
@@ -70,6 +70,9 @@ One open item. Every decision found in the v1.11 review is recorded below. New g
 | N2 | Drawing Geometry Snapshot encoding: keys for native items, curves, raw text boxes (blocked 1a) | [§11.5.1](../architecture/production-drawings.md#1151-drawing-geometry-snapshot-builders-call) |
 | K2 | Rules for D5 without a Drawing Intent (closed chains, part results), D8 and D10, including save/reopen under a `check_drawing` that never saves (blocked 1a) | [§11.5.3](../architecture/production-drawings.md#1153-checks-without-a-drawing-intent-d5-d8-d10-builders-call) |
 | N3 | Snapshot additions for dimension data, title block and rebuild state; hidden annotations not exported (blocked 1a) | [§11.5.1](../architecture/production-drawings.md#1151-drawing-geometry-snapshot-builders-call) |
+| K4 | IPC message details: JSON-RPC error codes, handshake order, `ops.apply` and `drawing.snapshot` shapes, ledger, cancellation, chunks, transcript format (blocked 1a) | [§8.7](../architecture/execution-engine.md#87-ipc-messages-builders-call) |
+| K5 | Generating contract types: the tool named in ADR-035 fails on the schemas and C# had no named tool; generated IPC types were unreachable from `cad-application` under G2 (blocked 1a) | [ADR-051](../adr/ADR-051-contract-type-generator.md), [G2](../development/implementation-guidelines.md#g2--python-layering-and-the-backend-port) |
+| K6 | JSON library for the in-process add-in (blocked 1a) | [ADR-052](../adr/ADR-052-csharp-json-library.md) |
 | R1 | Drawing report contents, verdict rule and how it states results are unverified (blocked P0-schemas) | [§11.5.4](../architecture/production-drawings.md#1154-drawing-report-builders-call) |
 
 ## Recommended order

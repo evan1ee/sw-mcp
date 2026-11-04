@@ -1,0 +1,28 @@
+[
+  {
+    "operations": [
+      {
+        "operation_id": "j1:1",
+        "op": "document.open"
+      }
+    ]
+  },
+  {
+    "document": "d"
+  },
+  {
+    "document": []
+  },
+  {
+    "document": "d",
+    "operations": {}
+  },
+  {
+    "document": "d",
+    "operations": [
+      {
+        "op": "x"
+      }
+    ]
+  }
+]

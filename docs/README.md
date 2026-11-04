@@ -2,14 +2,14 @@
 
 Documentation for the AI-native Parametric CAD System: an MCP server and SOLIDWORKS execution engine that lets AI agents build parametric models and production drawings through a deterministic, verified pipeline.
 
-The [specification](specifications/README.md) (v1.20) is split across these folders by topic. Section numbers are kept, so a reference such as "see 11.5" resolves through the [section map](specifications/README.md#how-this-specification-is-organized).
+The [specification](specifications/README.md) (v1.21) is split across these folders by topic. Section numbers are kept, so a reference such as "see 11.5" resolves through the [section map](specifications/README.md#how-this-specification-is-organized).
 
 ```
 docs/
 ├── specifications/   what the product is and when it ships
 ├── architecture/     how the system works, one file per component or IR module
 ├── api/              the MCP tool surface agents call
-├── adr/              architecture decision records, ADR-001 … ADR-049
+├── adr/              architecture decision records, ADR-001 … ADR-052
 └── development/      repository layout and testing
 ```
 
@@ -49,7 +49,7 @@ docs/
 | [cad-compiler.md](architecture/cad-compiler.md) | §6 Compiler pipeline and determinism; §6.7 stage contract |
 | [backend-operations.md](architecture/backend-operations.md) | §6.5 Backend operation vocabulary and Execution Plan; §6.6 capability profile |
 | [geometry-references.md](architecture/geometry-references.md) | §7 Semantic geometry references |
-| [execution-engine.md](architecture/execution-engine.md) | §8 SOLIDWORKS add-in, COM rules, job lifecycle |
+| [execution-engine.md](architecture/execution-engine.md) | §8 SOLIDWORKS add-in, COM rules, job lifecycle; §8.7 IPC messages |
 | [addin-runtime.md](architecture/addin-runtime.md) | §8.6 Add-in loading, session discovery, threading, time limits, settings guard |
 | [incremental-sync.md](architecture/incremental-sync.md) | §9 Graph diff and state synchronization |
 | [verification-engine.md](architecture/verification-engine.md) | §10 Verification layers |

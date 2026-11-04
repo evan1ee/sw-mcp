@@ -1,0 +1,12 @@
+[
+  {
+    "event": "regen"
+  },
+  {
+    "document": "d"
+  },
+  {
+    "document": [],
+    "event": "regen"
+  }
+]

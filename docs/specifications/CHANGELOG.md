@@ -2,6 +2,15 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.21
+
+Closes gaps found when planning the IPC side ([register](open-decisions.md), K4–K6).
+
+- **IPC messages** (new 8.7) **[Builder's call]**: JSON-RPC error codes, handshake order (an unauthenticated client gets no reply), `drawing.snapshot` as one command across sheets, `ops.apply` groups and outcomes, a repeated ID stopping a batch, ledger lifetime, `job.cancel` ordering, base64 `response.chunk`, client timeout behaviour, transcript format.
+- **Type generation** (new ADR-051, changes ADR-035) **[Builder's call]**: one project-owned generator for Python and C#, in place of `datamodel-code-generator`. IPC types live in `cad_ir.generated.ipc`, so `cad-application` can use them under G2 (17, G2).
+- **C# JSON library** (new ADR-052) **[Builder's call]**: `Newtonsoft.Json`. Assumption A17 added (18).
+- **Contract tests** (15.5): C# rejection covers what deserialization enforces; transcripts are hand-written until live runs record them.
+
 ## What changed in 1.20
 
 Closes gaps found when planning the rest of the Phase 1a checks ([register](open-decisions.md), K2, N3, R1), and logs one that needs the owner's sheet format (K3).

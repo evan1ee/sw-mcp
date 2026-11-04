@@ -1,0 +1,30 @@
+[
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "pong": true
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "error": {
+      "code": -32000,
+      "message": "cancelled",
+      "data": {
+        "code": "EXEC_CANCELLED",
+        "message": "The job was cancelled.",
+        "retryable": "never"
+      }
+    }
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": null,
+    "error": {
+      "code": -32700,
+      "message": "parse error"
+    }
+  }
+]

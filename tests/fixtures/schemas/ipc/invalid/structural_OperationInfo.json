@@ -1,0 +1,12 @@
+[
+  {
+    "schema_version": "0.1"
+  },
+  {
+    "op": "document.open"
+  },
+  {
+    "op": {},
+    "schema_version": "0.1"
+  }
+]

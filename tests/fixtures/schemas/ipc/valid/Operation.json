@@ -1,0 +1,13 @@
+[
+  {
+    "operation_id": "j1:1",
+    "op": "document.open"
+  },
+  {
+    "operation_id": "j1:2",
+    "op": "document.close",
+    "params": {
+      "path": "C:/d/a.sldprt"
+    }
+  }
+]
