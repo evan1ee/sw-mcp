@@ -9,6 +9,16 @@ namespace ExecutionServer.Core.Drawings;
 public static class ViewLayoutGeometry
 {
     /// <summary>
+    /// Convert length from millimetres to SOLIDWORKS metres.
+    /// </summary>
+    public static double MmToMeters(double valMm) => valMm / 1000.0;
+
+    /// <summary>
+    /// Convert length from SOLIDWORKS metres to millimetres.
+    /// </summary>
+    public static double MetersToMm(double valM) => valM * 1000.0;
+
+    /// <summary>
     /// Convert coordinates from drawing sheet millimetres to SOLIDWORKS metres.
     /// </summary>
     public static (double xMeters, double yMeters) MmToMeters(double xMm, double yMm)

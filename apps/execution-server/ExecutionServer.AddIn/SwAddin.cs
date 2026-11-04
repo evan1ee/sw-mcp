@@ -135,6 +135,8 @@ public class SwAddin : ISwAddin
                     new OperationInfo { Op = "document.close", SchemaVersion = "0.1" },
                     new OperationInfo { Op = "sheet_format.generate", SchemaVersion = "0.1" },
                     new OperationInfo { Op = "drawing.create", SchemaVersion = "0.1" },
+                    new OperationInfo { Op = "view.create", SchemaVersion = "0.1" },
+                    new OperationInfo { Op = "view.update", SchemaVersion = "0.1" },
                     new OperationInfo { Op = "document.save", SchemaVersion = "0.1" }
                 },
                 LicensedModules = new List<string>(),
@@ -449,6 +451,24 @@ public class SwAddin : ISwAddin
                         ? pObj.ToObject<DrawingCreateParams>()
                         : new DrawingCreateParams();
                     var res = new DrawingCreationAdapter(_sw).CreateDrawing(p ?? new DrawingCreateParams(), ct);
+                    return JObject.FromObject(res);
+                }
+
+                if (op.Op == "view.create")
+                {
+                    var p = op.Params is JObject pObj
+                        ? pObj.ToObject<ViewCreateParams>()
+                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for view.create");
+                    var res = new Adapters.Drawings.ViewCreationAdapter(_sw).CreateView(p!, ct);
+                    return JObject.FromObject(res);
+                }
+
+                if (op.Op == "view.update")
+                {
+                    var p = op.Params is JObject pObj
+                        ? pObj.ToObject<ViewUpdateParams>()
+                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for view.update");
+                    var res = new Adapters.Drawings.ViewCreationAdapter(_sw).UpdateView(p!, ct);
                     return JObject.FromObject(res);
                 }
 
