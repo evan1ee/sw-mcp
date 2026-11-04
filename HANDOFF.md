@@ -4,52 +4,61 @@ Last updated: 2026-11-04. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Current State
 
-- **Phase:** Phase 0 contracts and the pure parts of Phase 1a. Nothing has run against SOLIDWORKS yet.
-- **Spec:** v1.21, with one open item in the [register](docs/specifications/open-decisions.md): K3, which needs the owner's sheet format.
-- **Branches:** milestones 1 and 2 are merged to `main` ([#1](https://github.com/evan1ee/sw-mcp/pull/1), [#2](https://github.com/evan1ee/sw-mcp/pull/2)). Milestone 3 is merged too ([#4](https://github.com/evan1ee/sw-mcp/pull/4)). Milestone 4 is in open PR [#5](https://github.com/evan1ee/sw-mcp/pull/5), branch `feat/ipc-contract`, not yet merged.
-- **Verification on the branch:** generator check, ruff, pyright strict and lint-imports are clean; 1342 Python and 125 C# tests pass locally. See the PR for its CI result.
+- **Phase:** Phase 0 contracts, IPC framing/transcripts, project store, job journal, job engine, Phase 1a tool handlers (`check_drawing`, `get_drawing_report`, `get_execution_status`, `cancel_execution`), and `core-service` composition root. Nothing has run against SOLIDWORKS yet.
+- **Spec:** v1.23, with open items in the [register](docs/specifications/open-decisions.md): K3 (sheet format field mapping), J11 (draft-view switched indicator in snapshot), and J21 (C# transcript harness scripting an error response). Catalogue has 40 codes.
+- **Branches:** milestones 1, 2, 3, and 4 are merged to `main` ([#1](https://github.com/evan1ee/sw-mcp/pull/1), [#2](https://github.com/evan1ee/sw-mcp/pull/2), [#4](https://github.com/evan1ee/sw-mcp/pull/4), [#5](https://github.com/evan1ee/sw-mcp/pull/5)). Milestone 5 is in open PR [#6](https://github.com/evan1ee/sw-mcp/pull/6), branch `feat/check-drawing-job`, ready for review/merge.
+- **Verification on the branch:**
+  - `uv run python scripts/generate_contracts.py --check` passes cleanly.
+  - `uv run ruff check` and `uv run ruff format --check` pass cleanly (333 files).
+  - `uv run pyright` passes (0 errors, 0 warnings).
+  - `uv run lint-imports` passes (5 contracts kept, 0 broken).
+  - `uv run pytest` passes (2352 passed in 36.8s).
+  - Test coverage on `packages/cad-application` and `apps/core-service` is 96.06% (763 tests; ≥ 80% required).
+  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (127 passed, 0 failed).
+  - `git status --short standards/` is empty.
 - **Built:**
-  - `cad_ir.core`: IDs, references, quantization, canonical hashing, derived IDs, validation issues, schema validation.
-  - `cad_ir.bundle`: bundle manifest validation.
-  - `schemas/`: `common/v0.json`, `common/errors.json` (38 codes), `bundle/v1.json`, `drawing-geometry-snapshot/v0.json`, `drawing-report/v0.json`, `ipc/v0.json`, `ipc/ops/` (`document.open`, `document.close`), with fixtures in `tests/fixtures/schemas/`.
-  - `scripts/generate_contracts.py`: embeds schemas and error codes in `cad_ir/generated/`, and generates IPC types for Python (`cad_ir.generated.ipc`) and C# (ADR-051).
-  - `cad_drawing.checks`: D1, D2, D3, D5 (duplicates), D7, D8, D10, soft metrics and `build_report`, on snapshots.
-  - `cad_protocol`: framing, `IpcClient`, `IpcBackend`, `replay_backend`; the `Backend` port in `cad_application.ports`.
-  - `ExecutionServer.Core`: `FrameCodec`, `IpcSession`, `OperationLedger`.
-  - `tests/fixtures/ipc/`: 15 hand-written transcripts, replayed against each side.
-- **Reports cannot be `done` yet:** D4, D6, D9 and D5's auxiliary marking are `not_evaluated`, and `calibration.status` can only be `unverified`.
-- **Not built:** D4, D6, D9, D5's auxiliary marking, the real named pipe and session discovery, the add-in and adapters, the store, jobs, MCP tools. All other packages and apps are scaffolds.
+  - `schemas/`: store (`store/v0.json`), configuration (`config/v1.json`, `config/title-block/v1.json`), MCP contract meta-schema (`mcp/contract/v0.json`), Phase 1a tool contracts (`mcp/check_drawing.json`, `get_drawing_report.json`, `get_execution_status.json`, `cancel_execution.json`), common errors (40 codes, including `FILE_NOT_FOUND` and `STORE_UNAVAILABLE`).
+  - `cad_application.store`: `FileStore`, `StoreSet`, atomic writes, journal records and state transitions (8.4), crash recovery (13.2.3), and retention clean-up (13.2.4).
+  - `cad_application.jobs`: `JobEngine` (thread-safe, synchronous per ADR-053), `check_drawing` job runner, job views, cancel handling, notification dispatch.
+  - `cad_application.tools`: `ToolRegistry`, contracts loader, argument validation against embedded JSON schemas, pagination cursors (12.4.2), tool summary builders.
+  - `core_service`: `CoreService` composition root, `OsFileSystem` with OS file locks (`msvcrt`), `SystemClock`, `SystemIdSource`, `JsonlEventLog` (G3 allow-list), `ReplayBackendProvider`.
+  - `tests/fixtures/ipc/`: 7 `check_drawing` transcript fixtures replayed against Python (and C# where supported).
+- **Opus Review Findings Addressed:**
+  - HIGH 1: Owned drawing is guaranteed closed on unexpected exceptions (`try ... except Exception: self._close_drawing(); raise` in `check_drawing.py`).
+  - HIGH 2: `StoreSet` notifies engine on first open so stores not in `known-stores.json` are recovered; store clean-up runs at engine start.
+  - HIGH 3: `call_tool` maps `OSError` to `STORE_UNAVAILABLE` (`after_fix`, not `safe`), and unknown tool names raise `UnknownTool` for transport protocol-error handling (12.4.2).
+  - MEDIUM/LOW: Store junctions escaping root rejected; non-finite snapshot values rejected before saving; corrupt store files handled safely; illegal transitions after final states rejected; NTFS stream names and `$` handling validated.
+  - Mutation testing: all 3 surviving mutants (cursor validity, registry listed-error enforcement, document events from other jobs) covered by unit tests.
+- **Not built:** Named-pipe transport, session discovery (8.6.1), heartbeat and `IpcClient` reader thread, add-in pipe host and snapshot adapter (all Milestone 6).
 
 ## Changes Made
 
-- **Plans:** [shared IR core](docs/superpowers/plans/2026-11-03-shared-ir-core.md), [drawing geometry checks](docs/superpowers/plans/2026-11-04-drawing-geometry-checks.md), [drawing report and checks](docs/superpowers/plans/2026-11-04-drawing-report-checks.md), [IPC contract](docs/superpowers/plans/2026-11-04-ipc-contract.md). Their checkboxes were not ticked; all are complete.
+- **Plans:** Milestone 5 implemented per [check drawing job plan](docs/superpowers/plans/2026-11-04-check-drawing-job.md).
 - **Spec decisions:**
-  - §3.4.8: schema `$id`s, annotations, `retryable` meanings, integer limits (owner-approved).
-  - §11.5.1: snapshot encoding; checks run on the quantized snapshot; dimension, title-block and rebuild data.
-  - §11.5.2: exact D1 chain and baseline exemption; chord error of epsilon/2; D7 rules.
-  - §11.5.3 [Builder's call]: D5 has two parts, and closed chains count as duplicates; a drawing read back with no unsaved changes counts as surviving reopen, because `check_drawing` never saves.
-  - §11.5.4 [Builder's call]: report contents and verdict rule.
-  - §8.7 [Builder's call]: IPC errors, handshake order, `ops.apply` and `drawing.snapshot` shapes, ledger, cancellation, chunks, transcripts.
-  - [ADR-051](docs/adr/ADR-051-contract-type-generator.md) [Builder's call]: own generator instead of `datamodel-code-generator`, which fails on the schemas. Changes ADR-035.
-  - [ADR-052](docs/adr/ADR-052-csharp-json-library.md) [Builder's call]: `Newtonsoft.Json` in the add-in.
-- **Owner decisions** ([ADR-050](docs/adr/ADR-050-phase-0-owner-decisions.md)): shared SOLIDWORKS session; `ISO 2768-m` with ISO 22081; note-based QA balloons; custom-property and `MarkedForDrawing` writes only by an explicit per-call option; no PDM.
-- **New dependencies:** `rfc8785` and `jsonschema` in `cad-ir`; `Newtonsoft.Json` in `ExecutionServer.Core`; `coverlet.collector` in `ExecutionServer.Tests`.
-- **GitHub settings:** repo is public; auto-merge is allowed; `main` requires `python` and `csharp-core`, with admins exempt.
+  - Settled gaps J12–J20 in `docs/specifications/open-decisions.md`; logged J21 as open.
+  - Added `STORE_UNAVAILABLE` to catalogue (40 codes).
+  - Clarified ADR-053 regarding engine lock boundaries during small job-record writes.
+  - Topic specs at v1.23; changelog updated.
 
 ## Next Steps
 
-1. **Land milestone 4:** the owner reviews ADR-051, ADR-052 and §8.7, then merges [#5](https://github.com/evan1ee/sw-mcp/pull/5) once its checks pass. After merging, update the Branches line above.
-2. **Sheet formats:** the owner confirms whether the untracked files in `standards/iso/templates/` are the company sheet formats, and how to read their fields (register K3).
-3. **`check_drawing` and `get_drawing_report`:** project store, job journal and MCP tools, tested over replayed transcripts. This needs the client on a real transport, with session discovery and a heartbeat (out of scope in the IPC plan). `IpcClient` is single-threaded, so the heartbeat will need a reader thread. Add report warnings for draft-view switches and newer service packs (out of scope in the plan).
-4. **Phase 0 work on the SOLIDWORKS machine:** create `docs/specifications/assumptions.md` and prove A1–A17; run the reference study; calibrate the check thresholds on approved drawings (§11.5.2).
+1. **Review and merge Milestone 5 (`feat/check-drawing-job`):** The branch is fully implemented and verified. Commit and open PR.
+2. **Milestone 6 ("transport and first live smoke"):**
+   - Named-pipe transport and session discovery (§8.6.1).
+   - Heartbeat and reader thread in `IpcClient`.
+   - Core pipe and stdio front-end.
+   - Add-in pipe host and live snapshot adapter.
+   - First live smoke test on this PC (licensed SOLIDWORKS 2025).
+3. **Owner approvals for Milestone 6:**
+   - Lift "no SOLIDWORKS, no live tests" restriction.
+   - Registering the add-in per user (`HKCU`) into SOLIDWORKS (ADR-038).
+   - Approval of test drawing copies (ADR-022, ADR-047).
+   - Engineer settings guard preferences (8.6.4, ADR-050).
+   - Inspection of sheet formats in `standards/iso/templates/` to resolve K3.
 
 ## Known Issues
 
-- **Needed from the owner:** company sheet format and title-block mapping (`standards/iso/templates/` has three untracked files dated 2015–2018, not yet confirmed or committed: `a3 - EPG_Plastic_Rev0.slddrt`, `a3 - EPG_Steel_Rev0.slddrt`, `ISO-mm.prtdot`; the last has no LFS rule). D8 is tested only with a synthetic mapping and cannot run on a real drawing without them (register K3); benchmark parts and reference drawings; holdout parts (§11.8). ADR-034 to ADR-049 are still Proposed.
-- **`ExecutionServer.Core` is unproven inside SOLIDWORKS:** no pipe host or add-in exists, and `Newtonsoft.Json` loading in `SLDWORKS.exe` is unproven (A17). Transcripts are hand-written, so they show the two sides agree with the spec, not with real SOLIDWORKS.
-- **Two remotes have diverged:** Gitea's `origin/main` is `9dce10e`, with the same files as GitHub's `main` but different commits. Each sync needs a merge commit; never force-push. Local `main` tracks `github/main`, and CI runs only on GitHub.
-- **Auto-merge:** GitHub refuses to arm it on a PR whose checks have already passed, so such a PR is merged directly.
-- **Stacked PRs:** retarget the upper PR to `main` after the lower one merges, otherwise its commits never reach `main`.
-- **Self-hosted runner risk:** the repo is public, so a fork PR could run code on a self-hosted SOLIDWORKS runner. Restrict those jobs before adding the runner, or make the repo private.
-- **D5 limits until a Resolved Scheme exists:** a chain spread across views, or a reference dimension repeating a parameter in another view, is missed (§11.5.3).
-- **Unverified:** all drawing checks have run only on synthetic snapshots, never on real SOLIDWORKS data, and every report says so. The API calls behind the new snapshot fields are unproven (A15, A16).
+- **K3 remains open:** Reading title-block fields back from the owner's templates requires inspecting `standards/iso/templates/` in SOLIDWORKS to define locators in §13.3.4.
+- **J11 remains open:** Snapshot cannot yet report whether a draft-quality view was switched to high quality; deferred until live adapter is built.
+- **J21 remains open:** C# `ScriptedHandler` cannot script JSON-RPC error responses, so `check_drawing_bad_sheet.jsonl` runs only on Python for now.
+- **Unverified on real CAD:** All drawing checks and jobs have run only on synthetic snapshots and replayed IPC transcripts; live verification begins in Milestone 6.

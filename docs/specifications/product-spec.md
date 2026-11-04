@@ -1,6 +1,6 @@
 # Product Specification
 
-> Specification v1.21, sections 1, 2, 16, 20, 21. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.23, sections 1, 2, 16, 20, 21. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 1. Executive Summary
 
@@ -27,17 +27,21 @@ The long-term differentiators are:
 
 ### 1.3 Core Design Principles
 
-1. **CAD-neutral core:** core concepts (the IR modules, compiler, references, checks) do not depend on a CAD vendor. The drawing pipeline's cleanup and gap-filling steps are SOLIDWORKS-specific for now (model items, `MarkedForDrawing`, DimXpert) and sit in a clearly marked `solidworks` module of `cad-drawing`; a vendor-neutral interface for them is extracted when a second backend exists, not designed in advance **[Builder's call]**.
+1. **CAD-neutral core:** core concepts and engineering semantics (the IR modules, compiler, references, checks) do not depend on a CAD vendor or its data structures, which keeps other CAD platforms possible. The drawing pipeline's cleanup and gap-filling steps are SOLIDWORKS-specific for now (model items, `MarkedForDrawing`, DimXpert) and sit in a clearly marked `solidworks` module of `cad-drawing`; a vendor-neutral interface for them is extracted when a second backend exists, not designed in advance **[Builder's call]**.
 2. **Native CAD execution:** use the target CAD system's kernel and native features.
-3. **Deterministic compilation:** identical validated inputs and environment produce equivalent plans.
+3. **Deterministic compilation and execution:** identical validated inputs and environment produce equivalent plans; given the same IR, initial model state and execution environment, execution gives predictable, reproducible results. Sources of nondeterminism (clocks, IDs, ordering, retries) are injected or canonicalized, never hidden.
 4. **Explicit design intent:** engineering requirements are represented separately from modeling operations.
-5. **Semantic geometry references:** identify geometry by meaning and context, not transient indexes.
-6. **Closed-loop verification:** a successful API call does not mean a correct model or drawing.
-7. **Controlled execution:** CAD operations have an explicit lifecycle, state and failure handling.
+5. **Semantic geometry references:** identify geometry by meaning and context, not transient indexes. Face and edge indexes are at most a transient resolution result, never stored or relied on as identity (7).
+6. **Closed-loop verification:** a successful API call does not mean a correct model or drawing. Output is verified against the intended specification: resulting geometry, dimensions, tolerances and engineering drawings (10, 11.5).
+7. **Controlled execution:** CAD operations have an explicit lifecycle, state and failure handling (8.4, 8.5).
 8. **Incremental modification:** update affected regions without rebuilding everything.
 9. **Testability:** core logic is testable without a running CAD application.
 10. **Extensibility:** backends, feature types and checks are independently extensible.
 11. **Learn from the reference, don't copy it:** match the reference implementation's proven behavior where it works, and write all code new.
+12. **IR-first architecture:** the IR is the core of the system, not a JSON wrapper around the SOLIDWORKS API. Engineering meaning lives in the IR modules (3.4, 4, 5, 11.10, 11.11); the compiler, references and verification are defined over the IR; a backend is a replaceable consumer of it. A capability is designed as IR semantics first, backend operations second (6.5).
+13. **Recoverability:** after an interrupted or failed execution the system determines the actual model state (journal, before/after inspection, checkpoints) and recovers safely. It never blindly replays operations that may already have succeeded (8.5, 13.2).
+
+These principles guide long-term design: implementation decisions, interface contracts, testing strategy and future extensions. A change that conflicts with one needs an ADR (19).
 
 ### 1.4 Goals, Non-goals, Anti-goals
 

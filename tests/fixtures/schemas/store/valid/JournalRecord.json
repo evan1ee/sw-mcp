@@ -1,0 +1,51 @@
+[
+  {
+    "type": "state",
+    "ts": "2026-11-04T09:30:15.123Z",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "from": null,
+    "to": "PLANNED",
+    "reason": "accepted"
+  },
+  {
+    "type": "batch_sent",
+    "ts": "2026-11-04T09:30:15.123Z",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "batch_seq": 1,
+    "operation_ids": [
+      "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2:1"
+    ],
+    "documents": [
+      "C:\\w\\a.SLDDRW"
+    ]
+  },
+  {
+    "type": "op_result",
+    "ts": "2026-11-04T09:30:15.123Z",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "operation_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2:1",
+    "ok": true,
+    "error_code": null
+  },
+  {
+    "type": "snapshot",
+    "ts": "2026-11-04T09:30:15.123Z",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "snapshot_id": "snap_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "sheet": null
+  },
+  {
+    "type": "document",
+    "ts": "2026-11-04T09:30:15.123Z",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "path": "C:\\w\\a.SLDDRW",
+    "action": "open",
+    "owned": true
+  },
+  {
+    "type": "note",
+    "ts": "2026-11-04T09:30:15.123Z",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "message": "diagnostic"
+  }
+]

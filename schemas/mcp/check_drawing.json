@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/mcp/check_drawing.json",
+  "name": "check_drawing",
+  "description": "Queue a read-only check of a .SLDDRW drawing against the drawing rules and return an execution ID. The file is opened read-only and never saved. Poll get_execution_status with wait_ms, then read the result with get_drawing_report.",
+  "toolset": "drawing",
+  "phase": "1a",
+  "kind": "job",
+  "mutates": false,
+  "input": {
+    "type": "object",
+    "properties": {
+      "path": { "type": "string", "minLength": 1, "maxLength": 32767 },
+      "sheets": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 64,
+        "uniqueItems": true,
+        "items": { "type": "string", "minLength": 1 }
+      }
+    },
+    "required": ["path"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "execution_id": { "$ref": "../store/v0.json#/$defs/JobId" },
+      "queued_position": { "$ref": "../common/v0.json#/$defs/Count" }
+    },
+    "required": ["execution_id", "queued_position"],
+    "additionalProperties": false
+  },
+  "errors": [
+    "IR_SCHEMA_INVALID",
+    "AUTH_PATH_DENIED",
+    "FILE_NOT_FOUND",
+    "CONFIG_INVALID",
+    "STORE_LOCKED",
+    "STORE_CORRUPT",
+    "STORE_UNAVAILABLE"
+  ],
+  "examples": [
+    {
+      "arguments": { "path": "C:\\Work\\bracket.SLDDRW", "sheets": ["Sheet1"] },
+      "response": {
+        "ok": true,
+        "data": {
+          "execution_id": "job_00000000000000000000000001",
+          "queued_position": 0
+        },
+        "error": null,
+        "ids": {
+          "request_id": "req_00000000000000000000000001",
+          "execution_id": "job_00000000000000000000000001"
+        }
+      }
+    },
+    {
+      "arguments": { "path": "D:\\Other\\bracket.SLDDRW" },
+      "response": {
+        "ok": false,
+        "data": null,
+        "error": {
+          "code": "AUTH_PATH_DENIED",
+          "message": "The path is outside every folder in access.allowed_roots.",
+          "retryable": "never",
+          "details": { "reason": "outside_roots" }
+        },
+        "ids": { "request_id": "req_00000000000000000000000002" }
+      }
+    }
+  ]
+}

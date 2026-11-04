@@ -20,6 +20,8 @@ IPC_ID = "https://sw-mcp.invalid/schemas/ipc/v0.json"
 OPS_ID = "https://sw-mcp.invalid/schemas/ipc/ops/{op}.json"
 WRONG_TOKEN = "wrong-token-0000"
 DWG = "C:/d/bracket.slddrw"
+WORK = r"C:\Work\a.slddrw"  # the path the check_drawing transcripts use (normalised form)
+JOB = "job_00000000000000000000000001"  # the first ID of SequentialIdSource
 
 SCENARIOS = {
     "handshake",
@@ -37,6 +39,13 @@ SCENARIOS = {
     "backend_lost",
     "unknown_method",
     "invalid_params",
+    "check_drawing_owned",
+    "check_drawing_borrowed",
+    "check_drawing_bad_sheet",
+    "check_drawing_ui_blocked",
+    "check_drawing_timeout",
+    "check_drawing_lost",
+    "check_drawing_sp_warning",
 }
 # The add-in must answer -32602 to these requests, so their params are invalid by design.
 BAD_PARAMS_ON_PURPOSE = {"invalid_params"}
@@ -291,6 +300,81 @@ def _lost(t: Transcript, tr: ReplayTransport) -> None:
     _expect("BACKEND_LOST", lambda: client.snapshot_drawing(DWG))
 
 
+def _job_open(client: IpcClient, *, owned: bool) -> None:
+    params: dict[str, JsonValue] = {"path": WORK, "read_only": True, "fully_resolved": True}
+    operation = Operation(operation_id=f"{JOB}:1", op="document.open", params=params)
+    result = client.apply_ops([OperationGroup(document=WORK, operations=(operation,))])
+    assert result.outcomes[0].result == {"owned": owned}
+
+
+def _job_close(client: IpcClient) -> None:
+    operation = Operation(operation_id=f"{JOB}:2", op="document.close", params={"path": WORK})
+    result = client.apply_ops([OperationGroup(document=WORK, operations=(operation,))])
+    assert result.outcomes[0].result == {"closed": True}
+
+
+def _check_owned(t: Transcript, tr: ReplayTransport) -> None:
+    client = _client(t, tr)
+    client.hello()
+    _job_open(client, owned=True)
+    snapshot = client.snapshot_drawing(WORK)
+    assert isinstance(snapshot, dict)
+    _job_close(client)
+
+
+def _check_borrowed(t: Transcript, tr: ReplayTransport) -> None:
+    client = _client(t, tr)
+    client.hello()
+    _job_open(client, owned=False)
+    assert isinstance(client.snapshot_drawing(WORK), dict)
+
+
+def _check_bad_sheet(t: Transcript, tr: ReplayTransport) -> None:
+    client = _client(t, tr)
+    client.hello()
+    _job_open(client, owned=True)
+    with pytest.raises(IpcError) as info:
+        client.snapshot_drawing(WORK, ["Nope"])
+    assert info.value.code == "IR_REFERENCE_UNRESOLVED"
+    _job_close(client)
+
+
+def _check_ui_blocked(t: Transcript, tr: ReplayTransport) -> None:
+    seen: list[str] = []
+
+    def note(method: str, _params: JsonValue) -> None:
+        seen.append(method)
+
+    client = _client(t, tr, on_notification=note)
+    client.hello()
+    _job_open(client, owned=True)
+    assert isinstance(client.snapshot_drawing(WORK), dict)
+    assert seen == ["session.ui_blocked"]
+
+
+def _check_timeout(t: Transcript, tr: ReplayTransport) -> None:
+    client = _client(t, tr)
+    client.hello()
+    _job_open(client, owned=True)
+    _expect("EXEC_TIMEOUT", lambda: client.snapshot_drawing(WORK))
+    assert client.completed_operations() == (f"{JOB}:1",)
+
+
+def _check_lost(t: Transcript, tr: ReplayTransport) -> None:
+    client = _client(t, tr)
+    client.hello()
+    _job_open(client, owned=True)
+    _expect("BACKEND_LOST", lambda: client.snapshot_drawing(WORK))
+
+
+def _check_sp_warning(t: Transcript, tr: ReplayTransport) -> None:
+    client = _client(t, tr)
+    assert client.hello().warnings
+    _job_open(client, owned=True)
+    assert isinstance(client.snapshot_drawing(WORK), dict)
+    _job_close(client)
+
+
 DRIVERS: dict[str, Callable[[Transcript, ReplayTransport], None]] = {
     "handshake": _handshake,
     "wrong_token": _wrong_token,
@@ -305,6 +389,13 @@ DRIVERS: dict[str, Callable[[Transcript, ReplayTransport], None]] = {
     "ui_blocked": _snapshot,
     "timeout_late_response": _timeout,
     "backend_lost": _lost,
+    "check_drawing_owned": _check_owned,
+    "check_drawing_borrowed": _check_borrowed,
+    "check_drawing_bad_sheet": _check_bad_sheet,
+    "check_drawing_ui_blocked": _check_ui_blocked,
+    "check_drawing_timeout": _check_timeout,
+    "check_drawing_lost": _check_lost,
+    "check_drawing_sp_warning": _check_sp_warning,
 }
 
 

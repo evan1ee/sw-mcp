@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/config/v1.json",
+  "title": "Configuration file (spec 13.3.2, 13.3.3)",
+  "type": "object",
+  "properties": {
+    "config_version": { "const": "1.0" },
+    "access": {
+      "type": "object",
+      "properties": {
+        "allowed_roots": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "pdm_vault_roots": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      },
+      "additionalProperties": false
+    },
+    "mcp": {
+      "type": "object",
+      "properties": {
+        "toolsets": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      },
+      "additionalProperties": false
+    },
+    "core": {
+      "type": "object",
+      "properties": {
+        "idle_shutdown_min": { "type": "integer", "minimum": 1 },
+        "job_retention_days": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "solidworks": {
+      "type": "object",
+      "properties": {
+        "session": { "anyOf": [{ "const": "auto" }, { "type": "integer", "minimum": 1 }] },
+        "command_timeout_s": { "type": "integer", "minimum": 1 },
+        "read_timeout_s": { "type": "integer", "minimum": 1 },
+        "ui_blocked_s": { "type": "integer", "minimum": 1 },
+        "heartbeat_s": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "drawing": {
+      "type": "object",
+      "properties": {
+        "job_timeout_min": { "type": "integer", "minimum": 1 },
+        "relayout_max_iterations": { "type": "integer", "minimum": 1 },
+        "pin_threshold_mm": { "type": "number", "exclusiveMinimum": 0 },
+        "standard_dir": { "type": "string", "minLength": 1 },
+        "check": {
+          "type": "object",
+          "properties": {
+            "epsilon_mm": { "type": "number", "exclusiveMinimum": 0 },
+            "text_clearance_mm": { "type": "number", "minimum": 0 },
+            "line_clearance_mm": { "type": "number", "minimum": 0 },
+            "edge_clearance_mm": { "type": "number", "minimum": 0 },
+            "font_metric_margin": { "type": "number", "minimum": 0 },
+            "parallel_deg": { "type": "number", "exclusiveMinimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "store": {
+      "type": "object",
+      "properties": {
+        "snapshot_keep": { "type": "integer", "minimum": 1 },
+        "backup_keep": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "level": { "enum": ["debug", "info", "warning", "error"] },
+        "retention_days": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["config_version"],
+  "additionalProperties": false
+}

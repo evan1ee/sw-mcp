@@ -1,6 +1,6 @@
 # 13. Data Management and Persistence
 
-> Specification v1.21, section 13. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.23, section 13. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The system persists enough to reproduce, inspect and recover sessions.
 
@@ -17,7 +17,7 @@ File layout, write rules, the job journal and retention are in 13.2; configurati
 **Where data lives.**
 - Each project has a project store: a directory (default `.cad/` at the project root) of JSON files plus a small index. IR modules, Resolved Schemes, layout snapshots, Drawing Geometry Snapshots, reports and the execution journal live there. It is plain files so it can be diffed, backed up and put in version control.
 - The drawing file links to its store entry through a drawing custom property holding the drawing ID. Writing it is allowed because the drawing is the pipeline's own output (ADR-022). The part is never written for this purpose.
-- `check_drawing` on a drawing the system did not produce writes nothing; it identifies the drawing by path and fingerprint only.
+- `check_drawing` on a drawing the system did not produce writes nothing to the drawing; it identifies the drawing by path and fingerprint only. In the store it creates or updates that drawing's record (13.2.1), so its latest report is kept (13.2.4).
 
 **Document identity.** Source parts cannot carry an ID without being modified (ADR-022), so:
 - A part's identity is its PDM document ID when it is vaulted, otherwise its path plus a content fingerprint (SHA-256 of the saved file). A file that moved is matched by fingerprint; if more than one stored document matches, the system asks.

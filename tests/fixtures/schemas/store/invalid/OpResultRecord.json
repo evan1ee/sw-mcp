@@ -1,0 +1,26 @@
+[
+  {
+    "type": "op_result",
+    "ts": "2026-11-04T09:30:15.123Z",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "operation_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2:1",
+    "ok": "yes",
+    "error_code": null
+  },
+  {
+    "type": "op_result",
+    "ts": "2026-11-04T09:30:15.123Z",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "ok": true,
+    "error_code": null
+  },
+  {
+    "type": "op_result",
+    "ts": "2026-11-04T09:30:15.123Z",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "operation_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2:1",
+    "ok": true,
+    "error_code": null,
+    "recovered": "yes"
+  }
+]

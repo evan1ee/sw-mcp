@@ -1,6 +1,6 @@
 # 5. Part Feature Graph IR and Assembly Graph IR
 
-> Specification v1.21, section 5.1–5.5. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.23, section 5.1–5.5. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 5.1 Purpose
 

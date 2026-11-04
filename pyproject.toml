@@ -106,3 +106,9 @@ forbidden_modules = [
     "cad_ir", "cad_geometry", "cad_references", "cad_compiler", "cad_drawing",
     "cad_verification", "cad_protocol", "cad_application", "core_service",
 ]
+
+[[tool.importlinter.contracts]]
+name = "core-service never imports the front-end"
+type = "forbidden"
+source_modules = ["core_service"]
+forbidden_modules = ["mcp_server"]

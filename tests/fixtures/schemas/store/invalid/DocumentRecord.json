@@ -1,0 +1,17 @@
+[
+  {
+    "type": "document",
+    "ts": "2026-11-04T09:30:15.123Z",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "path": "C:\\w\\a.SLDDRW",
+    "action": "delete",
+    "owned": true
+  },
+  {
+    "type": "document",
+    "ts": "2026-11-04T09:30:15.123Z",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "path": "C:\\w\\a.SLDDRW",
+    "action": "open"
+  }
+]

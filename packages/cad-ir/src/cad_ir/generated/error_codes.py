@@ -48,6 +48,8 @@ class ErrorCode(StrEnum):
     STORE_LOCKED = "STORE_LOCKED"
     STORE_CORRUPT = "STORE_CORRUPT"
     CONFIG_INVALID = "CONFIG_INVALID"
+    FILE_NOT_FOUND = "FILE_NOT_FOUND"
+    STORE_UNAVAILABLE = "STORE_UNAVAILABLE"
 
 
 type Retryable = Literal["never", "after_fix", "safe"]
@@ -92,5 +94,7 @@ DEFAULT_RETRYABLE: Mapping[ErrorCode, Retryable] = MappingProxyType(
         ErrorCode.STORE_LOCKED: "safe",
         ErrorCode.STORE_CORRUPT: "never",
         ErrorCode.CONFIG_INVALID: "after_fix",
+        ErrorCode.FILE_NOT_FOUND: "after_fix",
+        ErrorCode.STORE_UNAVAILABLE: "after_fix",
     }
 )

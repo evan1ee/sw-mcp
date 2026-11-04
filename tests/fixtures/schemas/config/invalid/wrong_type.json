@@ -1,0 +1,6 @@
+{
+  "config_version": "1.0",
+  "core": {
+    "idle_shutdown_min": "30"
+  }
+}

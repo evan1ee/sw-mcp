@@ -43,6 +43,8 @@ public static class ErrorCodes
     public const string STORE_LOCKED = "STORE_LOCKED";
     public const string STORE_CORRUPT = "STORE_CORRUPT";
     public const string CONFIG_INVALID = "CONFIG_INVALID";
+    public const string FILE_NOT_FOUND = "FILE_NOT_FOUND";
+    public const string STORE_UNAVAILABLE = "STORE_UNAVAILABLE";
 
     /// <summary>Default retryable of a code; an unknown code is AfterFix.</summary>
     public static ErrorRetryable DefaultRetryable(string code)
@@ -124,6 +126,10 @@ public static class ErrorCodes
             case STORE_CORRUPT:
                 return ErrorRetryable.Never;
             case CONFIG_INVALID:
+                return ErrorRetryable.AfterFix;
+            case FILE_NOT_FOUND:
+                return ErrorRetryable.AfterFix;
+            case STORE_UNAVAILABLE:
                 return ErrorRetryable.AfterFix;
             default:
                 return ErrorRetryable.AfterFix;

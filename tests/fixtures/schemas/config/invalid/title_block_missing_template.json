@@ -1,0 +1,18 @@
+{
+  "config_version": "1.0",
+  "revision_table": true,
+  "fields": {
+    "part_number": {
+      "source": [
+        "design_intent:metadata.part_number"
+      ],
+      "required": true
+    },
+    "material": {
+      "source": [
+        "part_material"
+      ],
+      "required": false
+    }
+  }
+}

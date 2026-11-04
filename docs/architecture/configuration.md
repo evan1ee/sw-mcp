@@ -1,6 +1,6 @@
 # 13.3 Configuration
 
-> Specification v1.21, section 13.3. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.23, section 13.3. Index and section map: [specifications/README.md](../specifications/README.md).
 
 One configuration format for the core service, the MCP front-end and the add-in's limits, so no module invents its own.
 
@@ -14,13 +14,17 @@ Later sources override earlier ones, key by key:
 4. Environment variables: `SWMCP_<SECTION>__<KEY>`, for example `SWMCP_CORE__IDLE_SHUTDOWN_MIN=60`.
 5. Front-end command-line flags, for `mcp.toolsets` only.
 
-**Security keys come from the user file only.** `access.*` and `solidworks.session` are ignored, with a warning, in project files and environment variables, so a project cannot widen what the core may touch (12.5).
+**Security keys come from the user file only.** `access.*`, `solidworks.session` and `drawing.standard_dir` are ignored, with a warning, in project files and environment variables, so a project cannot widen what the core may touch (12.5). `drawing.standard_dir` is on the list because it names a folder the core reads outside the allowed roots **[Builder's call]**. A relative `drawing.standard_dir`, including the default, is resolved against the installation root that the core service is started with (`CoreService.start(install_root=…)`; in a source checkout, the repository root); an absolute one is used as given. `cad-application` never resolves it: the core service passes the absolute folder in `Settings` (register J12, **[Builder's call]**).
+
+**Environment values [Builder's call]** are read as TOML values (`60`, `true`, `["a"]`, `"text"`); one that does not parse as a TOML value is taken as a string.
 
 ## 13.3.2 Format and validation
 
 - TOML, with `config_version = "1.0"` at the top (ADR-042). The schema is `schemas/config/v1.json`.
 - Validated when read. Unknown keys and wrong types are errors that name the file, line and key. The core refuses to start on an invalid user file. An invalid project file fails the tool call that read it with `CONFIG_INVALID`.
 - Durations are integers with the unit in the key name (`_s`, `_ms`, `_min`, `_days`). Lengths are millimetres (`_mm`).
+- **Where errors point [Builder's call].** The TOML parser gives a line only for syntax errors. For an unknown key or a wrong type in a file that parsed, the error names the file and the dotted key (`drawing.check.epsilon_mm`), not a line. Environment errors name the variable.
+- **Layers [Builder's call].** `cad_application.config` merges and validates layers with no I/O and returns an immutable `Settings`. The core service reads the user file and the environment once at start; the project file is read through the `FileSystem` port when a tool first touches the project, and again when its modification time changes. `schemas/config/v1.json` covers every key in 13.3.3 except `references.high_confidence`, which is added in Phase 2.
 
 ## 13.3.3 Keys
 
@@ -45,7 +49,7 @@ Later sources override earlier ones, key by key:
 | `drawing.check.edge_clearance_mm` | `0.25` | Minimum gap between a text box and a model edge, D3 (11.5.2) |
 | `drawing.check.font_metric_margin` | `0.1` | Text-box enlargement per side, as a fraction of text height, when extents come from font metrics (11.5.2) |
 | `drawing.check.parallel_deg` | `0.01` | Bin width for grouping parallel dimension lines in D5's closed-chain rule (11.5.3) |
-| `drawing.standard_dir` | `standards/iso` in the installation | Drafting standard, templates and title-block mapping (11.2) |
+| `drawing.standard_dir` | `standards/iso` in the installation (in a source checkout, the repository root) | Drafting standard, templates and title-block mapping (11.2) |
 | `references.high_confidence` | set in Phase 2 | Thresholds for 7.4, calibrated on the CAD benchmark |
 | `store.snapshot_keep` | `10` | Snapshots and layouts kept per drawing (13.2.4) |
 | `store.backup_keep` | `5` | Drawing backups kept (ADR-046) |
@@ -75,3 +79,5 @@ required = true
 ```
 
 `source` lists candidates in order, and the first one present wins (3.3 rule 4). `required` fields feed check D8, on top of the minimum in 11.5.3, and `revision_table` says sheets of this template carry a revision table. The field names and template are filled in from the owner's template in Phase 0. How the add-in finds each field on the sheet to read it back is not defined yet; it depends on that template ([register](../specifications/open-decisions.md), K3).
+
+**Loading [Builder's call].** The core reads every `*.toml` in `<drawing.standard_dir>/title-blocks/` and validates it against this format (`schemas/config/title-block/v1.json`). Each file gives D8 one mapping, keyed by `template` and matched against a sheet's `sheet_format` (11.5.1). A sheet whose format has no mapping is `not_evaluated` with `title_block_mapping_missing` (11.5.3). The repository ships no mapping until the owner confirms one (K3); the sheet formats in `standards/iso/templates/` are binary SOLIDWORKS files and are never parsed by the core.

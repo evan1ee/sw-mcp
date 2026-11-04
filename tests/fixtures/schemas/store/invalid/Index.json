@@ -1,0 +1,22 @@
+[
+  {
+    "built_at": "2026-11-04T09:30:15.123Z"
+  },
+  {
+    "built_at": "2026-11-04T09:30:15.123Z",
+    "drawings": {
+      "bad": {
+        "path": "C:\\w\\a.SLDDRW",
+        "fingerprint": "sha256:abababababababababababababababababababababababababababababababab"
+      }
+    }
+  },
+  {
+    "built_at": "2026-11-04T09:30:15.123Z",
+    "drawings": {
+      "drw_01JCX3Z8Q4M5N6P7R8S9T0V1W2": {
+        "path": "C:\\w\\a.SLDDRW"
+      }
+    }
+  }
+]

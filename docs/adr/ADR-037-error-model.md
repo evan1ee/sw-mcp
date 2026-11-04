@@ -21,8 +21,9 @@ The spec requires structured errors (8.2), stable failure reporting (10.4, 11.6)
   | `BACKEND_` | SOLIDWORKS and IPC | `BACKEND_LOST`, `BACKEND_BUSY`, `BACKEND_UI_BLOCKED`, `BACKEND_REBUILD_ERROR`, `BACKEND_READ_ONLY`, `BACKEND_SESSION_AMBIGUOUS`, `BACKEND_VERSION_UNSUPPORTED`, `BACKEND_CAPABILITY_MISSING` |
   | `DRAWING_` | Drawing pipeline and checks | `DRAWING_CHECK_FAILED`, `DRAWING_RELAYOUT_EXHAUSTED`, `DRAWING_UNSUPPORTED_PART` |
   | `AUTH_` | Permissions | `AUTH_SOURCE_WRITE_NOT_ALLOWED` (ADR-022), `AUTH_PATH_DENIED` |
-  | `STORE_` | Project store (13.2) | `STORE_LOCKED`, `STORE_CORRUPT` |
+  | `STORE_` | Project store (13.2) | `STORE_LOCKED`, `STORE_CORRUPT`, `STORE_UNAVAILABLE` (added in v1.23) |
   | `CONFIG_` | Configuration (13.3) | `CONFIG_INVALID` |
+  | `FILE_` | Local files after authorization (12.5) | `FILE_NOT_FOUND` (added in v1.22) |
 
 - Each error carries `code`, a one-line `message`, `retryable` (`never`, `after_fix`, `safe`), and `details` (IDs of the module, item, feature, view or check involved). Stack traces go to logs, never to the agent.
 - **MCP tool responses** use one envelope: `{ "ok": bool, "data": … | null, "error": … | null, "ids": { "request_id", "execution_id"?, "report_id"? } }`. Failed checks are results (`ok: true`, report says FAIL), not errors; errors mean the tool could not do its job.

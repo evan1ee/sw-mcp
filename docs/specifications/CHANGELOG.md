@@ -2,6 +2,40 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.23
+
+Records the six long-term architectural principles in 1.3. Numbers 1–11 are unchanged, so existing references ("principle 9") still resolve.
+
+- **New principles** (1.3): 12 IR-first architecture (the IR is the core, not a wrapper around the SOLIDWORKS API); 13 Recoverability (find the actual model state after a failure; never blindly replay).
+- **Sharpened** (1.3): 1 CAD-neutral semantics, not only concepts; 3 determinism covers execution, not only compilation; 5 indexes are never identity; 6 verification covers geometry, dimensions, tolerances and drawings against the specification; 7 points to 8.4 and 8.5.
+- **Overview** (3): points to the principles.
+- **New ADR-054**: the principles are binding; departing from one needs an ADR.
+
+Also in 1.23 (nothing was released between 1.22 and 1.23): gaps found while building milestone 5 ([register](open-decisions.md), J12–J20 closed, J21 open). All **[Builder's call]**.
+
+- **Errors** (ADR-037, 12.5, 13.2.2): new code `STORE_UNAVAILABLE` (`after_fix`) for a store file that cannot be read or written; a file that exists but cannot be read is `FILE_NOT_FOUND` with `details.reason: unreadable`; an unexpected exception in a tool call is a protocol error, not an envelope; in a job it is FAILED with `EXEC_INTERRUPTED`.
+- **Tool contracts** (12.4.2, 12.4.5): an unknown tool name raises to the transport (protocol error); `elapsed_ms` is absent while `started_at` is null.
+- **Paths** (12.5): alternate data streams (a `:` after the drive) are refused; a `$` is refused only as an environment reference; a store folder that resolves outside the project's allowed root is refused.
+- **Lifecycle** (8.4): which `document.event` the job caused (the add-in tags events with the command's `_meta`); when the drawing is not closed, and what a failed close does; `STORE_UNAVAILABLE` as a failure.
+- **Store** (13.2): I/O error rule, strict JSON, `job_id` must match its folder; recovery when a store is first opened at any time, the journal-wins rule bounded by the 8.4 table, RECOVERY jobs, orphan job folders, unreadable known-stores list; snapshots validated before they are stored; when clean-up runs in Phase 1a.
+- **Configuration** (13.3): a relative `drawing.standard_dir` resolves against the installation root given to the core service.
+- **ADR-053:** the engine lock is held across small record writes (never a `Backend` call), and what that costs on a slow disk.
+- **G3:** `store` joins the allowed log fields; emitters use `error_code` and `reason`.
+
+## What changed in 1.22
+
+Closes gaps found when planning `check_drawing` and `get_drawing_report` over the store and jobs ([register](open-decisions.md), J1–J10), and logs one for the live read-back (J11). All **[Builder's call]**.
+
+- **Lifecycle** (8.4): transitions to ABORTED and FAILED from every non-final state; PLANNED is the queued state; `queued_position` defined; FAILED final in Phase 1; what each state means for `check_drawing`, its cancel boundaries, and job warnings outside the report.
+- **Job engine** (new ADR-053): a synchronous engine run by one worker thread; long-polls wait through the `Clock` port. Cancel during EXECUTING needs the transport milestone's reader thread.
+- **IPC** (8.7): an unknown sheet fails `drawing.snapshot` with `IR_REFERENCE_UNRESOLVED`; `check_drawing` opens the drawing read-only with `document.open` and closes it if it owns it.
+- **Tool contracts** (12.4): contract-file format and meta-schema `schemas/mcp/contract/v0.json`; annotation defaults; the table check; `ids`; invalid arguments are `IR_SCHEMA_INVALID`, unknown tools a protocol error; `ToolResult` with a one-line summary; cursor format; full Phase 1a contracts (12.4.5), with no `drawing_intent` argument until Phase 1b and no `scheme` section in Phase 1a.
+- **File access** (12.5): checks as a pure function over the `FileSystem` port, `details.reason` values, store-folder hash. New error code `FILE_NOT_FOUND` with the `FILE_` prefix (ADR-037).
+- **Store** (13.1, 13.2): `check_drawing` creates a store-side drawing record; record contents and `schemas/store/v0.json`; report meta files; drawing matching; known-stores list; lock, atomic write, journal append and order rules; Phase 1a recovery; what retention counts as a reference; the exact `.gitignore`.
+- **Configuration** (13.3): `drawing.standard_dir` is a user-file key; environment values parsed as TOML; error locations; layer merging in `cad-application`; loading title-block mappings, none shipped until K3 closes.
+- **Report** (11.5.4): store IDs and job warnings stay out of the report file.
+- **Guidelines** (G2, G3): ports `BackendProvider`, `FileSystem`, `EventLog`; `FakeStore` is `FileStore` over `MemoryFileSystem`; where correlation IDs are made; the log sink drops unknown fields.
+
 ## What changed in 1.21
 
 Closes gaps found when planning the IPC side ([register](open-decisions.md), K4–K6).
