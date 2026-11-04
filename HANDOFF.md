@@ -6,6 +6,7 @@ Last updated: 2026-11-04. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 - **Phase:** Milestone 7 ("Drawing Template IR & Production Drawing Creation" - IR definition, schema, fixtures, contracts, pure validator & parser) complete.
 - **Spec:** v1.24 across all 27 topic files. Section 11.12 authored. ADR-055 authored and recorded. Open decision register: K7 added (backend `.slddrt` generation path, blocks `later`), K3 (sheet format field mapping locators) and J11 (draft-view switched indicator) remain open. Open count is 3. Catalogue has 40 codes.
+- **Branches:** PR [#8](https://github.com/evan1ee/sw-mcp/pull/8) opened from `feat/drawing-template-ir` targeting `main` (milestones 1–6 merged: [#1](https://github.com/evan1ee/sw-mcp/pull/1), [#2](https://github.com/evan1ee/sw-mcp/pull/2), [#4](https://github.com/evan1ee/sw-mcp/pull/4), [#5](https://github.com/evan1ee/sw-mcp/pull/5), [#6](https://github.com/evan1ee/sw-mcp/pull/6), [#7](https://github.com/evan1ee/sw-mcp/pull/7)).
 - **Verification:**
   - `uv run python scripts/generate_contracts.py --check` passes cleanly (0 drift).
   - `uv run ruff check` and `uv run ruff format --check` pass cleanly across all 352 files.
