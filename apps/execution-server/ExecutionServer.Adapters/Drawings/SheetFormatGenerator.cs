@@ -65,6 +65,12 @@ public sealed class SheetFormatGenerator
         double widthMeters = widthMm / 1000.0;
         double heightMeters = heightMm / 1000.0;
 
+        var templatePath = ResolveDrawingTemplatePath(_sw);
+        if (string.IsNullOrEmpty(templatePath))
+        {
+            throw new IpcException(ErrorCodes.FILE_NOT_FOUND, "No valid SOLIDWORKS drawing template (.drwdot) found to create drawing.");
+        }
+
         IModelDoc2? modelDoc = null;
         IDrawingDoc? drawing = null;
         string? tempDocTitle = null;
@@ -73,11 +79,22 @@ public sealed class SheetFormatGenerator
         {
             ct.ThrowIfCancellationRequested();
 
-            modelDoc = (IModelDoc2)_sw.INewDocument2(
-                "",
-                (int)swDwgPaperSizes_e.swDwgPapersUserDefined,
-                widthMeters,
-                heightMeters);
+            try
+            {
+                modelDoc = (IModelDoc2)_sw.NewDocument(
+                    templatePath,
+                    (int)swDwgPaperSizes_e.swDwgPapersUserDefined,
+                    widthMeters,
+                    heightMeters);
+            }
+            catch
+            {
+                modelDoc = (IModelDoc2)_sw.INewDocument2(
+                    templatePath,
+                    (int)swDwgPaperSizes_e.swDwgPapersUserDefined,
+                    widthMeters,
+                    heightMeters);
+            }
 
             if (modelDoc == null)
             {
@@ -92,6 +109,11 @@ public sealed class SheetFormatGenerator
             try
             {
                 ct.ThrowIfCancellationRequested();
+
+                // Clear any pre-existing entities from the base template
+                modelDoc.Extension.SelectAll();
+                modelDoc.EditDelete();
+                modelDoc.ClearSelection2(true);
 
                 // 1. Draw outer border lines
                 var borderSegments = SheetFormatGeometry.ComputeBorderLines(
@@ -170,25 +192,35 @@ public sealed class SheetFormatGenerator
                     }
                 }
 
-                // Save sheet format to destination path
-                int errors = 0;
-                int warnings = 0;
-                bool saved = modelDoc.SaveAs4(
-                    p.DestinationPath,
-                    (int)swSaveAsVersion_e.swSaveAsCurrentVersion,
-                    (int)swSaveAsOptions_e.swSaveAsOptions_Silent,
-                    ref errors,
-                    ref warnings);
-
-                if (!saved)
-                {
-                    throw new IpcException(ErrorCodes.FILE_NOT_FOUND, $"SOLIDWORKS SaveAs4 failed for '{p.DestinationPath}', errors: {errors}, warnings: {warnings}.");
-                }
             }
             finally
             {
                 // Always exit template edit mode back to normal sheet
                 drawing.EditSheet();
+            }
+
+            // Save sheet format to destination path
+            ISheet? sheet = null;
+            try
+            {
+                sheet = (ISheet)drawing.GetCurrentSheet();
+                if (sheet == null)
+                {
+                    throw new IpcException(ErrorCodes.BACKEND_LOST, "Failed to get current sheet for sheet format persistence.");
+                }
+
+                bool saved = sheet.SaveFormat(p.DestinationPath);
+                if (!saved)
+                {
+                    throw new IpcException(ErrorCodes.FILE_NOT_FOUND, $"SOLIDWORKS SaveFormat failed for '{p.DestinationPath}'.");
+                }
+            }
+            finally
+            {
+                if (sheet != null)
+                {
+                    Marshal.ReleaseComObject(sheet);
+                }
             }
 
             return new SheetFormatGenerateResult
@@ -335,5 +367,53 @@ public sealed class SheetFormatGenerator
         catch
         {
         }
+    }
+
+    public static string ResolveDrawingTemplatePath(ISldWorks sw, string? preferredPath = null)
+    {
+        if (!string.IsNullOrEmpty(preferredPath) && File.Exists(preferredPath))
+        {
+            return preferredPath!;
+        }
+
+        try
+        {
+            var userPref = sw.GetUserPreferenceStringValue((int)swUserPreferenceStringValue_e.swDefaultTemplateDrawing);
+            if (!string.IsNullOrEmpty(userPref) && File.Exists(userPref))
+            {
+                return userPref!;
+            }
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            var docTmpl = sw.GetDocumentTemplate((int)swDocumentTypes_e.swDocDRAWING, string.Empty, 0, 0, 0);
+            if (!string.IsNullOrEmpty(docTmpl) && File.Exists(docTmpl))
+            {
+                return docTmpl!;
+            }
+        }
+        catch
+        {
+        }
+
+        var candidates = new[]
+        {
+            @"C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2025\templates\Drawing.drwdot",
+            @"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\data\templates\Drawing.drwdot",
+            @"C:\ProgramData\SolidWorks\templates\Drawing.drwdot"
+        };
+        foreach (var candidate in candidates)
+        {
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return string.Empty;
     }
 }

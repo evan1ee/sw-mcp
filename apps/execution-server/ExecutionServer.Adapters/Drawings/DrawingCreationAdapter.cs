@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using ExecutionServer.Core.Drawings;
@@ -47,28 +48,31 @@ public sealed class DrawingCreationAdapter
             heightM = 0.297;
         }
 
-        var templatePath = p.TemplatePath;
+        var templatePath = SheetFormatGenerator.ResolveDrawingTemplatePath(_sw, p.TemplatePath);
         if (string.IsNullOrEmpty(templatePath))
         {
-            try
-            {
-                templatePath = _sw.GetUserPreferenceStringValue((int)swUserPreferenceStringValue_e.swDefaultTemplateDrawing);
-            }
-            catch
-            {
-                templatePath = string.Empty;
-            }
+            throw new IpcException(ErrorCodes.FILE_NOT_FOUND, $"Drawing template file not found: '{p.TemplatePath}'.");
         }
-        if (templatePath == null) templatePath = string.Empty;
 
         IModelDoc2? modelDoc = null;
         try
         {
-            modelDoc = (IModelDoc2)_sw.INewDocument2(
-                templatePath,
-                (int)swDwgPaperSizes_e.swDwgPapersUserDefined,
-                widthM,
-                heightM);
+            try
+            {
+                modelDoc = (IModelDoc2)_sw.NewDocument(
+                    templatePath,
+                    (int)swDwgPaperSizes_e.swDwgPapersUserDefined,
+                    widthM,
+                    heightM);
+            }
+            catch
+            {
+                modelDoc = (IModelDoc2)_sw.INewDocument2(
+                    templatePath,
+                    (int)swDwgPaperSizes_e.swDwgPapersUserDefined,
+                    widthM,
+                    heightM);
+            }
 
             if (modelDoc == null)
             {
@@ -88,6 +92,7 @@ public sealed class DrawingCreationAdapter
                     if (!string.IsNullOrEmpty(p.SheetFormatPath))
                     {
                         sheet.SetSheetFormatName(p.SheetFormatPath);
+                        sheet.SetTemplateName(p.SheetFormatPath);
                         sheet.ReloadTemplate(false);
                     }
                 }
@@ -155,6 +160,30 @@ public sealed class DrawingCreationAdapter
                     !string.Equals(curTitle, p.Path, StringComparison.OrdinalIgnoreCase))
                 {
                     Marshal.ReleaseComObject(modelDoc);
+                    modelDoc = null;
+                }
+            }
+
+            if (modelDoc == null)
+            {
+                try
+                {
+                    modelDoc = (IModelDoc2)_sw.GetOpenDocument(p.Path);
+                }
+                catch
+                {
+                    modelDoc = null;
+                }
+            }
+
+            if (modelDoc == null)
+            {
+                try
+                {
+                    modelDoc = (IModelDoc2)_sw.GetOpenDocumentByName(p.Path);
+                }
+                catch
+                {
                     modelDoc = null;
                 }
             }

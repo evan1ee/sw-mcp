@@ -280,7 +280,7 @@ public class SwAddin : ISwAddin
             ["started_at"] = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
         };
 
-        File.WriteAllText(_sessionFilePath, sessionObj.ToString(Formatting.Indented), Encoding.UTF8);
+        File.WriteAllText(_sessionFilePath, sessionObj.ToString(Formatting.Indented), new UTF8Encoding(false));
     }
 
     private static (string version, string sp) ParseRevision(string revision)
