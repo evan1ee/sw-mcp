@@ -42,7 +42,14 @@ Last updated: 2026-11-04. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Next Steps
 
-1. **Milestone 6 ("transport and first live smoke"):**
+1. **Implement Drawing Template IR:**
+   - Execute [Drawing Template IR Implementation Plan](docs/superpowers/plans/2026-11-04-drawing-template-ir.md) per [design spec](docs/superpowers/specs/2026-11-04-drawing-template-ir-design.md).
+   - Task 1: Spec update to v1.24, ADR-055 (generated sheet formats), open item K7.
+   - Task 2: Module key `drawing_template` and bundle manifest validation rules.
+   - Task 3: JSON schema `schemas/drawing-template/v0.json` and fixtures.
+   - Task 4: Pure validator in `cad_ir.drawing_template`.
+   - Task 5: Full verification and handoff.
+2. **Milestone 6 ("transport and first live smoke"):**
    - Named-pipe transport and session discovery (§8.6.1).
    - Heartbeat and reader thread in `IpcClient`.
    - Core pipe and stdio front-end.

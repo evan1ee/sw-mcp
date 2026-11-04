@@ -12,6 +12,7 @@
   - additions to the Part Feature Graph (`realizes`, `origin`)
   - the Drawing Intent IR, including `scheme_overrides` and `context`, and the Resolved Scheme
   - the Drawing Layout IR
+  - the Drawing Template IR (section 11.12, ADR-055)
   - the drawing report
   - the Design Intent minimum and Assembly Graph v0 schemas, so their references stay stable before they are implemented
 - Build the drawing benchmark parts and owner-approved reference drawings.
@@ -65,7 +66,7 @@ Phase 1 ships in three increments, each usable on its own (ADR-030) **[Builder's
 
 ### Phase 1b — Drawing pipeline on hand-modelled parts
 
-- Shared IR core and bundle validation; Drawing Intent IR (with `context` fallback), Resolved Scheme (11.10.1) and Drawing Layout IR (planned/as-built, pins); read-only Part Feature Graph; ISO standard file, templates and profiles. No Design Intent or Assembly Graph IR is required.
+- Shared IR core and bundle validation; Drawing Intent IR (with `context` fallback), Resolved Scheme (11.10.1), Drawing Layout IR (planned/as-built, pins) and Drawing Template IR (11.12, ADR-055) for generated sheet formats alongside owner-supplied `.slddrt` formats; read-only Part Feature Graph; ISO standard file, templates and profiles. No Design Intent or Assembly Graph IR is required.
 - Tier 1 Read for every feature plus generic dimension read (5.3.2, ADR-029). Phase 1 geometry references (11.1).
 - Pipeline 11.4: view planning, model-item insertion, cleanup, gap filling, tolerances/GD&T, placement engine, bounded re-layout (11.6). All of D1–D10.
 - MCP tools 12.2 G, the document tools (12.2 A), `get_feature_tree`, `inspect_geometry`, toolsets, summary-first responses, CI token budget check (12.3). Fine-grained drawing tools in `detail` (11.9).
