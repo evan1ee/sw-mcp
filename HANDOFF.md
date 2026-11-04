@@ -23,7 +23,7 @@ Last updated: 2026-11-04. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
   - Live smoke test results (`tests/live/test_live_smoke.py`):
     - `test_live_session_discovery`: PASSED
     - `test_live_session_handshake`: PASSED (JSON-RPC `session.hello` verified)
-    - `test_live_drawing_snapshot`: SKIPPED (pending `SW_MCP_TEST_DRAWING` scratch file path)
+    - `test_live_drawing_snapshot`: PASSED (verified live against `dissectiontemplate.slddrw`, schema validation passed cleanly)
 
 ## Changes Made
 
