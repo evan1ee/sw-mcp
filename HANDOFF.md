@@ -6,14 +6,14 @@ Last updated: 2026-11-04. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 - **Phase:** Milestone 6 ("transport and live smoke") implementation complete. IPC named-pipe transport, session discovery, add-in pipe host, UI dispatcher, settings guard, document event monitor, drawing snapshot adapter, core pipe host, MCP front-end stdio server, and live smoke test suite are all in place.
 - **Spec:** v1.23, with open items in the [register](docs/specifications/open-decisions.md): K3 (sheet format field mapping) and J11 (draft-view switched indicator in snapshot). J21 is settled. Catalogue has 40 codes.
-- **Branches:** Milestone 6 implementation complete on working branch, ready for review/merge.
-- **Verification:**
+- **Branches:** milestones 1, 2, 3, 4, 5, and 6 are merged to `main` ([#1](https://github.com/evan1ee/sw-mcp/pull/1), [#2](https://github.com/evan1ee/sw-mcp/pull/2), [#4](https://github.com/evan1ee/sw-mcp/pull/4), [#5](https://github.com/evan1ee/sw-mcp/pull/5), [#6](https://github.com/evan1ee/sw-mcp/pull/6), [#7](https://github.com/evan1ee/sw-mcp/pull/7)).
+- **Verification on main:**
   - `uv run python scripts/generate_contracts.py --check` passes cleanly (0 drift).
   - `uv run ruff check` and `uv run ruff format --check` pass cleanly across all 345 files.
   - `uv run pyright` passes (0 errors, 0 warnings).
   - `uv run lint-imports` passes (5 contracts kept, 0 broken).
-  - `uv run pytest` passes (2371 passed, 3 skipped in 37.25s).
-  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (139 passed, 0 failed).
+  - `uv run pytest` passes (2371 passed, 3 skipped in 39.8s).
+  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (140 passed, 0 failed).
   - `dotnet build apps/execution-server/ExecutionServer.sln` succeeds with 0 warnings, 0 errors.
 - **Built in Milestone 6:**
   - `apps/execution-server/ExecutionServer.Tests/Support/ScriptedHandler.cs`: C# error scripting support (J21 settled), enabling full transcript coverage on C#.
