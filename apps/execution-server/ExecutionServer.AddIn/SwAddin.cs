@@ -6,9 +6,10 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
-using ExecutionServer.AddIn.Dispatch;
+using ExecutionServer.Core.Diagnostics;
+using ExecutionServer.Core.Dispatch;
 using ExecutionServer.AddIn.Events;
-using ExecutionServer.AddIn.Pipe;
+using ExecutionServer.Core.Pipe;
 using ExecutionServer.Core.Ipc;
 using ExecutionServer.Core.Ipc.Generated;
 using ExecutionServer.Core.Ledger;
@@ -34,8 +35,8 @@ public class SwAddin : ISwAddin
     private UIThreadDispatcher? _dispatcher;
     private string? _sessionFilePath;
     private OperationLedger? _ledger;
-    private DocumentEventMonitor? _eventMonitor;
-    private Diagnostics.SettingsGuard? _settingsGuard;
+    private SldWorksDocumentEventMonitor? _eventMonitor;
+    private SettingsGuard? _settingsGuard;
 
     public ISldWorks? SwApp => _swApp;
 
@@ -47,8 +48,8 @@ public class SwAddin : ISwAddin
         try
         {
             // 0. Recover any crashed settings from previous sessions
-            Diagnostics.SettingsGuard.RecoverAllCrashFiles(new Diagnostics.SldWorksSettingsTarget(_swApp));
-            _settingsGuard = new Diagnostics.SettingsGuard(new Diagnostics.SldWorksSettingsTarget(_swApp));
+            SettingsGuard.RecoverAllCrashFiles(new Diagnostics.SldWorksSettingsTarget(_swApp));
+            _settingsGuard = new SettingsGuard(new Diagnostics.SldWorksSettingsTarget(_swApp));
 
             // 1. Capture UI-thread SynchronizationContext
             var syncContext = SynchronizationContext.Current;
@@ -101,7 +102,7 @@ public class SwAddin : ISwAddin
             _ledger = new OperationLedger();
 
             // 5a. Start DocumentEventMonitor
-            _eventMonitor = new DocumentEventMonitor((method, payload) => _pipeServer?.ActiveSession?.Notify(method, payload));
+            _eventMonitor = new SldWorksDocumentEventMonitor((method, payload) => _pipeServer?.ActiveSession?.Notify(method, payload));
             _eventMonitor.Attach(_swApp);
 
             var handler = new DefaultAddinCommandHandler(_swApp, _eventMonitor, _settingsGuard);
@@ -293,14 +294,14 @@ public class SwAddin : ISwAddin
     private sealed class DefaultAddinCommandHandler : ICommandHandler
     {
         private readonly ISldWorks _sw;
-        private readonly DocumentEventMonitor? _eventMonitor;
-        private readonly Diagnostics.SettingsGuard? _settingsGuard;
+        private readonly ExecutionServer.Core.Events.DocumentEventMonitor? _eventMonitor;
+        private readonly SettingsGuard? _settingsGuard;
         private readonly Adapters.Drawings.DrawingSnapshotAdapter _snapshotAdapter;
 
         public DefaultAddinCommandHandler(
             ISldWorks sw,
-            DocumentEventMonitor? eventMonitor = null,
-            Diagnostics.SettingsGuard? settingsGuard = null)
+            ExecutionServer.Core.Events.DocumentEventMonitor? eventMonitor = null,
+            SettingsGuard? settingsGuard = null)
         {
             _sw = sw;
             _eventMonitor = eventMonitor;

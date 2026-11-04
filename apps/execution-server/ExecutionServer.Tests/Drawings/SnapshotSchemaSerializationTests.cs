@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using ExecutionServer.Adapters.Drawings;
+using ExecutionServer.Core.Drawings;
 using ExecutionServer.Core.Ipc;
 using ExecutionServer.Core.Ipc.Generated;
 using Newtonsoft.Json.Linq;
@@ -15,7 +15,7 @@ public sealed class SnapshotSchemaSerializationTests
     public void FilterSheets_ReturnsAllSheetsWhenNoFilterGiven()
     {
         var available = new List<string> { "Sheet1", "Sheet2" };
-        var filtered = DrawingSnapshotAdapter.FilterSheets(available, null);
+        var filtered = SnapshotBuilder.FilterSheets(available, null);
         Assert.Equal(2, filtered.Count);
         Assert.Equal("Sheet1", filtered[0]);
         Assert.Equal("Sheet2", filtered[1]);
@@ -25,7 +25,7 @@ public sealed class SnapshotSchemaSerializationTests
     public void FilterSheets_ReturnsFilteredSheetsWhenValid()
     {
         var available = new List<string> { "Sheet1", "Sheet2", "Sheet3" };
-        var filtered = DrawingSnapshotAdapter.FilterSheets(available, new List<string> { "Sheet2" });
+        var filtered = SnapshotBuilder.FilterSheets(available, new List<string> { "Sheet2" });
         Assert.Single(filtered);
         Assert.Equal("Sheet2", filtered[0]);
     }
@@ -35,7 +35,7 @@ public sealed class SnapshotSchemaSerializationTests
     {
         var available = new List<string> { "Sheet1", "Sheet2" };
         var ex = Assert.Throws<IpcException>(() =>
-            DrawingSnapshotAdapter.FilterSheets(available, new List<string> { "Nope" }));
+            SnapshotBuilder.FilterSheets(available, new List<string> { "Nope" }));
 
         Assert.Equal(ErrorCodes.IR_REFERENCE_UNRESOLVED, ex.Code);
         Assert.Contains("Nope", ex.Message);
@@ -48,7 +48,7 @@ public sealed class SnapshotSchemaSerializationTests
     [Fact]
     public void SnapshotJson_CompliesWithDrawingGeometrySnapshotSchema()
     {
-        var snapshot = DrawingSnapshotAdapter.BuildSnapshotJson(
+        var snapshot = SnapshotBuilder.BuildSnapshotJson(
             document: "C:/Work/bracket.slddrw",
             revision: 3,
             version: "2025",

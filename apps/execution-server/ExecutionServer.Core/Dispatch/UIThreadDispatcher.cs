@@ -3,7 +3,7 @@ using System.Threading;
 using ExecutionServer.Core.Ipc;
 using Newtonsoft.Json.Linq;
 
-namespace ExecutionServer.AddIn.Dispatch;
+namespace ExecutionServer.Core.Dispatch;
 
 /// <summary>
 /// Dispatches IPC commands to the captured UI thread SynchronizationContext (spec 8.6.2).

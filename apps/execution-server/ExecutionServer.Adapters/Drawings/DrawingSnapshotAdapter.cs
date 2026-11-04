@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
+using ExecutionServer.Core.Drawings;
 using ExecutionServer.Core.Ipc;
 using ExecutionServer.Core.Ipc.Generated;
 using Newtonsoft.Json.Linq;
@@ -26,27 +27,7 @@ public sealed class DrawingSnapshotAdapter
     }
 
     public static List<string> FilterSheets(IReadOnlyList<string> availableSheets, IReadOnlyList<string>? requestedSheets)
-    {
-        if (requestedSheets == null || requestedSheets.Count == 0)
-        {
-            return availableSheets.ToList();
-        }
-
-        var availableSet = new HashSet<string>(availableSheets, StringComparer.OrdinalIgnoreCase);
-        var missing = requestedSheets.Where(s => !availableSet.Contains(s)).ToList();
-
-        if (missing.Count > 0)
-        {
-            var missingArray = new JArray(missing);
-            var details = new JObject { ["sheets"] = missingArray };
-            throw new IpcException(
-                ErrorCodes.IR_REFERENCE_UNRESOLVED,
-                $"Sheet {string.Join(", ", missing)} does not exist.",
-                details);
-        }
-
-        return requestedSheets.ToList();
-    }
+        => SnapshotBuilder.FilterSheets(availableSheets, requestedSheets);
 
     public static JObject BuildSnapshotJson(
         string document,
@@ -55,35 +36,7 @@ public sealed class DrawingSnapshotAdapter
         string servicePack,
         DateTime capturedAt,
         Dictionary<string, JObject> sheets)
-    {
-        var sheetsObj = new JObject();
-        foreach (var kvp in sheets)
-        {
-            sheetsObj[kvp.Key] = kvp.Value;
-        }
-
-        var drawingObj = new JObject
-        {
-            ["document"] = document
-        };
-        if (revision.HasValue)
-        {
-            drawingObj["revision"] = revision.Value;
-        }
-
-        return new JObject
-        {
-            ["schema_version"] = "0.1",
-            ["drawing"] = drawingObj,
-            ["solidworks"] = new JObject
-            {
-                ["version"] = version,
-                ["service_pack"] = servicePack
-            },
-            ["captured_at"] = capturedAt.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            ["sheets"] = sheetsObj
-        };
-    }
+        => SnapshotBuilder.BuildSnapshotJson(document, revision, version, servicePack, capturedAt, sheets);
 
     public JToken Snapshot(SnapshotParams p, CancellationToken ct)
     {

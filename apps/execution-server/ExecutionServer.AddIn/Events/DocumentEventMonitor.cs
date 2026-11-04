@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using ExecutionServer.Core.Events;
 using ExecutionServer.Core.Ipc.Generated;
 using Newtonsoft.Json.Linq;
 using SolidWorks.Interop.sldworks;
@@ -8,68 +9,16 @@ namespace ExecutionServer.AddIn.Events;
 
 /// <summary>
 /// Monitors SOLIDWORKS document lifecycle events and forwards them as document.event JSON-RPC notifications (spec 8.6.5).
-/// Tags events that occur during an active AI job with _meta.job_id.
 /// </summary>
-public sealed class DocumentEventMonitor : IDisposable
+public sealed class SldWorksDocumentEventMonitor : DocumentEventMonitor
 {
-    private readonly Action<string, JToken> _notificationSink;
     private ISldWorks? _sw;
     private DSldWorksEvents_ActiveDocChangeNotifyEventHandler? _activeDocHandler;
     private DSldWorksEvents_FileCloseNotifyEventHandler? _fileCloseHandler;
-    private readonly object _gate = new object();
-    private string? _currentJobId;
-    private bool _disposed;
 
-    public DocumentEventMonitor(Action<string, JToken> notificationSink)
+    public SldWorksDocumentEventMonitor(Action<string, JToken> notificationSink)
+        : base(notificationSink)
     {
-        _notificationSink = notificationSink ?? throw new ArgumentNullException(nameof(notificationSink));
-    }
-
-    public string? CurrentJobId
-    {
-        get
-        {
-            lock (_gate)
-            {
-                return _currentJobId;
-            }
-        }
-        set
-        {
-            lock (_gate)
-            {
-                _currentJobId = value;
-            }
-        }
-    }
-
-    public void OnDocumentEvent(string document, DocumentEventParamsEvent evt)
-    {
-        string? jobId;
-        lock (_gate)
-        {
-            if (_disposed)
-            {
-                return;
-            }
-            jobId = _currentJobId;
-        }
-
-        var p = new DocumentEventParams
-        {
-            Document = document,
-            Event = evt,
-            Meta = jobId != null ? new Meta { JobId = jobId } : null
-        };
-
-        try
-        {
-            _notificationSink("document.event", JObject.FromObject(p));
-        }
-        catch
-        {
-            // Sink might be closed
-        }
     }
 
     public void Attach(ISldWorks sw)
@@ -131,12 +80,9 @@ public sealed class DocumentEventMonitor : IDisposable
         }
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
-        lock (_gate)
-        {
-            _disposed = true;
-        }
+        base.Dispose();
         Detach();
     }
 }

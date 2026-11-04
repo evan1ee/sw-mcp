@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using ExecutionServer.AddIn.Diagnostics;
-using ExecutionServer.AddIn.Events;
+using ExecutionServer.Core.Diagnostics;
+using ExecutionServer.Core.Events;
 using ExecutionServer.Core.Ipc.Generated;
 using Newtonsoft.Json.Linq;
 using Xunit;

@@ -4,11 +4,11 @@ using System.IO.Pipes;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Threading;
-using ExecutionServer.AddIn.Dispatch;
+using ExecutionServer.Core.Dispatch;
 using ExecutionServer.Core.Ipc;
 using ExecutionServer.Core.Ledger;
 
-namespace ExecutionServer.AddIn.Pipe;
+namespace ExecutionServer.Core.Pipe;
 
 /// <summary>
 /// In-process named-pipe server for the SOLIDWORKS add-in (spec 8.6.1).
