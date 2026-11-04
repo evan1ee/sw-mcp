@@ -1,6 +1,6 @@
 # 18. Roadmap
 
-> Specification v1.19, section 18. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.20, section 18. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## Phase 0 — Audit and Contracts
 
@@ -46,6 +46,8 @@ The design rests on API behavior not yet proven. Each assumption has a live test
 | A12 | The agent can share the engineer's SOLIDWORKS session under 8.3 rule 13 | Dedicated second SOLIDWORKS instance, subject to the license check | 8.3 | 1a |
 | A13 | SOLIDWORKS 2025 loads an add-in registered for the current user only (`HKCU`) (ADR-038) | Elevated machine-wide `RegAsm /codebase` registration script | 8.2 | 1a |
 | A14 | Commands posted from the add-in's pipe thread through the UI thread's synchronization context run reliably, and are deferred, not lost, while SOLIDWORKS is busy or showing a modal dialog (8.6.2) | Drive the queue from a SOLIDWORKS idle-notification handler instead | 8.6.2 | 1a |
+| A15 | The API gives what 11.5.1 needs for D5 and D10: a dimension's model parameter full name, its parentheses state, dangling state (`IAnnotation.IsDangling`), and whether an attachment is a silhouette edge | Field left out, so the check reports `not_evaluated` (11.5.3) until another source is found | 11.5.1, 11.5.3 | 1a |
+| A16 | `check_drawing` can rebuild a borrowed drawing in memory and read its unsaved-changes state without leaving it changed for the engineer (ADR-046) | Read the last rebuild state without forcing a rebuild, and record that in the report | 8.4, 11.5.3 | 1a |
 
 ## Phase 1 — Production Drawings
 

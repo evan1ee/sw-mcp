@@ -1,6 +1,6 @@
 # 8. Execution Engine
 
-> Specification v1.19, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.20, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 8.1 Purpose
 
@@ -85,7 +85,7 @@ stateDiagram-v2
 | --- | --- | --- |
 | `plan` | `execute_plan` | Run the compiled plan; API and geometry verification (10.2) |
 | `produce_drawing` | `produce_drawing`, `relayout_drawing` | Apply layout and read back; drawing checks (11.5). A failed check moves the job back to EXECUTING for the next re-layout step (11.6) until the check passes or the limits in 11.6 are reached; then FAILED with the conflict list |
-| `check_drawing` | `check_drawing` | Read back only; checks. Never saves the drawing. It may switch draft-quality views to high quality in memory for read-back (11.5) and reports that it did |
+| `check_drawing` | `check_drawing` | Read back only; checks. Never saves the drawing. It may switch draft-quality views to high quality in memory for read-back (11.5) and reports that it did. It may rebuild in memory for D10 (11.5.3, A16) |
 
 - Jobs run one at a time per SOLIDWORKS session (8.3 rule 13), in one queue shared by every connected agent (ADR-041). A job keeps running when the agent that started it disconnects. Further jobs wait in a queue and report `queued` through `get_execution_status`.
 - `cancel_execution` takes effect between commands, never in the middle of one. A cancelled job ends in ABORTED after the current command finishes; what it changed is listed, and the undo object (8.5) is rolled back unless the caller asks to keep the partial result.

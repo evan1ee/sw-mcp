@@ -1,6 +1,6 @@
 # 13.3 Configuration
 
-> Specification v1.19, section 13.3. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.20, section 13.3. Index and section map: [specifications/README.md](../specifications/README.md).
 
 One configuration format for the core service, the MCP front-end and the add-in's limits, so no module invents its own.
 
@@ -44,6 +44,7 @@ Later sources override earlier ones, key by key:
 | `drawing.check.line_clearance_mm` | `0.25` | Minimum gap between a text box and another annotation's lines, D2 (11.5.2) |
 | `drawing.check.edge_clearance_mm` | `0.25` | Minimum gap between a text box and a model edge, D3 (11.5.2) |
 | `drawing.check.font_metric_margin` | `0.1` | Text-box enlargement per side, as a fraction of text height, when extents come from font metrics (11.5.2) |
+| `drawing.check.parallel_deg` | `0.01` | Bin width for grouping parallel dimension lines in D5's closed-chain rule (11.5.3) |
 | `drawing.standard_dir` | `standards/iso` in the installation | Drafting standard, templates and title-block mapping (11.2) |
 | `references.high_confidence` | set in Phase 2 | Thresholds for 7.4, calibrated on the CAD benchmark |
 | `store.snapshot_keep` | `10` | Snapshots and layouts kept per drawing (13.2.4) |
@@ -58,6 +59,7 @@ The mapping from title-block fields to value sources (11.1, 11.2) is data, kept 
 ```toml
 config_version = "1.0"
 template = "Company-A3.slddrt"
+revision_table = true
 
 [fields.part_number]
 source = ["design_intent:metadata.part_number", "drawing_intent:context.metadata.part_number", "part_property:PartNo"]
@@ -72,4 +74,4 @@ source = ["drawing_intent:general_tolerance"]
 required = true
 ```
 
-`source` lists candidates in order, and the first one present wins (3.3 rule 4). `required` fields feed check D8. The field names and template are filled in from the owner's template in Phase 0.
+`source` lists candidates in order, and the first one present wins (3.3 rule 4). `required` fields feed check D8, on top of the minimum in 11.5.3, and `revision_table` says sheets of this template carry a revision table. The field names and template are filled in from the owner's template in Phase 0. How the add-in finds each field on the sheet to read it back is not defined yet; it depends on that template ([register](../specifications/open-decisions.md), K3).

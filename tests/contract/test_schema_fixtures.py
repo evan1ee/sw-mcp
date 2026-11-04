@@ -16,6 +16,7 @@ FIXTURES_DIR = ROOT / "tests" / "fixtures" / "schemas"
 COMMON_ID = "https://sw-mcp.invalid/schemas/common/v0.json"
 BUNDLE_ID = "https://sw-mcp.invalid/schemas/bundle/v1.json"
 SNAPSHOT_ID = "https://sw-mcp.invalid/schemas/drawing-geometry-snapshot/v0.json"
+REPORT_ID = "https://sw-mcp.invalid/schemas/drawing-report/v0.json"
 
 type Json = Any
 
@@ -113,6 +114,26 @@ def test_snapshot_valid_accepted(path: Path) -> None:
 @pytest.mark.parametrize("path", _snapshot_cases("invalid"))
 def test_snapshot_invalid_rejected(path: Path) -> None:
     assert _issues(_load(path), SNAPSHOT_ID) != []
+
+
+def _report_cases(kind: str) -> list[Json]:
+    directory = FIXTURES_DIR / "drawing-report" / kind
+    return [pytest.param(path, id=path.stem) for path in sorted(directory.glob("*.json"))]
+
+
+def test_report_fixtures_exist_for_both_kinds() -> None:
+    assert _report_cases("valid")
+    assert _report_cases("invalid")
+
+
+@pytest.mark.parametrize("path", _report_cases("valid"))
+def test_report_valid_accepted(path: Path) -> None:
+    assert _issues(_load(path), REPORT_ID) == []
+
+
+@pytest.mark.parametrize("path", _report_cases("invalid"))
+def test_report_invalid_rejected(path: Path) -> None:
+    assert _issues(_load(path), REPORT_ID) != []
 
 
 def test_snapshot_rejects_nan() -> None:

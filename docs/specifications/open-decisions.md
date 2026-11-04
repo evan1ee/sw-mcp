@@ -1,6 +1,6 @@
 # Open Decisions and Missing Specifications
 
-> Review of specification v1.11 (2026-11-03), updated for v1.19, for decisions that must be settled before implementation, so independent implementers build the same thing. Each item says why it matters, what is recommended, which document records it, and the first increment it blocks.
+> Review of specification v1.11 (2026-11-03), updated for v1.20, for decisions that must be settled before implementation, so independent implementers build the same thing. Each item says why it matters, what is recommended, which document records it, and the first increment it blocks.
 
 **Document types**
 - **ADR** — a choice between real alternatives, recorded once (`docs/adr/`).
@@ -15,7 +15,18 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-No open items. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+One open item. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+
+### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
+
+- **Why it matters.** D8 compares required fields against values read from the sheet. The mapping (13.3.4) says where a value comes *from* when filling, not where the add-in finds it when reading back. The way fields are located depends on the template (notes with property links, named blocks, sheet properties for scale and projection). The pure check D8 is built, but it cannot run on a real drawing until this is settled.
+- **Also depends on the template:**
+  - whether continuation sheets use their own format and carry the full 11.5.3 minimum (D8 now requires it on every sheet);
+  - whether placeholder text the format ships with counts as empty;
+  - whether the template has a revision table.
+- **Recommendation.** When the owner supplies the sheet format, add a `read` locator per field to the mapping in 13.3.4, and calibrate D8 on it.
+- **Document:** Spec (13.3.4, 11.5.3).
+- **Blocks:** `1a` (live read-back only; the snapshot contract and D8 itself are not blocked).
 
 ---
 
@@ -57,6 +68,9 @@ No open items. Every decision found in the v1.11 review is recorded below. New g
 | K1 | Geometric tests and thresholds for drawing checks D1–D3 (blocked 1a) | [§11.5.2](../architecture/production-drawings.md#1152-geometric-tests-for-d1d3-builders-call) |
 | N1 | Schema file identity, and how a schema marks number kinds and unordered arrays for the canonical form (3.4.4) (blocked P0-schemas) | [§3.4.8](../architecture/shared-ir-core.md#348-schema-files-builders-call) |
 | N2 | Drawing Geometry Snapshot encoding: keys for native items, curves, raw text boxes (blocked 1a) | [§11.5.1](../architecture/production-drawings.md#1151-drawing-geometry-snapshot-builders-call) |
+| K2 | Rules for D5 without a Drawing Intent (closed chains, part results), D8 and D10, including save/reopen under a `check_drawing` that never saves (blocked 1a) | [§11.5.3](../architecture/production-drawings.md#1153-checks-without-a-drawing-intent-d5-d8-d10-builders-call) |
+| N3 | Snapshot additions for dimension data, title block and rebuild state; hidden annotations not exported (blocked 1a) | [§11.5.1](../architecture/production-drawings.md#1151-drawing-geometry-snapshot-builders-call) |
+| R1 | Drawing report contents, verdict rule and how it states results are unverified (blocked P0-schemas) | [§11.5.4](../architecture/production-drawings.md#1154-drawing-report-builders-call) |
 
 ## Recommended order
 

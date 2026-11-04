@@ -1,6 +1,6 @@
 # 11. Production Drawings (P0)
 
-> Specification v1.19, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.20, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 11.1 Purpose and Bar
 
@@ -118,9 +118,10 @@ The checks need more than annotation positions, so read-back produces a separate
 | Element | Contents |
 | --- | --- |
 | header | schema_version, drawing document ID and revision (13.1), SOLIDWORKS version and service pack, read-back method per item kind (display data or font metrics, 11.5), timestamp |
-| sheets | size, border and title-block zones in sheet mm |
+| rebuild | rebuild outcome, rebuild and annotation errors, dangling and silhouette-attached annotations, save/reopen evidence (D10, 11.5.3) |
+| sheets | size, border and title-block zones in sheet mm; sheet format name, title-block field values, revision table (D8, 11.5.3) |
 | views | view ID, transform and scale, outline, visible model edges as polylines (`GetPolylines7`) in sheet mm, with silhouette edges flagged |
-| annotations | annotation tag and native ID, kind, attachment entities, dimension lines, extension lines, arrows, leader segments, text strings with text boxes, all in sheet mm |
+| annotations | annotation tag and native ID, kind, attachment entities, dimension lines, extension lines, arrows, leader segments, text strings with text boxes, all in sheet mm; model parameters shown and parentheses (D5, 11.5.3) |
 
 - The add-in produces the whole snapshot for a sheet in one IPC call (8.2), never per annotation.
 - Checks D1–D3, D7 and the soft metrics are pure Python functions of the snapshot. D4–D6, D8–D10 combine it with the Resolved Scheme (11.10.1) and API state.
@@ -138,6 +139,16 @@ The checks need more than annotation positions, so read-back produces a separate
 - **Quantized.** The checks run on the snapshot as stored: every number rounded to its quantum (3.4.3) before any test, so a replay of a stored snapshot gives exactly the same verdict.
 - **Center marks and centerlines.** The line work of `center_mark` and `centerline` annotations counts as model edges for the checks (D3), never as dimension lines (D1, D2).
 - **Model edges** carry a kind (`visible`, `silhouette`, `hidden`, `centerline`, `center_mark`). Hidden edges are present only when the view displays them, and section hatching is never exported.
+- **Hidden annotations** are not exported. A model dimension hidden in a view (11.4) is not on the drawing, so it cannot be a duplicate or a crossing.
+- **Dimension data.** On an annotation, `parameters` (an unordered set of strings, in the feature-ID form of 5.3.6 where converted, otherwise the SOLIDWORKS full name) lists the model parameters it shows; a driven reference dimension has `[]`. `parenthesized` says whether it displays in parentheses. A field the add-in could not read is left out, never guessed.
+- **Title block.** On a sheet, `sheet_format` is the sheet format's name or null; `title_block_fields` maps field names (13.3.4) to the resolved text as displayed, with `""` for an empty field and no key for a field the format does not have; `revision_table` is `{"entries": [...]}`, the revision of each row oldest first, or null when the sheet has none. All three are optional, and leaving one out means it was not read.
+- **Rebuild.** The optional root object `rebuild` holds:
+  - `completed`: the rebuild call succeeded;
+  - `errors`: objects with `kind` (`dangling`, `annotation_error`, `rebuild_error`), `sheet` and `annotation` (keys, or null when not tied to one), and `message`;
+  - `silhouette_attachments`: objects with `sheet` and `annotation`;
+  - `reopen`: `verified`, `failed` or `not_checked` (11.5.3).
+
+  A `sheet` or `annotation` that names no item in the snapshot is an `IR_RULE_VIOLATED` issue.
 
 ### 11.5.2 Geometric Tests for D1–D3 [Builder's call]
 
@@ -179,6 +190,55 @@ An annotation's own lines never fail against its own text.
 **Reporting.** Each failure records the check, the two item IDs (annotation tags, or view ID plus edge index), the measured distance, the threshold applied, the location in sheet mm and the read-back method of each item. Equal inputs give identical failure lists in a fixed order: sheet, then check, then item IDs.
 
 **Calibration.** Phase 0 runs the tests on the owner-approved reference drawings. Any default that reports a false positive there is changed in this section before Phase 1a acceptance (18), and the change is recorded in the changelog.
+
+### 11.5.3 Checks without a Drawing Intent: D5, D8, D10 [Builder's call]
+
+Without a Drawing Intent (18), D5's duplicate part, D8 and D10 are pure functions of the snapshot; D8 also takes the title-block mappings (13.3.4). Each check result is `pass`, `fail` or `not_evaluated` with reason codes. A check is never `pass` when part of it did not run: a found failure gives `fail`, otherwise anything unread gives `not_evaluated`.
+
+**D5 has two parts**, each with its own result in the report. The check's result is `fail` if a part failed, otherwise `not_evaluated` if a part did not run, otherwise `pass`.
+
+- `auxiliary_marking` compares parentheses against the scheme's `auxiliary` entries. It needs a Resolved Scheme, so without a Drawing Intent it is `not_evaluated` (reason `drawing_intent_required`), and D5 is therefore never `pass` without one.
+- `duplicates` covers both rules that need no scheme:
+  - *Duplicate parameter* (code `duplicate_parameter`). A string in `parameters` of two or more annotations, across all sheets, is one failure. A parenthesized dimension gets no exemption: 11.5 allows auxiliary dimensions to close a chain, not to repeat a parameter.
+  - *Closed chain* (code `closed_chain`). Candidates are `dimension` annotations with a straight dimension line, exactly two extension lines with different non-empty entities, and `parenthesized` false. Those in one view (or on the sheet, with no view) whose dimension-line direction falls in the same bin form a graph, with entities as nodes and dimensions as edges. The bin is the direction modulo 180°, rounded to a multiple of `drawing.check.parallel_deg` (default **0.01°**). Each dimension, in key order, that joins two nodes already connected closes a cycle and is one failure, naming every dimension on that cycle. Two parallel dimensions between the same two entities are the shortest such cycle. Parenthesized dimensions stay out of the graph, so one in the chain opens it.
+  - A `dimension` annotation missing `parameters` or `parenthesized` gives `not_evaluated` (reason `dimension_data_missing`) unless a failure was found.
+
+  **Known limits until a Resolved Scheme exists:** callouts and notes count only when the add-in can name their parameters; entities are compared within one view, so a chain spread across views or a reference dimension repeating a parameter in another view is missed.
+
+**D8** runs per sheet against the mapping whose `template` equals `sheet_format`.
+
+- The required fields are the mapping's `required` fields plus the 11.5 minimum: `part_number`, `revision`, `material`, `finish`, `general_tolerance`, `scale`, `projection_symbol`, `units`.
+- A field is filled when its text, after trimming whitespace, is not empty and contains no unresolved `$PRP` link. Code `title_field_unfilled`, one failure per field. D8 checks that a field is filled, not that its value is right.
+- A sheet whose mapping sets `revision_table`, or which has a revision table, must have a latest entry equal to the `revision` field, comparing trimmed NFC text exactly. Codes `revision_table_missing` (table required but null, or no entries) and `revision_table_mismatch`.
+- A sheet with no matching mapping is `not_evaluated` (reason `title_block_mapping_missing`), since the system cannot know what that format requires. A sheet without `title_block_fields` is `not_evaluated` (reason `title_block_data_missing`). A snapshot with no sheets is `not_evaluated` too (same reason).
+
+**D10** runs on `rebuild`. Without it, D10 is `not_evaluated` (reason `rebuild_data_missing`).
+
+- Failures: `completed` false (code `rebuild_not_completed`); one per entry in `errors` (code `dangling`, `annotation_error` or `rebuild_error`, from its `kind`); `reopen` is `failed` (code `reopen_failed`).
+- `silhouette_attachments` are warnings (code `silhouette_attachment`) and never affect the result.
+- **Save/reopen and `check_drawing`.** `check_drawing` never saves (8.4, ADR-046), so it cannot run a save-and-reopen itself. Its evidence is the file on disk: `reopen` is `verified` when the drawing was read back with no unsaved changes, because what was read is then what the saved file loads to. If it had unsaved changes, `reopen` is `not_checked`. Jobs that save (ADR-046) save, reopen and read back, and report `verified` or `failed`. `not_checked` gives `not_evaluated` (reason `reopen_not_checked`) unless a failure was found, so a drawing with unsaved edits is never `done`.
+
+### 11.5.4 Drawing Report [Builder's call]
+
+The report is the derived artifact behind `get_drawing_report` (12.4.5), schema `schemas/drawing-report/v0.json`, read leniently (ADR-042). It is a pure function of the snapshot, the thresholds and the title-block mappings: it holds no clock reading and no store IDs, so the same inputs give the same bytes. The store names the file by `report_id` and links it from the drawing record (13.2).
+
+| Field | Contents |
+| --- | --- |
+| `schema_version` | `0.x` |
+| `drawing`, `solidworks` | Copied from the snapshot |
+| `snapshot` | `hash`, `schema_version`, `captured_at`. The hash is `content_hash` (RFC 8785, SHA-256) of the snapshot document as stored. It identifies that document, so no further canonical form (3.4.4) is applied. The snapshot itself stays in the store, and 13.2.4 keeps every snapshot a kept report refers to |
+| `calibration` | `status` and `note`. Until Phase 0 calibration (11.5.2) is done on real drawings, `status` can only be `unverified` and the note says the checks have run only on synthetic snapshots |
+| `verdict` | `fail` if any check is `fail`; otherwise `not_evaluated` if any check is `not_evaluated`; `done` only when all of D1–D10 are `pass` |
+| `checks` | D1–D10, all always present, each with `status`, `failure_count`, `reasons`, and on D5 `parts` |
+| `conflict_count` | Number of failures |
+| `failures` | Geometric failures as in 11.5.2 Reporting (`check`, `sheet`, `items`, `distance_mm`, `threshold_mm`, `location`, `methods`), and rule failures (`check`, `sheet`, `code`, `items`, `detail`, `message`). `sheet` is null for a failure of the whole document or across sheets, and such failures come first. Order: sheet, check, then item IDs |
+| `warnings` | `code`, `sheet`, `annotation`, `message` |
+| `sheets` | Per sheet: `index`, `soft_metrics` and `text_extents` (count of text boxes by read-back method, which is how the report says which method was used, 11.5) |
+| `thresholds` | The values used (11.5.2) |
+
+A snapshot that passes its schema but holds a number RFC 8785 cannot serialize (an integer beyond 2^53 − 1, 3.4.8) gets no report: the result is an `IR_RULE_VIOLATED` issue.
+
+The reason codes are `drawing_intent_required`, `dimension_data_missing`, `title_block_mapping_missing`, `title_block_data_missing`, `rebuild_data_missing` and `reopen_not_checked`. D4, D6 and D9 are `not_evaluated` with `drawing_intent_required` until the Drawing Intent path exists (Phase 1b), so a Phase 1a report cannot be `done`.
 
 ## 11.6 Conflict Handling (owner decision: re-layout, then fail)
 

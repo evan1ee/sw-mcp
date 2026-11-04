@@ -2,8 +2,8 @@
 
 ## Product & Technical Specification
 
-**Document Version:** 1.19
-**Date:** November 3, 2026
+**Document Version:** 1.20
+**Date:** November 4, 2026
 **Status:** Proposed Architecture (refined after owner interview, two SOLIDWORKS reviews, an architecture review and a development-readiness review)
 **Reference Implementation:** SolidPilot — a behavioral reference only. This system is implemented independently: no SolidPilot code is copied into it. The reference may be studied for behavior, tool contracts and lessons learned, and its observable behavior may be matched. Everywhere else, this document calls it "the reference implementation".
 **Primary CAD Backend:** SOLIDWORKS 2025 and newer
