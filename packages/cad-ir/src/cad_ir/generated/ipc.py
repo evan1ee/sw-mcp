@@ -92,6 +92,16 @@ type ErrorRetryable = Literal['never', 'after_fix', 'safe']
 
 type DocumentEventParamsEvent = Literal['regen', 'save', 'close', 'active_changed']
 
+type ViewCreateParamsViewType = Literal['base', 'projected', 'isometric', 'flat_pattern']
+
+type ViewCreateParamsOrientation = Literal['front', 'top', 'right', 'back', 'bottom', 'left', 'isometric']
+
+type ViewCreateParamsDisplayMode = Literal['hlr', 'hlv', 'wireframe', 'shaded', 'shaded_edges', 'default']
+
+type ViewCreateParamsTangentEdges = Literal['removed', 'phantom', 'visible']
+
+type ViewUpdateParamsDisplayMode = Literal['hlr', 'hlv', 'wireframe', 'shaded', 'shaded_edges', 'default']
+
 type SnapshotResult = JsonValue
 
 
@@ -122,6 +132,30 @@ class Meta:
             out["job_id"] = _dump(self.job_id)
         if self.operation_id is not None:
             out["operation_id"] = _dump(self.operation_id)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ViewOutline:
+    min: tuple[float, ...]
+    max: tuple[float, ...]
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "ViewOutline")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            min=_list_of(_num)(_req(obj, "min", where), f"{where}.min"),
+            max=_list_of(_num)(_req(obj, "max", where), f"{where}.max"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["min"] = _dump(self.min)
+        out["max"] = _dump(self.max)
         return out
 
 
@@ -1066,4 +1100,178 @@ class SheetFormatGenerateResult:
         out: dict[str, JsonValue] = {}
         out["path"] = _dump(self.path)
         out["size_mm"] = _dump(self.size_mm)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ViewCreateParams:
+    model_path: str | None = None
+    sheet: str | None = None
+    view_type: ViewCreateParamsViewType
+    orientation: ViewCreateParamsOrientation
+    position: tuple[float, ...]
+    scale: float
+    configuration: str | None = None
+    parent_view: str | None = None
+    display_mode: ViewCreateParamsDisplayMode | None = None
+    tangent_edges: ViewCreateParamsTangentEdges | None = None
+    view_name: str | None = None
+    meta: Meta | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "ViewCreateParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            model_path=_opt(obj, "model_path", where, _str),
+            sheet=_opt(obj, "sheet", where, _str),
+            view_type=_str(_req(obj, "view_type", where), f"{where}.view_type"),
+            orientation=_str(_req(obj, "orientation", where), f"{where}.orientation"),
+            position=_list_of(_num)(_req(obj, "position", where), f"{where}.position"),
+            scale=_num(_req(obj, "scale", where), f"{where}.scale"),
+            configuration=_opt(obj, "configuration", where, _str),
+            parent_view=_opt(obj, "parent_view", where, _str),
+            display_mode=_opt(obj, "display_mode", where, _str),
+            tangent_edges=_opt(obj, "tangent_edges", where, _str),
+            view_name=_opt(obj, "view_name", where, _str),
+            meta=_opt(obj, "_meta", where, Meta._at),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        if self.model_path is not None:
+            out["model_path"] = _dump(self.model_path)
+        if self.sheet is not None:
+            out["sheet"] = _dump(self.sheet)
+        out["view_type"] = _dump(self.view_type)
+        out["orientation"] = _dump(self.orientation)
+        out["position"] = _dump(self.position)
+        out["scale"] = _dump(self.scale)
+        if self.configuration is not None:
+            out["configuration"] = _dump(self.configuration)
+        if self.parent_view is not None:
+            out["parent_view"] = _dump(self.parent_view)
+        if self.display_mode is not None:
+            out["display_mode"] = _dump(self.display_mode)
+        if self.tangent_edges is not None:
+            out["tangent_edges"] = _dump(self.tangent_edges)
+        if self.view_name is not None:
+            out["view_name"] = _dump(self.view_name)
+        if self.meta is not None:
+            out["_meta"] = _dump(self.meta)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ViewCreateResult:
+    view_id: str | None = None
+    native_id: str
+    position_mm: tuple[float, ...]
+    scale: float
+    outline_mm: ViewOutline
+    width_mm: float | None = None
+    height_mm: float | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "ViewCreateResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            view_id=_opt(obj, "view_id", where, _str),
+            native_id=_str(_req(obj, "native_id", where), f"{where}.native_id"),
+            position_mm=_list_of(_num)(_req(obj, "position_mm", where), f"{where}.position_mm"),
+            scale=_num(_req(obj, "scale", where), f"{where}.scale"),
+            outline_mm=ViewOutline._at(_req(obj, "outline_mm", where), f"{where}.outline_mm"),
+            width_mm=_opt(obj, "width_mm", where, _num),
+            height_mm=_opt(obj, "height_mm", where, _num),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        if self.view_id is not None:
+            out["view_id"] = _dump(self.view_id)
+        out["native_id"] = _dump(self.native_id)
+        out["position_mm"] = _dump(self.position_mm)
+        out["scale"] = _dump(self.scale)
+        out["outline_mm"] = _dump(self.outline_mm)
+        if self.width_mm is not None:
+            out["width_mm"] = _dump(self.width_mm)
+        if self.height_mm is not None:
+            out["height_mm"] = _dump(self.height_mm)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ViewUpdateParams:
+    view_name: str
+    position: tuple[float, ...] | None = None
+    scale: float | None = None
+    display_mode: ViewUpdateParamsDisplayMode | None = None
+    meta: Meta | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "ViewUpdateParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            view_name=_str(_req(obj, "view_name", where), f"{where}.view_name"),
+            position=_opt(obj, "position", where, _list_of(_num)),
+            scale=_opt(obj, "scale", where, _num),
+            display_mode=_opt(obj, "display_mode", where, _str),
+            meta=_opt(obj, "_meta", where, Meta._at),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["view_name"] = _dump(self.view_name)
+        if self.position is not None:
+            out["position"] = _dump(self.position)
+        if self.scale is not None:
+            out["scale"] = _dump(self.scale)
+        if self.display_mode is not None:
+            out["display_mode"] = _dump(self.display_mode)
+        if self.meta is not None:
+            out["_meta"] = _dump(self.meta)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ViewUpdateResult:
+    native_id: str
+    position_mm: tuple[float, ...] | None = None
+    scale: float | None = None
+    outline_mm: ViewOutline | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "ViewUpdateResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            native_id=_str(_req(obj, "native_id", where), f"{where}.native_id"),
+            position_mm=_opt(obj, "position_mm", where, _list_of(_num)),
+            scale=_opt(obj, "scale", where, _num),
+            outline_mm=_opt(obj, "outline_mm", where, ViewOutline._at),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["native_id"] = _dump(self.native_id)
+        if self.position_mm is not None:
+            out["position_mm"] = _dump(self.position_mm)
+        if self.scale is not None:
+            out["scale"] = _dump(self.scale)
+        if self.outline_mm is not None:
+            out["outline_mm"] = _dump(self.outline_mm)
         return out

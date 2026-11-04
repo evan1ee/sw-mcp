@@ -1,0 +1,26 @@
+[
+  {
+    "view_type": "base",
+    "orientation": "front",
+    "position": [
+      150.0,
+      150.0
+    ],
+    "scale": 1.0
+  },
+  {
+    "model_path": "C:\\Models\\bracket.sldprt",
+    "sheet": "Sheet1",
+    "view_type": "isometric",
+    "orientation": "isometric",
+    "position": [
+      300.0,
+      200.0
+    ],
+    "scale": 0.5,
+    "configuration": "Default",
+    "display_mode": "hlr",
+    "tangent_edges": "removed",
+    "view_name": "Isometric View"
+  }
+]

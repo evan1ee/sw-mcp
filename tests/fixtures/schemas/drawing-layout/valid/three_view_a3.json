@@ -1,0 +1,80 @@
+{
+  "module": "drawing_layout",
+  "id": "BRK-001-DL",
+  "revision": 1,
+  "schema_version": "0.1",
+  "units": "mm",
+  "intent": "drawing_intent:BRK-001-DI@3",
+  "part_path": "C:\\Models\\bracket.sldprt",
+  "sheets": {
+    "s1": {
+      "size": "A3",
+      "orientation": "landscape",
+      "scale": "1:1"
+    }
+  },
+  "views": {
+    "v_front": {
+      "sheet": "s1",
+      "type": "base",
+      "orientation": "front",
+      "configuration": "Default",
+      "scale": "1:1",
+      "position": [
+        180.0,
+        170.0
+      ],
+      "display": {
+        "hidden_lines": false,
+        "tangent_edges": "removed"
+      }
+    },
+    "v_top": {
+      "sheet": "s1",
+      "type": "projected",
+      "parent": "v_front",
+      "orientation": "top",
+      "scale": "1:1",
+      "position": [
+        180.0,
+        80.0
+      ]
+    },
+    "v_right": {
+      "sheet": "s1",
+      "type": "projected",
+      "parent": "v_front",
+      "orientation": "right",
+      "scale": "1:1",
+      "position": [
+        90.0,
+        170.0
+      ]
+    },
+    "v_iso": {
+      "sheet": "s1",
+      "type": "isometric",
+      "orientation": "isometric",
+      "scale": "1:2",
+      "position": [
+        320.0,
+        220.0
+      ]
+    }
+  },
+  "annotations": {
+    "a_bore_dia": {
+      "kind": "dimension",
+      "intent_ref": "scheme:ds_bore_1_diameter_b41219",
+      "view": "v_front",
+      "text_position": [
+        190.0,
+        185.0
+      ],
+      "tag": "sp:a_bore_dia",
+      "native_id": "RD1@Drawing View1",
+      "placed_by": "manual",
+      "pinned": true
+    }
+  }
+}

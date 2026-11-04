@@ -1,0 +1,14 @@
+[
+  {
+    "view_name": "Drawing View1"
+  },
+  {
+    "view_name": "Drawing View1",
+    "position": [
+      160.0,
+      170.0
+    ],
+    "scale": 2.0,
+    "display_mode": "hlr"
+  }
+]

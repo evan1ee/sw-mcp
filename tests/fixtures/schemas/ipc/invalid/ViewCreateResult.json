@@ -1,0 +1,29 @@
+[
+  {
+    "native_id": 123,
+    "position_mm": [100.0, 100.0],
+    "scale": 1.0,
+    "outline_mm": {
+      "min": [50.0, 50.0],
+      "max": [150.0, 150.0]
+    }
+  },
+  {
+    "native_id": "Drawing View1",
+    "position_mm": "not_an_array",
+    "scale": 1.0,
+    "outline_mm": {
+      "min": [50.0, 50.0],
+      "max": [150.0, 150.0]
+    }
+  },
+  {
+    "native_id": "Drawing View1",
+    "position_mm": [100.0, 100.0],
+    "scale": "not_a_number",
+    "outline_mm": {
+      "min": [50.0, 50.0],
+      "max": [150.0, 150.0]
+    }
+  }
+]

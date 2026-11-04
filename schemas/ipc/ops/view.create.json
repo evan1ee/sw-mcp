@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/view.create.json",
+  "title": "Operation view.create (spec 6.5.1, 6.5.2)",
+  "x-op": "view.create",
+  "x-mutates": "document",
+  "x-errors": [
+    "AUTH_PATH_DENIED",
+    "BACKEND_BUSY",
+    "BACKEND_UI_BLOCKED",
+    "FILE_NOT_FOUND",
+    "IR_SCHEMA_INVALID"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Params": {
+      "type": "object",
+      "required": [
+        "view_type",
+        "orientation",
+        "position",
+        "scale"
+      ],
+      "properties": {
+        "model_path": {
+          "type": "string"
+        },
+        "sheet": {
+          "type": "string"
+        },
+        "view_type": {
+          "enum": [
+            "base",
+            "projected",
+            "isometric",
+            "flat_pattern"
+          ]
+        },
+        "orientation": {
+          "enum": [
+            "front",
+            "top",
+            "right",
+            "back",
+            "bottom",
+            "left",
+            "isometric"
+          ]
+        },
+        "position": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "scale": {
+          "type": "number",
+          "minimum": 0
+        },
+        "configuration": {
+          "type": "string"
+        },
+        "parent_view": {
+          "type": "string"
+        },
+        "display_mode": {
+          "enum": [
+            "hlr",
+            "hlv",
+            "wireframe",
+            "shaded",
+            "shaded_edges",
+            "default"
+          ]
+        },
+        "tangent_edges": {
+          "enum": [
+            "removed",
+            "phantom",
+            "visible"
+          ]
+        },
+        "view_name": {
+          "type": "string"
+        },
+        "_meta": {
+          "$ref": "../v0.json#/$defs/Meta"
+        }
+      }
+    },
+    "Result": {
+      "type": "object",
+      "required": [
+        "native_id",
+        "position_mm",
+        "scale",
+        "outline_mm"
+      ],
+      "properties": {
+        "view_id": {
+          "type": "string"
+        },
+        "native_id": {
+          "type": "string"
+        },
+        "position_mm": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "scale": {
+          "type": "number"
+        },
+        "outline_mm": {
+          "$ref": "../v0.json#/$defs/ViewOutline"
+        },
+        "width_mm": {
+          "type": "number"
+        },
+        "height_mm": {
+          "type": "number"
+        }
+      }
+    }
+  }
+}

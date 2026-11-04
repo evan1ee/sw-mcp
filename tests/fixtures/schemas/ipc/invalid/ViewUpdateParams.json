@@ -1,0 +1,17 @@
+[
+  {
+    "view_name": 123
+  },
+  {
+    "view_name": "Drawing View1",
+    "position": "invalid"
+  },
+  {
+    "view_name": "Drawing View1",
+    "scale": -1.0
+  },
+  {
+    "view_name": "Drawing View1",
+    "display_mode": "invalid_mode"
+  }
+]

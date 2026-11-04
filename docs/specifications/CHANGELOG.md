@@ -2,6 +2,14 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.26
+
+Adds the Drawing Layout IR schema (§11.11) and backend drawing view operation schemas (§6.5.2) for Phase 1b Drawing View Pipeline.
+
+- **Drawing Layout IR** (§11.11): authored JSON Schema in `schemas/drawing-layout/v0.json` specifying sheets, views, orientations, positions, ISO scales, view displays, annotations, tables, and title-block field overrides.
+- **Backend Operations** (§6.5.2): added schemas for `view.create` and `view.update` in `schemas/ipc/ops/` with shared `ViewOutline` in `schemas/ipc/v0.json`.
+- **Contract Code Generation**: updated Python models (`cad_ir.generated.ipc`, `schemas.py`) and C# contract classes (`Messages.g.cs`).
+
 ## What changed in 1.25
 
 Closes Open Decision K7 with operation schemas for backend sheet format generation and drawing creation.

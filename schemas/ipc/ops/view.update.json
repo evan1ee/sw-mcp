@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/view.update.json",
+  "title": "Operation view.update (spec 6.5.1, 6.5.2)",
+  "x-op": "view.update",
+  "x-mutates": "document",
+  "x-errors": [
+    "BACKEND_BUSY",
+    "BACKEND_UI_BLOCKED",
+    "IR_SCHEMA_INVALID"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Params": {
+      "type": "object",
+      "required": [
+        "view_name"
+      ],
+      "properties": {
+        "view_name": {
+          "type": "string"
+        },
+        "position": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "scale": {
+          "type": "number",
+          "minimum": 0
+        },
+        "display_mode": {
+          "enum": [
+            "hlr",
+            "hlv",
+            "wireframe",
+            "shaded",
+            "shaded_edges",
+            "default"
+          ]
+        },
+        "_meta": {
+          "$ref": "../v0.json#/$defs/Meta"
+        }
+      }
+    },
+    "Result": {
+      "type": "object",
+      "required": [
+        "native_id"
+      ],
+      "properties": {
+        "native_id": {
+          "type": "string"
+        },
+        "position_mm": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "scale": {
+          "type": "number"
+        },
+        "outline_mm": {
+          "$ref": "../v0.json#/$defs/ViewOutline"
+        }
+      }
+    }
+  }
+}
