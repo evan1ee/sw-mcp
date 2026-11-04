@@ -6,8 +6,8 @@ Last updated: 2026-11-04. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 - **Phase:** Phase 0 contracts and the pure parts of Phase 1a. Nothing has run against SOLIDWORKS yet.
 - **Spec:** v1.20, with one open item in the [register](docs/specifications/open-decisions.md): K3, which needs the owner's sheet format.
-- **Branches:** milestones 1 and 2 are merged to `main` ([#1](https://github.com/evan1ee/sw-mcp/pull/1), [#2](https://github.com/evan1ee/sw-mcp/pull/2)). Milestone 3 is on local branch `feat/drawing-report-checks`: not pushed, no PR yet.
-- **Verification on the branch:** generator check, ruff, pyright strict and lint-imports are clean; 822 Python tests pass; CI has not run on it.
+- **Branches:** milestones 1 and 2 are merged to `main` ([#1](https://github.com/evan1ee/sw-mcp/pull/1), [#2](https://github.com/evan1ee/sw-mcp/pull/2)). Milestone 3 is in open PR [#4](https://github.com/evan1ee/sw-mcp/pull/4), branch `feat/drawing-report-checks`, not yet merged. Auto-fix is on for it.
+- **Verification on the branch:** generator check, ruff, pyright strict and lint-imports are clean locally; 822 Python tests pass. See the PR for its CI result.
 - **Built:**
   - `cad_ir.core`: IDs, references, quantization, canonical hashing, derived IDs, validation issues, schema validation.
   - `cad_ir.bundle`: bundle manifest validation.
@@ -32,7 +32,7 @@ Last updated: 2026-11-04. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Next Steps
 
-1. **Land milestone 3:** the owner reviews the [§11.5.3 calls](docs/architecture/production-drawings.md#1153-checks-without-a-drawing-intent-d5-d8-d10-builders-call), then push `feat/drawing-report-checks` to `github` and open a PR.
+1. **Land milestone 3:** the owner reviews the [§11.5.3 calls](docs/architecture/production-drawings.md#1153-checks-without-a-drawing-intent-d5-d8-d10-builders-call), then merges [#4](https://github.com/evan1ee/sw-mcp/pull/4) once its checks pass. After merging, update the Branches line above.
 2. **IPC and execution side:** ADR-036 schemas, Python client with `ReplayBackend`, C# `ExecutionServer.Core` with transcript tests, C# type generation.
 3. **`check_drawing` and `get_drawing_report`:** project store, job journal and MCP tools, tested over replayed transcripts. Add report warnings for draft-view switches and newer service packs (out of scope in the plan).
 4. **Phase 0 work on the SOLIDWORKS machine:** create `docs/specifications/assumptions.md` and prove A1–A16; run the reference study; calibrate the check thresholds on approved drawings (§11.5.2).
