@@ -56,6 +56,10 @@ class CoreService:
         self._stopped = False
         self._worker = threading.Thread(target=self._work, name="core-worker", daemon=True)
 
+    @property
+    def registry(self) -> ToolRegistry:
+        return self._registry
+
     @classmethod
     def start(  # noqa: PLR0913 - the injectable parts; defaults are the real ones
         cls,

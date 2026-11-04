@@ -62,6 +62,9 @@ venv = ".venv"
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
 testpaths = ["packages", "apps/mcp-server", "apps/core-service", "tests"]
+markers = [
+    "live: live SOLIDWORKS tests requiring interactive session (ADR-039)",
+]
 
 [tool.coverage.run]
 source = ["packages"]

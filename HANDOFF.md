@@ -4,67 +4,55 @@ Last updated: 2026-11-04. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Current State
 
-- **Phase:** Phase 0 contracts, IPC framing/transcripts, project store, job journal, job engine, Phase 1a tool handlers (`check_drawing`, `get_drawing_report`, `get_execution_status`, `cancel_execution`), and `core-service` composition root. Nothing has run against SOLIDWORKS yet.
-- **Spec:** v1.23, with open items in the [register](docs/specifications/open-decisions.md): K3 (sheet format field mapping), J11 (draft-view switched indicator in snapshot), and J21 (C# transcript harness scripting an error response). Catalogue has 40 codes.
-- **Branches:** milestones 1, 2, 3, 4, and 5 are merged to `main` ([#1](https://github.com/evan1ee/sw-mcp/pull/1), [#2](https://github.com/evan1ee/sw-mcp/pull/2), [#4](https://github.com/evan1ee/sw-mcp/pull/4), [#5](https://github.com/evan1ee/sw-mcp/pull/5), [#6](https://github.com/evan1ee/sw-mcp/pull/6)).
-- **Verification on main:**
-  - `uv run python scripts/generate_contracts.py --check` passes cleanly.
-  - `uv run ruff check` and `uv run ruff format --check` pass cleanly (333 files).
+- **Phase:** Milestone 6 ("transport and live smoke") implementation complete. IPC named-pipe transport, session discovery, add-in pipe host, UI dispatcher, settings guard, document event monitor, drawing snapshot adapter, core pipe host, MCP front-end stdio server, and live smoke test suite are all in place.
+- **Spec:** v1.23, with open items in the [register](docs/specifications/open-decisions.md): K3 (sheet format field mapping) and J11 (draft-view switched indicator in snapshot). J21 is settled. Catalogue has 40 codes.
+- **Branches:** Milestone 6 implementation complete on working branch, ready for review/merge.
+- **Verification:**
+  - `uv run python scripts/generate_contracts.py --check` passes cleanly (0 drift).
+  - `uv run ruff check` and `uv run ruff format --check` pass cleanly across all 345 files.
   - `uv run pyright` passes (0 errors, 0 warnings).
   - `uv run lint-imports` passes (5 contracts kept, 0 broken).
-  - `uv run pytest` passes (2352 passed in 36.8s).
-  - Test coverage on `packages/cad-application` and `apps/core-service` is 96.06% (763 tests; ≥ 80% required).
-  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (127 passed, 0 failed).
-  - `git status --short standards/` is empty.
-- **Built:**
-  - `schemas/`: store (`store/v0.json`), configuration (`config/v1.json`, `config/title-block/v1.json`), MCP contract meta-schema (`mcp/contract/v0.json`), Phase 1a tool contracts (`mcp/check_drawing.json`, `get_drawing_report.json`, `get_execution_status.json`, `cancel_execution.json`), common errors (40 codes, including `FILE_NOT_FOUND` and `STORE_UNAVAILABLE`).
-  - `cad_application.store`: `FileStore`, `StoreSet`, atomic writes, journal records and state transitions (8.4), crash recovery (13.2.3), and retention clean-up (13.2.4).
-  - `cad_application.jobs`: `JobEngine` (thread-safe, synchronous per ADR-053), `check_drawing` job runner, job views, cancel handling, notification dispatch.
-  - `cad_application.tools`: `ToolRegistry`, contracts loader, argument validation against embedded JSON schemas, pagination cursors (12.4.2), tool summary builders.
-  - `core_service`: `CoreService` composition root, `OsFileSystem` with OS file locks (`msvcrt`), `SystemClock`, `SystemIdSource`, `JsonlEventLog` (G3 allow-list), `ReplayBackendProvider`.
-  - `tests/fixtures/ipc/`: 7 `check_drawing` transcript fixtures replayed against Python (and C# where supported).
-- **Opus Review Findings Addressed:**
-  - HIGH 1: Owned drawing is guaranteed closed on unexpected exceptions (`try ... except Exception: self._close_drawing(); raise` in `check_drawing.py`).
-  - HIGH 2: `StoreSet` notifies engine on first open so stores not in `known-stores.json` are recovered; store clean-up runs at engine start.
-  - HIGH 3: `call_tool` maps `OSError` to `STORE_UNAVAILABLE` (`after_fix`, not `safe`), and unknown tool names raise `UnknownTool` for transport protocol-error handling (12.4.2).
-  - MEDIUM/LOW: Store junctions escaping root rejected; non-finite snapshot values rejected before saving; corrupt store files handled safely; illegal transitions after final states rejected; NTFS stream names and `$` handling validated.
-  - Mutation testing: all 3 surviving mutants (cursor validity, registry listed-error enforcement, document events from other jobs) covered by unit tests.
-- **Not built:** Named-pipe transport, session discovery (8.6.1), heartbeat and `IpcClient` reader thread, add-in pipe host and snapshot adapter (all Milestone 6).
+  - `uv run pytest` passes (2371 passed, 3 skipped in 37.25s).
+  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (139 passed, 0 failed).
+  - `dotnet build apps/execution-server/ExecutionServer.sln` succeeds with 0 warnings, 0 errors.
+- **Built in Milestone 6:**
+  - `apps/execution-server/ExecutionServer.Tests/Support/ScriptedHandler.cs`: C# error scripting support (J21 settled), enabling full transcript coverage on C#.
+  - `packages/cad-protocol`: `NamedPipeTransport` (Windows named pipes, 4-byte little-endian framing), concurrent `IpcClient` reader thread, background heartbeat ping (`session.ping`), and safe stop/close.
+  - `apps/core-service`: `discover_sessions` and `resolve_session` scanning `%LOCALAPPDATA%\sw-mcp\sessions\*.json`, cleaning dead PIDs, and `NamedPipeBackendProvider` connecting to discovered add-in sessions.
+  - `apps/execution-server/ExecutionServer.AddIn`:
+    - `NamedPipeServer`: current-user DACL pipe server (`\\.\pipe\sw-mcp-<pid>`) with framing.
+    - `UIThreadDispatcher`: single-command UI dispatching (`ISwAddin` STA thread) with 30-second UI-blocked watchdog timer.
+    - `SwAddin`: COM registration, `ISwAddin` lifecycle (`ConnectToSW`, `DisconnectFromSW`), session file publication to `%LOCALAPPDATA%\sw-mcp\sessions\<pid>.json`.
+    - `SettingsGuard`: engineering settings snapshot, restoration, and crash recovery file at `%LOCALAPPDATA%\sw-mcp\settings-restore-<pid>.json`.
+    - `DocumentEventMonitor`: subscriptions to `DSldWorksEvents` forwarding notifications tagged with `_meta.job_id`.
+  - `apps/execution-server/ExecutionServer.Adapters`: `DrawingSnapshotAdapter`, `ViewExtractor`, `AnnotationExtractor` extracting views, polylines, dimensions, datums, and notes conforming strictly to `schemas/drawing-geometry-snapshot/v0.json` with explicit Guideline G1 COM release.
+  - `apps/core-service/src/core_service/server/pipe_host.py`: Core named pipe listener (`\\.\pipe\sw-mcp-core-<id>`) with user-only ACL, exposing tools to the front-end.
+  - `apps/mcp-server`: Lightweight MCP stdio front-end server (`McpServer`, `CorePipeClient`) with zero forbidden imports from core packages (enforcing Guideline G2 and import-linter contract 4).
+  - `tests/live/test_live_smoke.py`: Live smoke integration suite for discovery, handshake, drawing open, snapshot extraction, and document close.
+- **Live SOLIDWORKS State & Owner Gates:**
+  - SOLIDWORKS 2025 SP0.1 is installed and running locally (`SLDWORKS.exe`, PID 21208).
+  - Add-in has not been registered in `HKCU\Software\SolidWorks\Addins\{GUID}` because owner gate approval is required before writing to user registry and loading add-in into the interactive session. Live smoke test skips cleanly with clear reason until owner gate is executed.
 
 ## Changes Made
 
-- **Plans:** Milestone 5 implemented per [check drawing job plan](docs/superpowers/plans/2026-11-04-check-drawing-job.md).
-- **Spec decisions:**
-  - Settled gaps J12–J20 in `docs/specifications/open-decisions.md`; logged J21 as open.
-  - Added `STORE_UNAVAILABLE` to catalogue (40 codes).
-  - Clarified ADR-053 regarding engine lock boundaries during small job-record writes.
-  - Topic specs at v1.23; changelog updated.
+- **Plans:** Milestone 6 implemented per [transport and live smoke plan](docs/superpowers/plans/2026-11-04-milestone-6-transport-live-smoke.md).
+- **Files Modified/Created:**
+  - Python: `packages/cad-protocol/src/cad_protocol/client/pipe_transport.py`, `packages/cad-protocol/src/cad_protocol/client/ipc_client.py`, `apps/core-service/src/core_service/discovery.py`, `apps/core-service/src/core_service/server/pipe_host.py`, `apps/mcp-server/src/mcp_server/client.py`, `apps/mcp-server/src/mcp_server/server/app.py`, `apps/mcp-server/src/mcp_server/server/__init__.py`, `apps/mcp-server/src/mcp_server/py.typed`, `tests/live/test_live_smoke.py`.
+  - C#: `IpcSession.cs`, `IpcSession.Commands.cs`, `NamedPipeServer.cs`, `UIThreadDispatcher.cs`, `SwAddin.cs`, `SettingsGuard.cs`, `DocumentEventMonitor.cs`, `DrawingSnapshotAdapter.cs`, `ViewExtractor.cs`, `AnnotationExtractor.cs`, `ScriptedHandler.cs`, `NamedPipeServerTests.cs`, `SettingsGuardTests.cs`, `SnapshotSchemaSerializationTests.cs`.
+  - Specs & Config: `docs/specifications/open-decisions.md` (J21 marked closed), `pyproject.toml` (added `live` marker), `tests/fixtures/ipc/check_drawing_bad_sheet.jsonl`.
 
 ## Next Steps
 
-1. **Implement Drawing Template IR:**
-   - Execute [Drawing Template IR Implementation Plan](docs/superpowers/plans/2026-11-04-drawing-template-ir.md) per [design spec](docs/superpowers/specs/2026-11-04-drawing-template-ir-design.md).
-   - Task 1: Spec update to v1.24, ADR-055 (generated sheet formats), open item K7.
-   - Task 2: Module key `drawing_template` and bundle manifest validation rules.
-   - Task 3: JSON schema `schemas/drawing-template/v0.json` and fixtures.
-   - Task 4: Pure validator in `cad_ir.drawing_template`.
-   - Task 5: Full verification and handoff.
-2. **Milestone 6 ("transport and first live smoke"):**
-   - Named-pipe transport and session discovery (§8.6.1).
-   - Heartbeat and reader thread in `IpcClient`.
-   - Core pipe and stdio front-end.
-   - Add-in pipe host and live snapshot adapter.
-   - First live smoke test on this PC (licensed SOLIDWORKS 2025).
-3. **Owner approvals for Milestone 6:**
-   - Lift "no SOLIDWORKS, no live tests" restriction.
-   - Registering the add-in per user (`HKCU`) into SOLIDWORKS (ADR-038).
-   - Approval of test drawing copies (ADR-022, ADR-047).
-   - Engineer settings guard preferences (8.6.4, ADR-050).
-   - Inspection of sheet formats in `standards/iso/templates/` to resolve K3.
+1. **Owner Approval Gate for Live Execution:**
+   - Review and execute HKCU add-in registration for `sw-mcp.AddIn.dll` (`HKCU\Software\SolidWorks\Addins\{4A137B34-3A9B-4A73-BE94-0E37C0F4A0A1}`).
+   - Launch or restart SOLIDWORKS 2025 to verify add-in startup and session file creation in `%LOCALAPPDATA%\sw-mcp\sessions\`.
+   - Run `uv run pytest tests/live/test_live_smoke.py` against the active session with `SW_MCP_TEST_DRAWING` pointing to a scratch copy.
+2. **Milestone 7: Drawing Template IR & Production Drawing Creation:**
+   - Implement Drawing Template IR according to [Drawing Template IR Implementation Plan](docs/superpowers/plans/2026-11-04-drawing-template-ir.md).
+   - Address open items K3 (title block locators) and J11 (draft-view switched indicator).
 
 ## Known Issues
 
-- **K3 remains open:** Reading title-block fields back from the owner's templates requires inspecting `standards/iso/templates/` in SOLIDWORKS to define locators in §13.3.4.
-- **J11 remains open:** Snapshot cannot yet report whether a draft-quality view was switched to high quality; deferred until live adapter is built.
-- **J21 remains open:** C# `ScriptedHandler` cannot script JSON-RPC error responses, so `check_drawing_bad_sheet.jsonl` runs only on Python for now.
-- **Unverified on real CAD:** All drawing checks and jobs have run only on synthetic snapshots and replayed IPC transcripts; live verification begins in Milestone 6.
+- **K3 remains open:** Reading title-block fields back from owner's templates requires inspecting `standards/iso/templates/` in SOLIDWORKS to define locators in §13.3.4.
+- **J11 remains open:** Snapshot does not yet report whether a draft-quality view was switched to high quality; awaiting interactive inspection.
+- **Live interactive execution gated:** Live smoke tests are designed and ready, currently skipped pending owner HKCU registration gate.

@@ -22,6 +22,7 @@ public sealed partial class IpcSession
     private readonly ICommandHandler _handler;
     private readonly IFrameSink _sink;
     private readonly Action<Exception>? _onUnexpected;
+    private readonly Action<IpcSession>? _onCommandEnqueued;
     private readonly object _gate = new object();
     private readonly Queue<QueuedCommand> _queue = new Queue<QueuedCommand>();
     private RunningCommand? _running;
@@ -29,13 +30,20 @@ public sealed partial class IpcSession
     private bool _closed;
 
     /// <param name="onUnexpected">Receives unexpected handler exceptions so the add-in can log the stack trace (G3).</param>
-    public IpcSession(SessionConfig config, OperationLedger ledger, ICommandHandler handler, IFrameSink sink, Action<Exception>? onUnexpected = null)
+    public IpcSession(
+        SessionConfig config,
+        OperationLedger ledger,
+        ICommandHandler handler,
+        IFrameSink sink,
+        Action<Exception>? onUnexpected = null,
+        Action<IpcSession>? onCommandEnqueued = null)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _ledger = ledger ?? throw new ArgumentNullException(nameof(ledger));
         _handler = handler ?? throw new ArgumentNullException(nameof(handler));
         _sink = sink ?? throw new ArgumentNullException(nameof(sink));
         _onUnexpected = onUnexpected;
+        _onCommandEnqueued = onCommandEnqueued;
     }
 
     public bool IsClosed
