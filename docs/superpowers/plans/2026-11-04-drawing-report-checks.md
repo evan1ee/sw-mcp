@@ -25,7 +25,7 @@
 2. **Absent is not empty.** `parameters: []` is a reference dimension and counts as read; a missing `parameters` is unread. A `""` title field is unfilled (failure); a sheet without `title_block_fields` is `not_evaluated`. Tests: `test_d5_empty_parameters_is_read`, `test_d5_missing_data_not_evaluated`, `test_d8_absent_fields_not_evaluated`.
 3. **Parallel directions across the wrap.** Dimension lines drawn left-to-right and right-to-left, or at 0° and 179.9999°, fall in one bin. A horizontal and a vertical dimension between the same two entities are not a chain. Tests: `test_d5_chain_reversed_direction`, `test_d5_chain_wrap_at_180`, `test_d5_horizontal_and_vertical_same_entities_ok`.
 4. **The report cannot say done.** Even a clean snapshot with every field present gives verdict `not_evaluated`, and `calibration.status` is `unverified`. Test: `test_clean_full_snapshot_is_not_done`.
-5. **Same inputs, same bytes.** Reversed key order gives an equal report, except that nothing in it depends on key order, and canonical bytes are identical. Test: `test_report_deterministic_under_key_order`.
+5. **Same inputs, same bytes.** Reversed key order in the snapshot gives identical canonical report bytes. Test: `test_report_deterministic_under_key_order`.
 
 ---
 
@@ -63,7 +63,7 @@
 
 ### Task 2: Rule outcomes and D5
 
-**Files:** Create `checks/outcome.py`, `checks/d5.py`. Test: `test_outcome.py`, `test_d5.py`. Add `parameters`, `parenthesized`, `view` and `tag`-free helpers to the `Builder` in `tests/conftest.py` as needed (the `annotation` builder gets keyword arguments with defaults).
+**Files:** Create `checks/outcome.py`, `checks/d5.py`. Test: `test_outcome.py`, `test_d5.py`. In `tests/conftest.py`, give the `Builder.annotation` method keyword arguments `parameters`, `parenthesized` and `view`, with defaults that keep existing tests unchanged.
 
 **Interfaces (Produces), in `outcome.py`:**
 - `type CheckStatus = Literal["pass", "fail", "not_evaluated"]`
@@ -174,7 +174,7 @@ D10 details: an error failure has one annotation item when it names one; `messag
   - `test_document_level_failures_come_first`: `reopen_failed` (null sheet) sorts before sheet failures
   - `test_report_output_matches_schema`: `validate_against_schema(report.to_json(), REPORT_SCHEMA_ID) == ()` for every valid snapshot fixture, with and without mappings, and for the seeded-defect report
   - `test_golden_report_fixture`: `to_json()` equals the fixture
-  - `test_report_deterministic_under_key_order`: reversed-key input gives an equal report body and equal `canonical_bytes`, using one fixed `snapshot.hash` comparison: RFC 8785 sorts keys, so the hash is equal too
+  - `test_report_deterministic_under_key_order`: reversed-key input gives equal `canonical_bytes(report.to_json())`, including `snapshot.hash`, because RFC 8785 sorts keys
   - `test_invalid_snapshot_returns_issue_report`
   - `test_text_extents_counted`: one box of each method
   - `test_thresholds_recorded`

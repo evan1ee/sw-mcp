@@ -236,6 +236,8 @@ The report is the derived artifact behind `get_drawing_report` (12.4.5), schema 
 | `sheets` | Per sheet: `index`, `soft_metrics` and `text_extents` (count of text boxes by read-back method, which is how the report says which method was used, 11.5) |
 | `thresholds` | The values used (11.5.2) |
 
+A snapshot that passes its schema but holds a number RFC 8785 cannot serialize (an integer beyond 2^53 − 1, 3.4.8) gets no report: the result is an `IR_RULE_VIOLATED` issue.
+
 The reason codes are `drawing_intent_required`, `dimension_data_missing`, `title_block_mapping_missing`, `title_block_data_missing`, `rebuild_data_missing` and `reopen_not_checked`. D4, D6 and D9 are `not_evaluated` with `drawing_intent_required` until the Drawing Intent path exists (Phase 1b), so a Phase 1a report cannot be `done`.
 
 ## 11.6 Conflict Handling (owner decision: re-layout, then fail)
