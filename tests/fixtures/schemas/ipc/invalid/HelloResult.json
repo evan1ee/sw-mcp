@@ -1,0 +1,79 @@
+[
+  {
+    "protocol": "0.1",
+    "addin_version": "0.1.0",
+    "solidworks": {
+      "version": "2025",
+      "service_pack": "SP3.0",
+      "ui_language": "en-US"
+    },
+    "capabilities": [
+      "drawing.snapshot"
+    ],
+    "operations": [
+      {
+        "op": "document.open",
+        "schema_version": "0.1"
+      }
+    ],
+    "licensed_modules": []
+  },
+  {
+    "protocol": "0.1",
+    "addin_version": "0.1.0",
+    "capabilities": [
+      "drawing.snapshot"
+    ],
+    "operations": [
+      {
+        "op": "document.open",
+        "schema_version": "0.1"
+      }
+    ],
+    "licensed_modules": [],
+    "warnings": [
+      "w"
+    ]
+  },
+  {
+    "protocol": "0.1",
+    "addin_version": "0.1.0",
+    "solidworks": {
+      "version": "2025",
+      "service_pack": "SP3.0",
+      "ui_language": "en-US"
+    },
+    "capabilities": "x",
+    "operations": [
+      {
+        "op": "document.open",
+        "schema_version": "0.1"
+      }
+    ],
+    "licensed_modules": [],
+    "warnings": [
+      "w"
+    ]
+  },
+  {
+    "protocol": "0.1",
+    "addin_version": "0.1.0",
+    "solidworks": {
+      "version": "2025",
+      "service_pack": "SP3.0",
+      "ui_language": "en-US"
+    },
+    "capabilities": [
+      "drawing.snapshot"
+    ],
+    "operations": [
+      {
+        "op": "x"
+      }
+    ],
+    "licensed_modules": [],
+    "warnings": [
+      "w"
+    ]
+  }
+]

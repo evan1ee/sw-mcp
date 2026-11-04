@@ -1,0 +1,16 @@
+[
+  {
+    "result": {}
+  },
+  {
+    "operation_id": "j",
+    "error": "x"
+  },
+  {
+    "operation_id": "j",
+    "error": {
+      "code": "EXEC_CANCELLED",
+      "retryable": "never"
+    }
+  }
+]

@@ -1,0 +1,21 @@
+[
+  {
+    "message": "m"
+  },
+  {
+    "code": -32000
+  },
+  {
+    "code": 1.5,
+    "message": "m"
+  },
+  {
+    "code": -32000,
+    "message": "m",
+    "data": {
+      "code": "EXEC_CANCELLED",
+      "message": "The job was cancelled.",
+      "retryable": "maybe"
+    }
+  }
+]

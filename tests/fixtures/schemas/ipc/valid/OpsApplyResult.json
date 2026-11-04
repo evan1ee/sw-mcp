@@ -1,0 +1,15 @@
+[
+  {
+    "outcomes": []
+  },
+  {
+    "outcomes": [
+      {
+        "operation_id": "j1:1",
+        "result": {
+          "owned": true
+        }
+      }
+    ]
+  }
+]

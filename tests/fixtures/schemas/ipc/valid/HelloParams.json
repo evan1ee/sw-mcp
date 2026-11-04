@@ -1,0 +1,15 @@
+[
+  {
+    "token": "tok_test_0001",
+    "protocol": "0.1"
+  },
+  {
+    "token": "tok_test_0001",
+    "protocol": "0.1",
+    "_meta": {
+      "request_id": "r_1",
+      "job_id": "j1",
+      "operation_id": "j1:1"
+    }
+  }
+]

@@ -1,0 +1,3 @@
+{"transcript": "0.1", "scenario": "wrong_token", "source": "synthetic", "sides": ["python", "csharp"], "config": {"token": "tok-5f2c91d7", "backend": {"protocol": "0.1", "addin_version": "0.1.0", "solidworks": {"version": "2025", "service_pack": "SP3.0", "ui_language": "en-US"}, "capabilities": ["drawing.snapshot", "ops.apply"], "operations": [{"op": "document.open", "schema_version": "0.1"}, {"op": "document.close", "schema_version": "0.1"}], "licensed_modules": [], "warnings": []}, "version_supported": true}}
+{"dir":"core_to_addin","t_ms":0,"frame":{"jsonrpc":"2.0","id":1,"method":"session.hello","params":{"token":"wrong-token-0000","protocol":"0.1"}}}
+{"dir":"addin_to_core","t_ms":5,"close":true}

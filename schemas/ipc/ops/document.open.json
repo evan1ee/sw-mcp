@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/document.open.json",
+  "title": "Operation document.open (spec 6.5.1)",
+  "x-op": "document.open",
+  "x-mutates": "session",
+  "x-errors": [
+    "AUTH_PATH_DENIED",
+    "BACKEND_BUSY",
+    "BACKEND_UI_BLOCKED"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Params": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "read_only": {
+          "type": "boolean"
+        },
+        "fully_resolved": {
+          "type": "boolean"
+        },
+        "configuration": {
+          "type": "string"
+        },
+        "_meta": {
+          "$ref": "../v0.json#/$defs/Meta"
+        }
+      },
+      "required": [
+        "path",
+        "read_only",
+        "fully_resolved"
+      ]
+    },
+    "Result": {
+      "type": "object",
+      "properties": {
+        "owned": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "owned"
+      ]
+    }
+  }
+}

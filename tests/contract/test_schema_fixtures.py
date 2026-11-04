@@ -216,3 +216,94 @@ def test_trailing_newline_is_rejected_by_the_project_validator() -> None:
     stock: Any = Draft202012Validator(schema)
     assert stock.is_valid("abc\n")
     assert _issues("bore_1\n", f"{COMMON_ID}#/$defs/ItemId") != []
+
+
+IPC_ID = "https://sw-mcp.invalid/schemas/ipc/v0.json"
+IPC_DIR = SCHEMAS_DIR / "ipc"
+IPC_FIXTURES = FIXTURES_DIR / "ipc"
+STRUCTURAL_PREFIX = "structural_"
+MUTATES_VALUES = ("document", "session", "none")
+
+
+def _op_prefix(op: str) -> str:
+    return "".join(part.capitalize() for part in op.replace("_", ".").split("."))
+
+
+def _ipc_defs() -> dict[str, tuple[str, Json]]:
+    """Fixture name -> (schema reference, def) for the IPC messages and every operation."""
+    defs: dict[str, tuple[str, Json]] = {}
+    root = IPC_DIR / "v0.json"
+    if root.is_file():
+        for name, node in _load(root)["$defs"].items():
+            defs[name] = (f"{IPC_ID}#/$defs/{name}", node)
+    for path in sorted((IPC_DIR / "ops").glob("*.json")):
+        doc = _load(path)
+        for name, node in doc["$defs"].items():
+            defs[_op_prefix(doc["x-op"]) + name] = (f"{doc['$id']}#/$defs/{name}", node)
+    return defs
+
+
+def _ipc_cases(kind: str) -> list[Json]:
+    cases: list[Json] = []
+    for path in sorted((IPC_FIXTURES / kind).glob("*.json")):
+        name = path.stem.removeprefix(STRUCTURAL_PREFIX)
+        for index, instance in enumerate(_load(path)):
+            cases.append(pytest.param(name, instance, id=f"{path.stem}[{index}]"))
+    return cases
+
+
+def _ipc_issues(name: str, instance: Json) -> list[Json]:
+    return _issues(instance, _ipc_defs()[name][0])
+
+
+@pytest.mark.parametrize(("name", "instance"), _ipc_cases("valid"))
+def test_ipc_valid_accepted(name: str, instance: Json) -> None:
+    assert _ipc_issues(name, instance) == []
+
+
+@pytest.mark.parametrize(("name", "instance"), _ipc_cases("invalid"))
+def test_ipc_invalid_rejected(name: str, instance: Json) -> None:
+    """Both the schema-only and the ``structural_`` cases are schema violations."""
+    assert _ipc_issues(name, instance) != []
+
+
+def _fixture_names(kind: str) -> set[str]:
+    return {p.stem for p in (IPC_FIXTURES / kind).glob("*.json")}
+
+
+def test_every_ipc_def_has_fixtures() -> None:
+    defs = _ipc_defs()
+    assert "Request" in defs
+    with_required = {name for name, (_, node) in defs.items() if node.get("required")}
+    invalid = _fixture_names("invalid")
+    plain = {n for n in invalid if not n.startswith(STRUCTURAL_PREFIX)}
+    structural = {n.removeprefix(STRUCTURAL_PREFIX) for n in invalid if n not in plain}
+    assert _fixture_names("valid") == set(defs)
+    assert with_required <= plain
+    assert with_required <= structural
+    assert plain <= set(defs)
+    assert structural <= set(defs)
+
+
+def _ops_files() -> list[Path]:
+    return sorted((IPC_DIR / "ops").glob("*.json"))
+
+
+def test_ops_files_exist() -> None:
+    assert {p.name for p in _ops_files()} >= {"document.open.json", "document.close.json"}
+
+
+@pytest.mark.parametrize("path", _ops_files(), ids=lambda p: p.name)
+def test_ops_schemas_declare_annotations(path: Path) -> None:
+    doc = _load(path)
+    assert doc["x-op"] == path.stem.removesuffix(".json")
+    assert doc["x-mutates"] in MUTATES_VALUES
+    assert doc["x-since"] == "0.1"
+    errors: list[str] = doc["x-errors"]
+    catalogue: set[str] = {
+        b["const"] for b in _load(SCHEMAS_DIR / "common" / "errors.json")["oneOf"]
+    }
+    assert set(errors) <= catalogue
+    assert len(set(errors)) == len(errors)
+    defs: dict[str, Json] = doc["$defs"]
+    assert {"Params", "Result"} <= set(defs)
