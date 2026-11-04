@@ -6,8 +6,8 @@ Last updated: 2026-11-04. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 - **Phase:** Phase 0 contracts and the pure parts of Phase 1a. Nothing has run against SOLIDWORKS yet.
 - **Spec:** v1.21, with one open item in the [register](docs/specifications/open-decisions.md): K3, which needs the owner's sheet format.
-- **Branches:** milestones 1 and 2 are merged to `main` ([#1](https://github.com/evan1ee/sw-mcp/pull/1), [#2](https://github.com/evan1ee/sw-mcp/pull/2)). Milestone 3 is merged too ([#4](https://github.com/evan1ee/sw-mcp/pull/4)). Milestone 4 is on local branch `feat/ipc-contract`: not pushed, no PR yet.
-- **Verification on the branch:** generator check, ruff, pyright strict and lint-imports are clean; 1342 Python and 125 C# tests pass locally. CI has not run on it.
+- **Branches:** milestones 1 and 2 are merged to `main` ([#1](https://github.com/evan1ee/sw-mcp/pull/1), [#2](https://github.com/evan1ee/sw-mcp/pull/2)). Milestone 3 is merged too ([#4](https://github.com/evan1ee/sw-mcp/pull/4)). Milestone 4 is in open PR [#5](https://github.com/evan1ee/sw-mcp/pull/5), branch `feat/ipc-contract`, not yet merged.
+- **Verification on the branch:** generator check, ruff, pyright strict and lint-imports are clean; 1342 Python and 125 C# tests pass locally. See the PR for its CI result.
 - **Built:**
   - `cad_ir.core`: IDs, references, quantization, canonical hashing, derived IDs, validation issues, schema validation.
   - `cad_ir.bundle`: bundle manifest validation.
@@ -38,7 +38,7 @@ Last updated: 2026-11-04. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Next Steps
 
-1. **Land milestone 4:** the owner reviews ADR-051, ADR-052 and §8.7, then push `feat/ipc-contract` to `github` and open a PR. After merging, update the Branches line above.
+1. **Land milestone 4:** the owner reviews ADR-051, ADR-052 and §8.7, then merges [#5](https://github.com/evan1ee/sw-mcp/pull/5) once its checks pass. After merging, update the Branches line above.
 2. **Sheet formats:** the owner confirms whether the untracked files in `standards/iso/templates/` are the company sheet formats, and how to read their fields (register K3).
 3. **`check_drawing` and `get_drawing_report`:** project store, job journal and MCP tools, tested over replayed transcripts. This needs the client on a real transport, with session discovery and a heartbeat (out of scope in the IPC plan). `IpcClient` is single-threaded, so the heartbeat will need a reader thread. Add report warnings for draft-view switches and newer service packs (out of scope in the plan).
 4. **Phase 0 work on the SOLIDWORKS machine:** create `docs/specifications/assumptions.md` and prove A1–A17; run the reference study; calibrate the check thresholds on approved drawings (§11.5.2).
