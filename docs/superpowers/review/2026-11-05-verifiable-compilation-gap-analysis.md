@@ -41,7 +41,7 @@ Probes were scratch scripts outside the repository. **No live SOLIDWORKS run was
 
 **Fresh baseline at this commit:** see section 14.
 
-**Moving tree.** Task 7a work appeared in the same checkout during this review (`OperationRouter`, `Ownership/`, `failed_operations`, ledger and journal changes), and was committed afterwards as `995aee6`. **All findings and line references describe the commit `0222b15`, not that work.** It was not reviewed here. It appears to address parts of V4 and V10, and should be re-checked against them.
+**Moving tree.** Task 7a work appeared in the same checkout during this review (`OperationRouter`, `Ownership/`, `failed_operations`, ledger and journal changes), and was committed afterwards as `995aee6`. **All findings and line references describe the commit `0222b15`, not that work.** It was not reviewed here. **Re-checked at `026229f`:** V4's false success is gone (`OperationRouter` raises `BACKEND_CAPABILITY_MISSING`), and only the part handlers remain (MVP Task 8). V10's ledger gap is closed, and its schema gap closed in spec v1.34 (roadmap A0).
 
 ## 3. Capability status
 

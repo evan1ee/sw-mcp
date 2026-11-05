@@ -1,6 +1,6 @@
 # 3.4 Shared IR Core
 
-> Specification v1.33, section 3.4. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.34, section 3.4. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The shared IR core is what every IR module, derived artifact and tool contract has in common: identifiers, references, units, numbers, revisions and the IR bundle (3.3). It is normative. Schemas in `schemas/common/` implement it (ADR-035), and every example in this specification follows it.
 

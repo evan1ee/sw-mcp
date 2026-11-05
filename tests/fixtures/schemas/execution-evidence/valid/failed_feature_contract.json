@@ -1,0 +1,130 @@
+{
+  "evidence_schema_version": "0.1",
+  "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+  "graph": "part:plate_4h@1",
+  "plan_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+  "recovered": false,
+  "environment": {
+    "solidworks": {
+      "version": "2025",
+      "service_pack": "SP0.0",
+      "ui_language": "zh-CN"
+    },
+    "addin_version": "0.1.0",
+    "protocol": "0.1",
+    "profile_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+    "template": {
+      "path": "D:/templates/ISO-mm.prtdot",
+      "sha256": "9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c"
+    }
+  },
+  "outcome": {
+    "job_state": "FAILED",
+    "execution_status": "failed",
+    "rebuild_status": "not_evaluated",
+    "verification_status": "failed",
+    "failure_class": "feature_verification"
+  },
+  "contracts": [
+    {
+      "node": "extrude_base",
+      "level": "exact",
+      "hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+      "checks": [
+        {
+          "name": "feature_exists",
+          "required": true,
+          "expected": true
+        },
+        {
+          "name": "feature_type",
+          "required": true,
+          "expected": "extrude"
+        },
+        {
+          "name": "parameter_equals",
+          "required": false,
+          "expected": 10.0,
+          "unit": "mm",
+          "tolerance": {
+            "kind": "absolute",
+            "value": 0.01
+          }
+        },
+        {
+          "name": "direction_reversed",
+          "required": false,
+          "not_applicable_reason": "The graph's extrude is not a blind cut"
+        }
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "plan_op": "op_3",
+      "operation_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2:3",
+      "op": "feature.create",
+      "source": "extrude_base",
+      "execution_status": "succeeded",
+      "effect": "applied",
+      "native": {
+        "feature_id": "f79",
+        "native_id": 79,
+        "native_type": "Extrusion",
+        "status": "ok"
+      },
+      "observation": {
+        "native_type": "Extrusion",
+        "type": "extrude",
+        "error_code": 0,
+        "is_warning": false,
+        "suppressed": false,
+        "parents": [
+          "f73"
+        ],
+        "update_stamp": 412,
+        "completeness": {
+          "type": "present",
+          "parameters": "unsupported"
+        }
+      },
+      "postconditions": [
+        {
+          "name": "feature_type",
+          "status": "failed",
+          "required": true,
+          "expected": "extrude",
+          "measured": "cut_extrude"
+        }
+      ],
+      "error": null
+    },
+    {
+      "plan_op": "op_4",
+      "operation_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2:4",
+      "op": "feature.create",
+      "source": "cut_holes",
+      "execution_status": "not_attempted",
+      "effect": null,
+      "native": null,
+      "observation": null,
+      "postconditions": [
+        {
+          "name": "feature_exists",
+          "status": "not_evaluated",
+          "reason": "not_executed",
+          "required": true
+        }
+      ],
+      "error": null,
+      "blocked_by": "op_3"
+    }
+  ],
+  "observations": [],
+  "checks": [],
+  "warnings": [],
+  "artifact": null,
+  "failed_artifact": {
+    "path": "D:/parts/plate.job.failed.SLDPRT"
+  }
+}

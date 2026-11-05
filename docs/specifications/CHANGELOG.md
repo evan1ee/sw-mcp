@@ -2,6 +2,19 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.34
+
+Delivers roadmap phase [A0](../plans/solidworks-adapter-roadmap.md): the contracts that ADR-063 and ADR-064 need now exist as schemas. The add-in and the job do not use them yet, so no job behaves differently.
+
+- **Error catalogue:** adds `BACKEND_OPERATION_FAILED` (8.9.5) and `FEATURE_VERIFICATION_FAILED` (ADR-064), replacing their placeholders. ADR-037 lists both.
+- **New schemas:** `schemas/execution-evidence/v0.json` (8.9.6), including `VerificationContract`, check results, `failure_class` and `blocked_by`; `schemas/ipc/ops/document.rebuild.json`.
+- **`schemas/ipc/v0.json`:** adds `Observation` (8.9.3 rule 7) and `OperationFailureDetails` with `effect`, `stage` and `native` (8.9.5). `native` fields are absent when unknown, not null.
+- **Operations:** `sketch.create` and `feature.create` results gain an optional `observation`, and `feature.create`'s `status` is limited to the four values of 8.9.3 rule 6. **Breaking for a plan:** `dir` leaves `feature.create` and the compiler (6.5.2), and the `feature_lowering` stage goes to 0.2.0, so every plan hash changes.
+- **Journal:** the store schema gains `op_verified` (13.2.3). The journal reader follows in MVP Task 9a.
+- **`cad-verification`:** `CheckResult.status` gains `warning` and `not_applicable`, and rejects a reason that does not fit its status (8.9.6). Nothing produces the new values yet.
+- **8.9.3:** `document.rebuild` returns `rebuilt`, the call's own return, apart from the observed `ok` and `errors`, because a rebuild returning true does not mean error-free.
+- **8.9.6:** the example gains `contracts` and `observation`, and `native_id` is an integer, as in the operation result. A contract check becomes `not_applicable` through `not_applicable_reason`, set from the IR alone.
+
 ## What changed in 1.33
 
 Settles a contradiction between 6.5.3 and 6.7.4, finding V14 of the [verifiable compilation gap analysis](../superpowers/review/2026-11-05-verifiable-compilation-gap-analysis.md). No production code or schema changed: the code already behaved this way.

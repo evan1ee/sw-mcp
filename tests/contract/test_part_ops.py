@@ -5,6 +5,7 @@ from typing import Any
 
 from cad_ir.core.schema_validation import validate_against_schema
 from cad_ir.generated import ErrorCode
+from cad_ir.generated.schemas import SCHEMAS
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMAS_DIR = ROOT / "schemas"
@@ -150,3 +151,100 @@ def test_document_open_result_gains_optional_instance_id() -> None:
 
     without_inst = {"owned": True}
     assert _issues(without_inst, f"{DOCUMENT_OPEN_ID}#/$defs/Result") == []
+
+
+DOCUMENT_REBUILD_ID = "https://sw-mcp.invalid/schemas/ipc/ops/document.rebuild.json"
+STORE_ID = "https://sw-mcp.invalid/schemas/store/v0.json"
+
+
+def _observation() -> dict[str, Any]:
+    return {
+        "native_type": "Extrusion",
+        "type": "extrude",
+        "error_code": 0,
+        "is_warning": False,
+        "suppressed": False,
+        "parents": ["f73"],
+        "update_stamp": 412,
+        "completeness": {"type": "present", "parameters": "unsupported"},
+    }
+
+
+def test_operation_results_accept_an_observation() -> None:
+    """Additive (ADR-064): a result with or without ``observation`` is valid."""
+    feature = {"native_id": 79, "feature_id": "f79", "status": "ok"}
+    sketch = {"native_id": 73, "feature_id": "f73", "entity_count": 4}
+    for schema_id, result in ((FEATURE_CREATE_ID, feature), (SKETCH_CREATE_ID, sketch)):
+        pointer = f"{schema_id}#/$defs/Result"
+        assert _issues(result, pointer) == []
+        assert _issues(dict(result, observation=_observation()), pointer) == []
+        assert _issues(dict(result, observation={"native_type": "Extrusion"}), pointer) != []
+
+
+def test_observation_reports_read_parameters_in_si() -> None:
+    observation = dict(
+        _observation(),
+        parameters={"end_condition": "blind", "depth_m": 0.01},
+        solid_body_count=1,
+        needs_rebuild=False,
+    )
+    assert _issues(observation, f"{IPC_V0_ID}#/$defs/Observation") == []
+    bad_state = dict(_observation(), completeness={"type": "missing"})
+    assert _issues(bad_state, f"{IPC_V0_ID}#/$defs/Observation") != []
+
+
+def test_feature_create_status_is_constrained() -> None:
+    result = {"native_id": 79, "feature_id": "f79", "status": "ok"}
+    pointer = f"{FEATURE_CREATE_ID}#/$defs/Result"
+    for status in ("ok", "warning", "error", "suppressed"):
+        assert _issues(dict(result, status=status), pointer) == []
+    assert _issues(dict(result, status="applied"), pointer) != []
+
+
+def test_feature_create_params_no_longer_carry_a_direction() -> None:
+    feature_create = SCHEMAS[FEATURE_CREATE_ID]
+    assert isinstance(feature_create, dict)
+    assert "dir" not in str(feature_create)
+
+
+def test_document_rebuild_separates_the_native_return_from_observed_state() -> None:
+    """``ForceRebuild3`` returning true does not mean error-free (spec 8.7, V8)."""
+    assert _issues({"force": True}, f"{DOCUMENT_REBUILD_ID}#/$defs/Params") == []
+    pointer = f"{DOCUMENT_REBUILD_ID}#/$defs/Result"
+    assert _issues({"rebuilt": True, "ok": False, "errors": ["f79"]}, pointer) == []
+    assert _issues({"ok": True, "errors": []}, pointer) != []
+
+
+def test_operation_failure_details_require_effect() -> None:
+    pointer = f"{IPC_V0_ID}#/$defs/OperationFailureDetails"
+    assert _issues({"effect": "none"}, pointer) == []
+    full = {
+        "effect": "unknown",
+        "stage": "invoke",
+        "native": {"call": "FeatureExtrusion3", "returned": "null"},
+    }
+    assert _issues(full, pointer) == []
+    assert _issues({"stage": "invoke"}, pointer) != []
+    assert _issues({"effect": "maybe"}, pointer) != []
+    assert _issues(dict(full, stage="commit"), pointer) != []
+
+
+def test_op_verified_is_a_journal_record() -> None:
+    record = {
+        "type": "op_verified",
+        "ts": "2026-11-04T09:30:15.123Z",
+        "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+        "operation_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2:3",
+        "node": "extrude_base",
+        "feature_id": "f79",
+        "observation": _observation(),
+        "checks": [{"name": "feature_exists", "status": "passed"}],
+        "status": "passed",
+    }
+    assert _issues(record, f"{STORE_ID}#/$defs/JournalRecord") == []
+    assert _issues(dict(record, status="warning"), f"{STORE_ID}#/$defs/JournalRecord") != []
+
+
+def test_verification_error_codes_exist() -> None:
+    assert ErrorCode.BACKEND_OPERATION_FAILED == "BACKEND_OPERATION_FAILED"
+    assert ErrorCode.FEATURE_VERIFICATION_FAILED == "FEATURE_VERIFICATION_FAILED"

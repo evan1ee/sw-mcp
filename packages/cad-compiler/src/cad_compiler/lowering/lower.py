@@ -119,8 +119,6 @@ def _lower_solid(
         "profile": node.profile,
         "end_condition": end_cond,
     }
-    if node.type == "cut_extrude" and node.end_condition.type == "blind":
-        params["dir"] = True
 
     op_id = f"op_{seq}"
     op_body = {

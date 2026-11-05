@@ -340,3 +340,24 @@ def test_stage_execution_order_and_propagation(monkeypatch: pytest.MonkeyPatch) 
         "feature_lowering",
         "execution_planner",
     ]
+
+
+def test_blind_cut_carries_no_direction() -> None:
+    """A blind cut's direction belongs to the add-in's translator (spec 6.5.2, 8.9.3 rule 4)."""
+    raw: dict[str, Any] = json.loads(PLATE_FIXTURE.read_text(encoding="utf-8"))
+    raw["nodes"]["cut_holes"]["end_condition"] = {"type": "blind", "depth": 5.0}
+    ref_str = "part:plate_4h@1"
+    manifest = BundleManifest("1.0", (parse_document_ref(ref_str),))
+    source = CompileInput(manifest=manifest, documents={ref_str: raw})
+    ctx = CompileContext("0.1.0", CapabilityProfile.from_session(_make_session()), {})
+    result = compile_bundle(source, ctx)
+    assert result.plan is not None
+    plan = cast(dict[str, Any], result.plan)
+    operations = cast(dict[str, dict[str, Any]], plan["operations"])
+    cuts = [
+        op
+        for op in operations.values()
+        if op["op"] == "feature.create" and op["params"]["type"] == "cut_extrude"
+    ]
+    assert cuts
+    assert all("dir" not in op["params"] for op in cuts)

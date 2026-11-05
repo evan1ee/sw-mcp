@@ -1,0 +1,26 @@
+[
+  {
+    "completeness": {}
+  },
+  {
+    "native_type": "Extrusion",
+    "type": "extrude",
+    "error_code": 0,
+    "is_warning": false,
+    "suppressed": false,
+    "parents": [
+      "f73"
+    ],
+    "parameters": {
+      "end_condition": "blind",
+      "depth_m": 0.01
+    },
+    "solid_body_count": 1,
+    "needs_rebuild": false,
+    "update_stamp": 412,
+    "completeness": {
+      "type": "present",
+      "parameters": "present"
+    }
+  }
+]

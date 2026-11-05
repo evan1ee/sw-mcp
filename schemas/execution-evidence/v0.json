@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/execution-evidence/v0.json",
+  "title": "Execution evidence of one plan job (spec 8.9.6, ADR-063, ADR-064)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "evidence_schema_version": { "const": "0.1" },
+    "job_id": { "$ref": "../store/v0.json#/$defs/JobId" },
+    "graph": { "$ref": "../common/v0.json#/$defs/DocumentRef" },
+    "plan_hash": { "$ref": "../common/v0.json#/$defs/ContentHash" },
+    "recovered": { "type": "boolean" },
+    "environment": { "$ref": "#/$defs/Environment" },
+    "outcome": { "$ref": "#/$defs/Outcome" },
+    "contracts": { "type": "array", "items": { "$ref": "#/$defs/VerificationContract" } },
+    "operations": { "type": "array", "items": { "$ref": "#/$defs/OperationEvidence" } },
+    "observations": { "type": "array", "items": { "$ref": "#/$defs/StageObservation" } },
+    "checks": { "type": "array", "items": { "$ref": "#/$defs/CheckResult" } },
+    "warnings": { "type": "array", "items": { "$ref": "../store/v0.json#/$defs/JobWarning" } },
+    "artifact": { "anyOf": [{ "$ref": "#/$defs/Artifact" }, { "type": "null" }] },
+    "failed_artifact": { "anyOf": [{ "$ref": "#/$defs/FailedArtifact" }, { "type": "null" }] }
+  },
+  "required": [
+    "evidence_schema_version",
+    "job_id",
+    "graph",
+    "plan_hash",
+    "recovered",
+    "environment",
+    "outcome",
+    "contracts",
+    "operations",
+    "observations",
+    "checks",
+    "warnings",
+    "artifact",
+    "failed_artifact"
+  ],
+  "allOf": [
+    {
+      "description": "A job reaches COMMITTED only with a published artifact (spec 8.9.6).",
+      "if": {
+        "properties": { "outcome": { "properties": { "job_state": { "const": "COMMITTED" } } } }
+      },
+      "then": {
+        "properties": { "artifact": { "properties": { "published": { "const": true } }, "type": "object" } }
+      }
+    }
+  ],
+  "$defs": {
+    "ExecutionStatus": {
+      "description": "unknown when sent without an answer (13.2.3).",
+      "enum": ["not_attempted", "succeeded", "failed", "cancelled", "unknown"]
+    },
+    "RebuildStatus": { "enum": ["ok", "errors", "not_evaluated"] },
+    "VerificationStatus": {
+      "description": "A rollup. A warning is failed in the MVP, and not_applicable is ignored (ADR-064).",
+      "enum": ["passed", "failed", "not_evaluated"]
+    },
+    "CheckStatus": { "enum": ["passed", "failed", "warning", "not_applicable", "not_evaluated"] },
+    "NotEvaluatedReason": { "enum": ["not_executed", "unsupported", "missing_data", "malformed_data"] },
+    "FailureClass": {
+      "description": "The stage that ended the job (ADR-064).",
+      "enum": ["compilation", "execution", "feature_verification", "final_verification"]
+    },
+    "ContractLevel": {
+      "description": "Only exact is used until K16 is decided (ADR-064).",
+      "enum": ["exact", "bounded", "declared", "structural"]
+    },
+    "Tolerance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "enum": ["absolute", "relative"] },
+        "value": { "type": "number", "minimum": 0 }
+      },
+      "required": ["kind", "value"]
+    },
+    "Verdict": {
+      "description": "not_evaluated and not_applicable need a reason, and nothing else has one (spec 8.9.6).",
+      "properties": {
+        "status": { "$ref": "#/$defs/CheckStatus" },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "required": ["status"],
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "not_evaluated" } }, "required": ["status"] },
+          "then": {
+            "properties": { "reason": { "$ref": "#/$defs/NotEvaluatedReason" } },
+            "required": ["reason"]
+          }
+        },
+        {
+          "if": { "properties": { "status": { "const": "not_applicable" } }, "required": ["status"] },
+          "then": { "required": ["reason"] }
+        },
+        {
+          "if": {
+            "properties": { "status": { "enum": ["passed", "failed", "warning"] } },
+            "required": ["status"]
+          },
+          "then": { "not": { "required": ["reason"] } }
+        }
+      ]
+    },
+    "ContractCheck": {
+      "description": "One check of a contract. not_applicable_reason is set from the IR alone, so a backend cannot excuse a check (ADR-064).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "required": { "type": "boolean" },
+        "expected": true,
+        "unit": { "type": "string" },
+        "tolerance": { "$ref": "#/$defs/Tolerance" },
+        "not_applicable_reason": { "type": "string", "minLength": 1 }
+      },
+      "required": ["name", "required"]
+    },
+    "VerificationContract": {
+      "description": "What one IR node must satisfy, from feature_contracts(graph). The plan holds no expected values (ADR-064).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "node": { "type": "string", "minLength": 1 },
+        "level": { "$ref": "#/$defs/ContractLevel" },
+        "hash": { "$ref": "../common/v0.json#/$defs/ContentHash" },
+        "checks": { "type": "array", "items": { "$ref": "#/$defs/ContractCheck" }, "minItems": 1 }
+      },
+      "required": ["node", "level", "hash", "checks"]
+    },
+    "PostconditionResult": {
+      "description": "One contract check judged against an operation's observation.",
+      "type": "object",
+      "$ref": "#/$defs/Verdict",
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "required": { "type": "boolean" },
+        "expected": true,
+        "measured": true,
+        "unit": { "type": "string" },
+        "tolerance": { "$ref": "#/$defs/Tolerance" },
+        "method": { "type": "string" },
+        "status": true,
+        "reason": true
+      },
+      "required": ["name", "status"],
+      "unevaluatedProperties": false
+    },
+    "CheckResult": {
+      "description": "One final check (spec 10.2.1), against the IR.",
+      "type": "object",
+      "$ref": "#/$defs/Verdict",
+      "properties": {
+        "check": { "type": "string", "minLength": 1 },
+        "stage": { "enum": ["in_session", "reopened"] },
+        "requirement": { "type": "string" },
+        "source": { "type": "array", "items": { "type": "string" } },
+        "expected": true,
+        "measured": true,
+        "unit": { "type": "string" },
+        "tolerance": { "$ref": "#/$defs/Tolerance" },
+        "method": { "type": "string" },
+        "status": true,
+        "reason": true
+      },
+      "required": ["check", "stage", "status"],
+      "unevaluatedProperties": false
+    },
+    "NativeFeature": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "feature_id": { "type": "string" },
+        "native_id": { "type": "integer" },
+        "native_type": { "type": "string" },
+        "status": { "type": "string" }
+      }
+    },
+    "OperationEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "plan_op": { "type": "string", "minLength": 1 },
+        "operation_id": { "type": "string", "minLength": 1 },
+        "op": { "type": "string", "minLength": 1 },
+        "source": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "execution_status": { "$ref": "#/$defs/ExecutionStatus" },
+        "effect": { "anyOf": [{ "$ref": "../ipc/v0.json#/$defs/OperationEffect" }, { "type": "null" }] },
+        "native": { "anyOf": [{ "$ref": "#/$defs/NativeFeature" }, { "type": "null" }] },
+        "observation": { "anyOf": [{ "$ref": "../ipc/v0.json#/$defs/Observation" }, { "type": "null" }] },
+        "postconditions": { "type": "array", "items": { "$ref": "#/$defs/PostconditionResult" } },
+        "blocked_by": { "type": "string", "minLength": 1 },
+        "error": { "anyOf": [{ "$ref": "../common/v0.json#/$defs/Error" }, { "type": "null" }] }
+      },
+      "required": [
+        "plan_op",
+        "operation_id",
+        "op",
+        "source",
+        "execution_status",
+        "effect",
+        "native",
+        "observation",
+        "postconditions",
+        "error"
+      ],
+      "if": { "required": ["blocked_by"] },
+      "then": { "properties": { "execution_status": { "const": "not_attempted" } } }
+    },
+    "Outcome": {
+      "description": "Execution, rebuild and verification stay separate outcomes (ADR-063).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "job_state": { "enum": ["COMMITTED", "FAILED", "ABORTED"] },
+        "execution_status": { "$ref": "#/$defs/ExecutionStatus" },
+        "rebuild_status": { "$ref": "#/$defs/RebuildStatus" },
+        "verification_status": { "$ref": "#/$defs/VerificationStatus" },
+        "failure_class": { "$ref": "#/$defs/FailureClass" }
+      },
+      "required": ["job_state", "execution_status", "rebuild_status", "verification_status"],
+      "if": { "properties": { "job_state": { "const": "COMMITTED" } }, "required": ["job_state"] },
+      "then": {
+        "properties": {
+          "execution_status": { "const": "succeeded" },
+          "rebuild_status": { "const": "ok" },
+          "verification_status": { "const": "passed" }
+        },
+        "not": { "required": ["failure_class"] }
+      }
+    },
+    "Environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "solidworks": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "version": { "type": "string" },
+            "service_pack": { "type": "string" },
+            "ui_language": { "type": "string" }
+          },
+          "required": ["version", "service_pack", "ui_language"]
+        },
+        "addin_version": { "type": "string" },
+        "protocol": { "type": "string" },
+        "profile_hash": { "$ref": "../common/v0.json#/$defs/ContentHash" },
+        "template": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": { "type": "string" },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          },
+          "required": ["path", "sha256"]
+        }
+      },
+      "required": ["solidworks", "addin_version", "protocol", "profile_hash", "template"]
+    },
+    "StageObservation": {
+      "description": "One full measurement (tier T3). Measurements and IDs only; no sketch or face geometry dump.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stage": { "enum": ["in_session", "reopened"] },
+        "instance_id": { "type": "string" },
+        "read_only": { "type": "boolean" },
+        "dirty": { "type": "boolean" },
+        "completeness": {
+          "type": "object",
+          "additionalProperties": { "$ref": "../ipc/v0.json#/$defs/CompletenessState" }
+        },
+        "measured": { "type": "object" }
+      },
+      "required": ["stage", "instance_id", "read_only", "dirty", "completeness", "measured"]
+    },
+    "Artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" },
+        "fingerprint": { "$ref": "../common/v0.json#/$defs/ContentHash" },
+        "published": { "type": "boolean" }
+      },
+      "required": ["path", "fingerprint", "published"]
+    },
+    "FailedArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "path": { "type": "string" } },
+      "required": ["path"]
+    }
+  }
+}

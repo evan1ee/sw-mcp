@@ -39,6 +39,45 @@ public enum DocumentEventParamsEvent
 }
 
 [JsonConverter(typeof(StringEnumConverter))]
+public enum OperationEffect
+{
+    [EnumMember(Value = "none")]
+    None,
+    [EnumMember(Value = "applied")]
+    Applied,
+    [EnumMember(Value = "unknown")]
+    Unknown
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum OperationFailureDetailsStage
+{
+    [EnumMember(Value = "admit")]
+    Admit,
+    [EnumMember(Value = "translate")]
+    Translate,
+    [EnumMember(Value = "invoke")]
+    Invoke,
+    [EnumMember(Value = "read_back")]
+    ReadBack,
+    [EnumMember(Value = "report")]
+    Report
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum CompletenessState
+{
+    [EnumMember(Value = "present")]
+    Present,
+    [EnumMember(Value = "empty")]
+    Empty,
+    [EnumMember(Value = "unavailable")]
+    Unavailable,
+    [EnumMember(Value = "unsupported")]
+    Unsupported
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
 public enum FeatureCreateEndConditionType
 {
     [EnumMember(Value = "blind")]
@@ -54,6 +93,19 @@ public enum FeatureCreateParamsType
     Extrude,
     [EnumMember(Value = "cut_extrude")]
     CutExtrude
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum FeatureCreateResultStatus
+{
+    [EnumMember(Value = "ok")]
+    Ok,
+    [EnumMember(Value = "warning")]
+    Warning,
+    [EnumMember(Value = "error")]
+    Error,
+    [EnumMember(Value = "suppressed")]
+    Suppressed
 }
 
 [JsonConverter(typeof(StringEnumConverter))]
@@ -564,6 +616,105 @@ public sealed class ResponseChunkParams
     public string Data { get; set; } = string.Empty;
 }
 
+public sealed class NativeFailure
+{
+    [JsonProperty("call", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Call { get; set; }
+
+    [JsonProperty("returned", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Returned { get; set; }
+
+    [JsonProperty("hresult", NullValueHandling = NullValueHandling.Ignore)]
+    public long? Hresult { get; set; }
+
+    [JsonProperty("error_code", NullValueHandling = NullValueHandling.Ignore)]
+    public long? ErrorCode { get; set; }
+}
+
+public sealed class OperationFailureDetails
+{
+    [JsonProperty("effect", Required = Required.Always)]
+    public OperationEffect Effect { get; set; }
+
+    [JsonProperty("stage", NullValueHandling = NullValueHandling.Ignore)]
+    public OperationFailureDetailsStage? Stage { get; set; }
+
+    [JsonProperty("native", NullValueHandling = NullValueHandling.Ignore)]
+    public NativeFailure? Native { get; set; }
+}
+
+public sealed class ObservationCompleteness
+{
+    [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? Type { get; set; }
+
+    [JsonProperty("error_code", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? ErrorCode { get; set; }
+
+    [JsonProperty("suppressed", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? Suppressed { get; set; }
+
+    [JsonProperty("parents", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? Parents { get; set; }
+
+    [JsonProperty("parameters", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? Parameters { get; set; }
+
+    [JsonProperty("solid_body_count", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? SolidBodyCount { get; set; }
+
+    [JsonProperty("needs_rebuild", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? NeedsRebuild { get; set; }
+
+    [JsonProperty("update_stamp", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? UpdateStamp { get; set; }
+}
+
+public sealed class ObservedParameters
+{
+    [JsonProperty("end_condition", NullValueHandling = NullValueHandling.Ignore)]
+    public string? EndCondition { get; set; }
+
+    [JsonProperty("depth_m", NullValueHandling = NullValueHandling.Ignore)]
+    public double? DepthM { get; set; }
+}
+
+public sealed class Observation
+{
+    [JsonProperty("native_type", NullValueHandling = NullValueHandling.Ignore)]
+    public string? NativeType { get; set; }
+
+    [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Type { get; set; }
+
+    [JsonProperty("error_code", NullValueHandling = NullValueHandling.Ignore)]
+    public long? ErrorCode { get; set; }
+
+    [JsonProperty("is_warning", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? IsWarning { get; set; }
+
+    [JsonProperty("suppressed", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Suppressed { get; set; }
+
+    [JsonProperty("parents", NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Parents { get; set; }
+
+    [JsonProperty("parameters", NullValueHandling = NullValueHandling.Ignore)]
+    public ObservedParameters? Parameters { get; set; }
+
+    [JsonProperty("solid_body_count", NullValueHandling = NullValueHandling.Ignore)]
+    public long? SolidBodyCount { get; set; }
+
+    [JsonProperty("needs_rebuild", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? NeedsRebuild { get; set; }
+
+    [JsonProperty("update_stamp", NullValueHandling = NullValueHandling.Ignore)]
+    public long? UpdateStamp { get; set; }
+
+    [JsonProperty("completeness", Required = Required.Always)]
+    public ObservationCompleteness Completeness { get; set; } = null!;
+}
+
 public sealed class CenterMarkAddParams
 {
     [JsonProperty("view", Required = Required.Always)]
@@ -708,6 +859,27 @@ public sealed class DocumentOpenResult
     public string? InstanceId { get; set; }
 }
 
+public sealed class DocumentRebuildParams
+{
+    [JsonProperty("force", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Force { get; set; }
+
+    [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
+    public Meta? Meta { get; set; }
+}
+
+public sealed class DocumentRebuildResult
+{
+    [JsonProperty("rebuilt", Required = Required.Always)]
+    public bool Rebuilt { get; set; }
+
+    [JsonProperty("ok", Required = Required.Always)]
+    public bool Ok { get; set; }
+
+    [JsonProperty("errors", Required = Required.Always)]
+    public List<string> Errors { get; set; } = new List<string>();
+}
+
 public sealed class DocumentSaveParams
 {
     [JsonProperty("path", Required = Required.Always)]
@@ -782,9 +954,6 @@ public sealed class FeatureCreateParams
     [JsonProperty("end_condition", Required = Required.Always)]
     public FeatureCreateEndCondition EndCondition { get; set; } = null!;
 
-    [JsonProperty("dir", NullValueHandling = NullValueHandling.Ignore)]
-    public bool? Dir { get; set; }
-
     [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
     public Meta? Meta { get; set; }
 }
@@ -798,7 +967,10 @@ public sealed class FeatureCreateResult
     public string FeatureId { get; set; } = string.Empty;
 
     [JsonProperty("status", Required = Required.Always)]
-    public string Status { get; set; } = string.Empty;
+    public FeatureCreateResultStatus Status { get; set; }
+
+    [JsonProperty("observation", NullValueHandling = NullValueHandling.Ignore)]
+    public Observation? Observation { get; set; }
 }
 
 public sealed class ModelItemsInsertParams
@@ -937,6 +1109,9 @@ public sealed class SketchCreateResult
 
     [JsonProperty("entity_count", Required = Required.Always)]
     public long EntityCount { get; set; }
+
+    [JsonProperty("observation", NullValueHandling = NullValueHandling.Ignore)]
+    public Observation? Observation { get; set; }
 }
 
 public sealed class ViewCreateParams

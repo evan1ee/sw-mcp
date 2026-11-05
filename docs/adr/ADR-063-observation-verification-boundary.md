@@ -22,7 +22,7 @@ Independence is what makes verification evidence: if the same code builds and ju
 
 ## Consequences
 
-- Adds `schemas/execution-evidence/v0.json`, `details.effect`, one new error code (`PROPOSED_OPERATION_FAILED`), and a small growth of `part.measure`.
+- Adds `schemas/execution-evidence/v0.json`, `details.effect`, one new error code (`BACKEND_OPERATION_FAILED`), and a small growth of `part.measure`.
 - K16: `expected_geometry` is exact only for narrow shapes. Fillets and similar features cannot rely on analytic values, so the verification level must be stated per node rather than implied.
 - The ledger records an operation that may have taken effect and then failed (K17, closed by owner decision; rule in 8.7).
 - The snapshot's drawing completeness work (F2) uses the same vocabulary when the freeze lifts.

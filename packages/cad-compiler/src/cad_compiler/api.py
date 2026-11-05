@@ -25,7 +25,7 @@ STAGE_VERSIONS: Final[Mapping[str, str]] = MappingProxyType(
         "semantic_validator": "0.1.0",
         "graph_analyzer": "0.1.0",
         "geometry_resolver": "0.1.0",
-        "feature_lowering": "0.1.0",
+        "feature_lowering": "0.2.0",
         "execution_planner": "0.1.0",
     }
 )

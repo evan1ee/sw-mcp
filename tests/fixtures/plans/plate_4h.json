@@ -10,7 +10,7 @@
     "compiler_version": "0.1.0",
     "profile_hash": "sha256:cd069d6336aeab8d84cd057a3a55923567a277d3e1d9cbc40d816eb7cbd67a11",
     "stage_versions": {
-      "feature_lowering": "0.1.0",
+      "feature_lowering": "0.2.0",
       "geometry_resolver": "0.1.0",
       "graph_analyzer": "0.1.0",
       "parser": "0.1.0",

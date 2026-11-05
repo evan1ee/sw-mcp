@@ -52,9 +52,11 @@ ADR_037_CODES = [
     "FILE_NOT_FOUND",
     "STORE_UNAVAILABLE",
     "PART_VERIFICATION_FAILED",
+    "BACKEND_OPERATION_FAILED",
+    "FEATURE_VERIFICATION_FAILED",
 ]
 
-EXPECTED_CODE_COUNT = 41
+EXPECTED_CODE_COUNT = 43
 # Timeouts, interruptions and a lost add-in connection are after_fix: the operation may have run.
 SAFE = {
     "BACKEND_BUSY",

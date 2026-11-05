@@ -1,6 +1,6 @@
 # SOLIDWORKS Adapter Implementation Roadmap
 
-**Date:** 2026-11-05. **Status:** The owner accepted ADR-058 to ADR-063 on 2026-11-05. No phase has started. It adds to the [part chain MVP plan](../superpowers/plans/2026-11-05-part-chain-mvp.md) and does not replace it. Section 18 remains the product roadmap.
+**Date:** 2026-11-05. **Status:** The owner accepted ADR-058 to ADR-063 on 2026-11-05. A0 is done (spec v1.34). No other phase is complete. It adds to the [part chain MVP plan](../superpowers/plans/2026-11-05-part-chain-mvp.md) and does not replace it. Section 18 remains the product roadmap.
 
 **Sources:** [8.8 architecture](../architecture/solidworks-adapter.md), [8.9 interface specification](../specifications/solidworks-adapter.md), [ADR-058](../adr/ADR-058-compiler-oriented-adapter.md) to [ADR-063](../adr/ADR-063-observation-verification-boundary.md).
 
@@ -40,7 +40,7 @@ Complexity: **S** a few files, **M** one component, **L** several components.
 
 ### A0: Contract schemas. S
 
-**Scope.** Schemas: `PROPOSED_OPERATION_FAILED`, `details.effect`, `schemas/execution-evidence/v0.json` with fixtures. From ADR-064: `VerificationContract` and check results in the evidence schema, `failure_class` and `blocked_by`, `observation` on `sketch.create` and `feature.create` results, `schemas/ipc/ops/document.rebuild.json`, the `op_verified` journal record, `PROPOSED_FEATURE_VERIFICATION_FAILED`, removing `dir` from `feature.create` and the compiler, and `warning` and `not_applicable` in `CheckResult`.
+**Done in spec v1.34.** **Scope.** Schemas: `BACKEND_OPERATION_FAILED`, `details.effect`, `schemas/execution-evidence/v0.json` with fixtures. From ADR-064: `VerificationContract` and check results in the evidence schema, `failure_class` and `blocked_by`, `observation` on `sketch.create` and `feature.create` results, `schemas/ipc/ops/document.rebuild.json`, the `op_verified` journal record, `FEATURE_VERIFICATION_FAILED`, removing `dir` from `feature.create` and the compiler, and `warning` and `not_applicable` in `CheckResult`.
 
 **Acceptance.** Generated contracts show no drift. The schema has valid and invalid fixtures. No production behaviour changes.
 

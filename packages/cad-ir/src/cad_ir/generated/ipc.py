@@ -92,9 +92,17 @@ type ErrorRetryable = Literal['never', 'after_fix', 'safe']
 
 type DocumentEventParamsEvent = Literal['regen', 'save', 'close', 'active_changed']
 
+type OperationEffect = Literal['none', 'applied', 'unknown']
+
+type OperationFailureDetailsStage = Literal['admit', 'translate', 'invoke', 'read_back', 'report']
+
+type CompletenessState = Literal['present', 'empty', 'unavailable', 'unsupported']
+
 type FeatureCreateEndConditionType = Literal['blind', 'through_all_both']
 
 type FeatureCreateParamsType = Literal['extrude', 'cut_extrude']
+
+type FeatureCreateResultStatus = Literal['ok', 'warning', 'error', 'suppressed']
 
 type ModelItemsInsertParamsSource = Literal['entire_model', 'selected_feature']
 
@@ -113,6 +121,10 @@ type ViewCreateParamsTangentEdges = Literal['removed', 'phantom', 'visible']
 type ViewUpdateParamsDisplayMode = Literal['hlr', 'hlv', 'wireframe', 'shaded', 'shaded_edges', 'default']
 
 type SnapshotResult = JsonValue
+
+type OperationEffect = OperationEffect
+
+type CompletenessState = CompletenessState
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -1055,6 +1067,206 @@ class ResponseChunkParams:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class NativeFailure:
+    call: str | None = None
+    returned: str | None = None
+    hresult: int | None = None
+    error_code: int | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "NativeFailure")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            call=_opt(obj, "call", where, _str),
+            returned=_opt(obj, "returned", where, _str),
+            hresult=_opt(obj, "hresult", where, _int),
+            error_code=_opt(obj, "error_code", where, _int),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        if self.call is not None:
+            out["call"] = _dump(self.call)
+        if self.returned is not None:
+            out["returned"] = _dump(self.returned)
+        if self.hresult is not None:
+            out["hresult"] = _dump(self.hresult)
+        if self.error_code is not None:
+            out["error_code"] = _dump(self.error_code)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class OperationFailureDetails:
+    effect: OperationEffect
+    stage: OperationFailureDetailsStage | None = None
+    native: NativeFailure | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "OperationFailureDetails")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            effect=_str(_req(obj, "effect", where), f"{where}.effect"),
+            stage=_opt(obj, "stage", where, _str),
+            native=_opt(obj, "native", where, NativeFailure._at),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["effect"] = _dump(self.effect)
+        if self.stage is not None:
+            out["stage"] = _dump(self.stage)
+        if self.native is not None:
+            out["native"] = _dump(self.native)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ObservationCompleteness:
+    type: CompletenessState | None = None
+    error_code: CompletenessState | None = None
+    suppressed: CompletenessState | None = None
+    parents: CompletenessState | None = None
+    parameters: CompletenessState | None = None
+    solid_body_count: CompletenessState | None = None
+    needs_rebuild: CompletenessState | None = None
+    update_stamp: CompletenessState | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "ObservationCompleteness")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            type=_opt(obj, "type", where, _str),
+            error_code=_opt(obj, "error_code", where, _str),
+            suppressed=_opt(obj, "suppressed", where, _str),
+            parents=_opt(obj, "parents", where, _str),
+            parameters=_opt(obj, "parameters", where, _str),
+            solid_body_count=_opt(obj, "solid_body_count", where, _str),
+            needs_rebuild=_opt(obj, "needs_rebuild", where, _str),
+            update_stamp=_opt(obj, "update_stamp", where, _str),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        if self.type is not None:
+            out["type"] = _dump(self.type)
+        if self.error_code is not None:
+            out["error_code"] = _dump(self.error_code)
+        if self.suppressed is not None:
+            out["suppressed"] = _dump(self.suppressed)
+        if self.parents is not None:
+            out["parents"] = _dump(self.parents)
+        if self.parameters is not None:
+            out["parameters"] = _dump(self.parameters)
+        if self.solid_body_count is not None:
+            out["solid_body_count"] = _dump(self.solid_body_count)
+        if self.needs_rebuild is not None:
+            out["needs_rebuild"] = _dump(self.needs_rebuild)
+        if self.update_stamp is not None:
+            out["update_stamp"] = _dump(self.update_stamp)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ObservedParameters:
+    end_condition: str | None = None
+    depth_m: float | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "ObservedParameters")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            end_condition=_opt(obj, "end_condition", where, _str),
+            depth_m=_opt(obj, "depth_m", where, _num),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        if self.end_condition is not None:
+            out["end_condition"] = _dump(self.end_condition)
+        if self.depth_m is not None:
+            out["depth_m"] = _dump(self.depth_m)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Observation:
+    native_type: str | None = None
+    type: str | None = None
+    error_code: int | None = None
+    is_warning: bool | None = None
+    suppressed: bool | None = None
+    parents: tuple[str, ...] | None = None
+    parameters: ObservedParameters | None = None
+    solid_body_count: int | None = None
+    needs_rebuild: bool | None = None
+    update_stamp: int | None = None
+    completeness: ObservationCompleteness
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "Observation")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            native_type=_opt(obj, "native_type", where, _str),
+            type=_opt(obj, "type", where, _str),
+            error_code=_opt(obj, "error_code", where, _int),
+            is_warning=_opt(obj, "is_warning", where, _bool),
+            suppressed=_opt(obj, "suppressed", where, _bool),
+            parents=_opt(obj, "parents", where, _list_of(_str)),
+            parameters=_opt(obj, "parameters", where, ObservedParameters._at),
+            solid_body_count=_opt(obj, "solid_body_count", where, _int),
+            needs_rebuild=_opt(obj, "needs_rebuild", where, _bool),
+            update_stamp=_opt(obj, "update_stamp", where, _int),
+            completeness=ObservationCompleteness._at(_req(obj, "completeness", where), f"{where}.completeness"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        if self.native_type is not None:
+            out["native_type"] = _dump(self.native_type)
+        if self.type is not None:
+            out["type"] = _dump(self.type)
+        if self.error_code is not None:
+            out["error_code"] = _dump(self.error_code)
+        if self.is_warning is not None:
+            out["is_warning"] = _dump(self.is_warning)
+        if self.suppressed is not None:
+            out["suppressed"] = _dump(self.suppressed)
+        if self.parents is not None:
+            out["parents"] = _dump(self.parents)
+        if self.parameters is not None:
+            out["parameters"] = _dump(self.parameters)
+        if self.solid_body_count is not None:
+            out["solid_body_count"] = _dump(self.solid_body_count)
+        if self.needs_rebuild is not None:
+            out["needs_rebuild"] = _dump(self.needs_rebuild)
+        if self.update_stamp is not None:
+            out["update_stamp"] = _dump(self.update_stamp)
+        out["completeness"] = _dump(self.completeness)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class CenterMarkAddParams:
     view: str
     hole_centers: bool | None = None
@@ -1421,6 +1633,59 @@ class DocumentOpenResult:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class DocumentRebuildParams:
+    force: bool | None = None
+    meta: Meta | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DocumentRebuildParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            force=_opt(obj, "force", where, _bool),
+            meta=_opt(obj, "_meta", where, Meta._at),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        if self.force is not None:
+            out["force"] = _dump(self.force)
+        if self.meta is not None:
+            out["_meta"] = _dump(self.meta)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DocumentRebuildResult:
+    rebuilt: bool
+    ok: bool
+    errors: tuple[str, ...]
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DocumentRebuildResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            rebuilt=_bool(_req(obj, "rebuilt", where), f"{where}.rebuilt"),
+            ok=_bool(_req(obj, "ok", where), f"{where}.ok"),
+            errors=_list_of(_str)(_req(obj, "errors", where), f"{where}.errors"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["rebuilt"] = _dump(self.rebuilt)
+        out["ok"] = _dump(self.ok)
+        out["errors"] = _dump(self.errors)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class DocumentSaveParams:
     path: str
     target_path: str | None = None
@@ -1571,7 +1836,6 @@ class FeatureCreateParams:
     type: FeatureCreateParamsType
     profile: str
     end_condition: FeatureCreateEndCondition
-    dir: bool | None = None
     meta: Meta | None = None
 
     @classmethod
@@ -1586,7 +1850,6 @@ class FeatureCreateParams:
             type=_str(_req(obj, "type", where), f"{where}.type"),
             profile=_str(_req(obj, "profile", where), f"{where}.profile"),
             end_condition=FeatureCreateEndCondition._at(_req(obj, "end_condition", where), f"{where}.end_condition"),
-            dir=_opt(obj, "dir", where, _bool),
             meta=_opt(obj, "_meta", where, Meta._at),
         )
 
@@ -1596,8 +1859,6 @@ class FeatureCreateParams:
         out["type"] = _dump(self.type)
         out["profile"] = _dump(self.profile)
         out["end_condition"] = _dump(self.end_condition)
-        if self.dir is not None:
-            out["dir"] = _dump(self.dir)
         if self.meta is not None:
             out["_meta"] = _dump(self.meta)
         return out
@@ -1607,7 +1868,8 @@ class FeatureCreateParams:
 class FeatureCreateResult:
     native_id: int
     feature_id: str
-    status: str
+    status: FeatureCreateResultStatus
+    observation: Observation | None = None
 
     @classmethod
     def from_json(cls, value: JsonValue) -> Self:
@@ -1620,6 +1882,7 @@ class FeatureCreateResult:
             native_id=_int(_req(obj, "native_id", where), f"{where}.native_id"),
             feature_id=_str(_req(obj, "feature_id", where), f"{where}.feature_id"),
             status=_str(_req(obj, "status", where), f"{where}.status"),
+            observation=_opt(obj, "observation", where, Observation._at),
         )
 
     def to_json(self) -> dict[str, JsonValue]:
@@ -1627,6 +1890,8 @@ class FeatureCreateResult:
         out["native_id"] = _dump(self.native_id)
         out["feature_id"] = _dump(self.feature_id)
         out["status"] = _dump(self.status)
+        if self.observation is not None:
+            out["observation"] = _dump(self.observation)
         return out
 
 
@@ -1912,6 +2177,7 @@ class SketchCreateResult:
     native_id: int
     feature_id: str
     entity_count: int
+    observation: Observation | None = None
 
     @classmethod
     def from_json(cls, value: JsonValue) -> Self:
@@ -1924,6 +2190,7 @@ class SketchCreateResult:
             native_id=_int(_req(obj, "native_id", where), f"{where}.native_id"),
             feature_id=_str(_req(obj, "feature_id", where), f"{where}.feature_id"),
             entity_count=_int(_req(obj, "entity_count", where), f"{where}.entity_count"),
+            observation=_opt(obj, "observation", where, Observation._at),
         )
 
     def to_json(self) -> dict[str, JsonValue]:
@@ -1931,6 +2198,8 @@ class SketchCreateResult:
         out["native_id"] = _dump(self.native_id)
         out["feature_id"] = _dump(self.feature_id)
         out["entity_count"] = _dump(self.entity_count)
+        if self.observation is not None:
+            out["observation"] = _dump(self.observation)
         return out
 
 

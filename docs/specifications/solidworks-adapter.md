@@ -1,6 +1,6 @@
 # 8.9 SOLIDWORKS Adapter Interface Specification
 
-> Specification v1.33, section 8.9. Index and section map: [README.md](README.md).
+> Specification v1.34, section 8.9. Index and section map: [README.md](README.md).
 
 **Status: Accepted by the owner, 2026-11-05. Not built yet.** Architecture: [8.8](../architecture/solidworks-adapter.md). This section extends 6.5, 6.6 and 8.7 and repeats none of their rules. Until the roadmap delivers each part, the schemas and code stay as they are, and the [ADRs](../adr/README.md) say where they must change. JSON here is illustrative. **`schemas/` is the normative form once written (ADR-035).**
 
@@ -13,8 +13,8 @@
 | Operations and read commands | Schemas | Compiler output, job, add-in | `schemas/ipc/` | Exists; extended below |
 | `Backend` port | Python application layer | Job layer; `cad-protocol` implements it | `cad_application/ports.py` | Exists |
 | Capability profile | Add-in reports it; compiler consumes it | Lowering, job | 6.6, `cad_compiler/profile.py` | Exists; extended in 8.9.7 |
-| Error catalogue | Schemas | Everyone | `schemas/common/errors.json` | Exists; one addition |
-| Execution evidence | Python verification | Job, MCP, humans | `schemas/execution-evidence/v0.json`, written in roadmap A0 | New |
+| Error catalogue | Schemas | Everyone | `schemas/common/errors.json` | Exists |
+| Execution evidence | Python verification | Job, MCP, humans | `schemas/execution-evidence/v0.json` | Schema exists; the `plan` job writes it from A2 |
 | `IOperationHandler`, read handlers | C# Core | Router; Adapters implement | `ExecutionServer.Core/Dispatch` | New, add-in internal |
 | Translators and call records | C# Core | Adapters | `ExecutionServer.Core/Parts` | New, add-in internal |
 | `ComScope`, `DocumentLocator`, scopes | C# Adapters | Handlers, observers | `ExecutionServer.Adapters/Native` | New, implementation-specific |
@@ -59,7 +59,7 @@ General rules are 6.5.1. This section adds:
 4. **No positional or vendor terms in params.** No `T1`, `Sd`, `swEndCondThroughAll` or selection marks.
 5. **Lengths in the document's IR unit** in params (mm in the MVP, 6.5.2). The translator converts them once. Read commands return raw SI (8.7).
 6. **Standard result fields** for an operation creating a native feature: `native_id`, `feature_id`, `status`, and `node_id` echoed only as the join key. `status` values: `ok`, `warning`, `error`, `suppressed`.
-7. **Observation in the result (ADR-064).** An operation that creates a native object also returns `observation`: `native_type`, neutral `type`, `error_code`, `is_warning`, `suppressed`, `parents`, `parameters`, `solid_body_count`, `needs_rebuild`, `update_stamp` and `completeness`, as far as its tier reads them (10.2.2). Reading them must not change the document. These are additive to the schemas in roadmap A0.
+7. **Observation in the result (ADR-064).** An operation that creates a native object also returns `observation`: `native_type`, neutral `type`, `error_code`, `is_warning`, `suppressed`, `parents`, `parameters`, `solid_body_count`, `needs_rebuild`, `update_stamp` and `completeness`, as far as its tier reads them (10.2.2). Reading them must not change the document. A fact that was not read is absent, and `completeness` says why. The schema is `Observation` in `schemas/ipc/v0.json`; parameters are raw SI (`depth_m`).
 
 **Vocabulary by phase.** Names and parameters beyond the MVP are proposals, written to schemas before their phase. Feature names follow 5.3.2 and 5.7.
 
@@ -71,7 +71,7 @@ General rules are 6.5.1. This section adds:
 | A2 | `part.create` | `template`, working path | `native_id`, `path`, `instance_id`, `previous_active`, `template` | `NewDocument` ✔, `SaveAs4` ✔ |
 | A2 | `sketch.create` | `node_id`, `plane`, `entities` | `native_id`, `feature_id`, `entity_count` | `Select2`, `InsertSketch`, `CreateLine`, `CreateCircleByRadius` ✔ |
 | A2 | `feature.create` `extrude`, `cut_extrude` | `node_id`, `type`, `profile`, `end_condition` | `native_id`, `feature_id`, `status` | `FeatureExtrusion3`, `FeatureCut4` ✔ |
-| A2 | `document.rebuild` | `force` | `ok`, `errors` | `ForceRebuild3` ✔ |
+| A2 | `document.rebuild` | `force` | `rebuilt` (the call's own return, which does not mean error-free), then `ok` and `errors` (observed afterwards) | `ForceRebuild3` ✔ |
 | A4 | `sketch.create` adds `arc` | `center`, `start`, `end` | Same, plus `solved` | ? |
 | A4 | `sketch.create` adds `relations`, `dimensions` (5.7.4) | Keyed by ID | `fully_defined`, per-relation result, `dimension_values` | ? |
 | A5 | `feature.create` `revolve`, `cut_revolve` | `profile`, `axis`, `angle` | As above | ? |
@@ -116,12 +116,12 @@ Reads are commands, not operations (6.5.2). They mutate nothing, take no operati
 Errors use the ADR-037 catalogue. A handler either returns a result or throws one catalogued error. A silent catch is a defect.
 
 ```json
-{ "code": "PROPOSED_OPERATION_FAILED",
+{ "code": "BACKEND_OPERATION_FAILED",
   "message": "Extrude created no feature",
   "details": {
     "effect": "none",
     "stage": "invoke",
-    "native": { "call": "FeatureExtrusion3", "returned": "null", "hresult": null, "error_code": null }
+    "native": { "call": "FeatureExtrusion3", "returned": "null" }
   } }
 ```
 
@@ -129,7 +129,7 @@ Errors use the ADR-037 catalogue. A handler either returns a result or throws on
 | --- | --- | --- |
 | `effect` | `none`, `applied`, `unknown` | Whether the document may have changed. **Required on every operation failure from stage 3 on** |
 | `stage` | `admit`, `translate`, `invoke`, `read_back`, `report` | Where it failed |
-| `native` | `call`, `returned`, `hresult`, `error_code` | Diagnostics only. **Agents never branch on it** (ADR-037) |
+| `native` | `call`, `returned`, `hresult`, `error_code`, each absent when unknown | Diagnostics only. **Agents never branch on it** (ADR-037) |
 
 **Normalization.**
 
@@ -145,23 +145,23 @@ Errors use the ADR-037 catalogue. A handler either returns a result or throws on
 | Feature call returned null ✔ | `BACKEND_REBUILD_ERROR` (6.5.2) | `none`, after confirming the feature count did not change, otherwise `unknown` |
 | Feature created with an error status | `BACKEND_REBUILD_ERROR` | `applied` |
 | Rebuild reports errors | `BACKEND_REBUILD_ERROR` | `applied` |
-| Native call returned false, or its error output is non-zero | `PROPOSED_OPERATION_FAILED` | `unknown`, unless proven |
-| `COMException` from a native call | `PROPOSED_OPERATION_FAILED`, with `hresult` | `unknown` |
-| Read-back disagrees with the call's claim | `PROPOSED_OPERATION_FAILED` | `applied` or `unknown` |
+| Native call returned false, or its error output is non-zero | `BACKEND_OPERATION_FAILED` | `unknown`, unless proven |
+| `COMException` from a native call | `BACKEND_OPERATION_FAILED`, with `hresult` | `unknown` |
+| Read-back disagrees with the call's claim | `BACKEND_OPERATION_FAILED` | `applied` or `unknown` |
 | Cancellation between steps | `EXEC_CANCELLED` | `none` |
 | Any other exception (a bug) | JSON-RPC `-32603`, logged with a stack (8.7) | `unknown` |
 
-**New catalogue entry** (added in roadmap A0). `PROPOSED_OPERATION_FAILED` is a placeholder until then, because the docs may name only catalogued codes (`tests/contract/test_error_catalogue.py`). Its intended name is `OPERATION_FAILED` under the `BACKEND_` prefix:
+**Catalogue entry** (`schemas/common/errors.json`, added in roadmap A0). `details` follows `OperationFailureDetails` in `schemas/ipc/v0.json`.
 
 ```json
-{ "const": "PROPOSED_OPERATION_FAILED",
+{ "const": "BACKEND_OPERATION_FAILED",
   "description": "A native call failed or its read-back disagreed; details.effect says whether the document may have changed.",
   "x-retryable": "after_fix" }
 ```
 
 It stops codes such as `BACKEND_LOST` being misused for an ordinary failure (`ViewCreationAdapter.cs:124`, F13), which clients read as a dead session.
 
-**Failed contract (ADR-064).** The add-in does not know contracts, so this is not an operation error and has no `effect` of its own. The core ends the job with `PROPOSED_FEATURE_VERIFICATION_FAILED`, a placeholder until roadmap A0, with `details.node` and `details.checks`.
+**Failed contract (ADR-064).** The add-in does not know contracts, so this is not an operation error and has no `effect` of its own. The core ends the job with `FEATURE_VERIFICATION_FAILED`, with `details.node` and `details.checks`.
 
 **Ledger (owner decision, 2026-11-05; rule in 8.7).** Any operation whose `effect` is `applied` or `unknown` is recorded with its error, so a repeat answers `DUPLICATE_OPERATION` with the original error and never runs again. `session.completed_operations` keeps failures out of `operation_ids` and lists them in `failed_operations`, so crash recovery cannot read one as a success. Jobs already never resend, so this closes a gap in the protective layer and changes no job's normal path.
 
@@ -199,6 +199,10 @@ The `parts/` record gains `feature_ids` (already in `part_result`) and `measured
     "rebuild_status": "ok",
     "verification_status": "passed"
   },
+  "contracts": [
+    { "node": "extrude_base", "level": "exact", "hash": "sha256:5c...",
+      "checks": [{ "name": "feature_exists", "required": true, "expected": true }] }
+  ],
   "operations": [
     {
       "plan_op": "op_extrude_base",
@@ -207,10 +211,11 @@ The `parts/` record gains `feature_ids` (already in `part_result`) and `measured
       "source": "extrude_base",
       "execution_status": "succeeded",
       "effect": "applied",
-      "native": { "feature_id": "f79", "native_id": "79", "native_type": "Extrusion", "status": "ok" },
+      "native": { "feature_id": "f79", "native_id": 79, "native_type": "Extrusion", "status": "ok" },
+      "observation": { "native_type": "Extrusion", "type": "extrude", "completeness": { "type": "present" } },
       "postconditions": [
-        { "name": "feature_exists", "status": "passed" },
-        { "name": "feature_status_ok", "status": "passed" }
+        { "name": "feature_exists", "status": "passed", "required": true },
+        { "name": "feature_status_ok", "status": "passed", "required": true }
       ],
       "error": null
     }
@@ -258,6 +263,7 @@ The `parts/` record gains `feature_ids` (already in `part_result`) and `measured
 | Operation `blocked_by` | Plan-local ID | On a `not_attempted` operation, the failed operation it depends on, from `depends_on` |
 | Outcome `verification_status` | `passed`, `failed`, `not_evaluated` | `failed` if any failed or, in the MVP, is a `warning` (ADR-064, K22), else `not_evaluated` if any required check is, else `passed`. `not_applicable` is ignored. **`passed` requires at least one check for each 10.2.1 row and both observation stages** |
 | `completeness` value | `present`, `empty`, `unavailable`, `unsupported` | Missing means `unavailable`. `empty` is never evidence of success by itself (F2) |
+| Contract `checks[].not_applicable_reason` | Text | Set from the IR alone, which is how a check becomes `not_applicable` (ADR-064) |
 
 A job reaches COMMITTED only when `execution_status` is `succeeded`, `rebuild_status` is `ok` and `verification_status` is `passed`. A required check that is `not_evaluated` ends the job FAILED.
 

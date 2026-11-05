@@ -683,6 +683,153 @@
         "count",
         "data"
       ]
+    },
+    "OperationEffect": {
+      "description": "Whether a failed operation may have changed the document (spec 8.9.5).",
+      "enum": [
+        "none",
+        "applied",
+        "unknown"
+      ]
+    },
+    "NativeFailure": {
+      "description": "Diagnostics only. Agents never branch on these (ADR-037).",
+      "type": "object",
+      "properties": {
+        "call": {
+          "type": "string"
+        },
+        "returned": {
+          "type": "string"
+        },
+        "hresult": {
+          "type": "integer"
+        },
+        "error_code": {
+          "type": "integer"
+        }
+      }
+    },
+    "OperationFailureDetails": {
+      "description": "details of an operation failure (spec 8.9.5). Required from stage 3 on.",
+      "type": "object",
+      "properties": {
+        "effect": {
+          "$ref": "#/$defs/OperationEffect"
+        },
+        "stage": {
+          "enum": [
+            "admit",
+            "translate",
+            "invoke",
+            "read_back",
+            "report"
+          ]
+        },
+        "native": {
+          "$ref": "#/$defs/NativeFailure"
+        }
+      },
+      "required": [
+        "effect"
+      ]
+    },
+    "CompletenessState": {
+      "description": "Missing means unavailable; empty is never evidence of success by itself (spec 8.9.6).",
+      "enum": [
+        "present",
+        "empty",
+        "unavailable",
+        "unsupported"
+      ]
+    },
+    "ObservationCompleteness": {
+      "description": "Whether each observed fact was read (spec 8.9.3 rule 7).",
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "error_code": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "suppressed": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "parents": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "parameters": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "solid_body_count": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "needs_rebuild": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "update_stamp": {
+          "$ref": "#/$defs/CompletenessState"
+        }
+      }
+    },
+    "ObservedParameters": {
+      "description": "Feature parameters read back, raw SI (spec 8.7). Tier T1, once K15 clears the read.",
+      "type": "object",
+      "properties": {
+        "end_condition": {
+          "type": "string"
+        },
+        "depth_m": {
+          "type": "number"
+        }
+      }
+    },
+    "Observation": {
+      "description": "Facts read back in the same command, never copied from the request (ADR-064, spec 8.9.3 rule 7). Judged by the core, not the add-in.",
+      "type": "object",
+      "properties": {
+        "native_type": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "error_code": {
+          "type": "integer"
+        },
+        "is_warning": {
+          "type": "boolean"
+        },
+        "suppressed": {
+          "type": "boolean"
+        },
+        "parents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parameters": {
+          "$ref": "#/$defs/ObservedParameters"
+        },
+        "solid_body_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "needs_rebuild": {
+          "type": "boolean"
+        },
+        "update_stamp": {
+          "type": "integer"
+        },
+        "completeness": {
+          "$ref": "#/$defs/ObservationCompleteness"
+        }
+      },
+      "required": [
+        "completeness"
+      ]
     }
   }
 }

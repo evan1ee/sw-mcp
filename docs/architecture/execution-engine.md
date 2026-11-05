@@ -1,6 +1,6 @@
 # 8. Execution Engine
 
-> Specification v1.33, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.34, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 8.1 Purpose
 
@@ -147,7 +147,7 @@ Any other transition is a programming error and raises; it is never written to t
 
 | Case | Working file |
 | --- | --- |
-| Operation or verification failed (`PROPOSED_FEATURE_VERIFICATION_FAILED`, `PART_VERIFICATION_FAILED` and others) | Best-effort save, close, and renamed `<name>.<job_id>.failed.SLDPRT` beside the target, named in the error |
+| Operation or verification failed (`FEATURE_VERIFICATION_FAILED`, `PART_VERIFICATION_FAILED` and others) | Best-effort save, close, and renamed `<name>.<job_id>.failed.SLDPRT` beside the target, named in the error |
 | Cancelled | Closed and removed. With `keep_partial`, renamed `<name>.<job_id>.partial.SLDPRT` |
 | `BACKEND_LOST`, `BACKEND_UI_BLOCKED`, `EXEC_TIMEOUT`, `EXEC_INTERRUPTED_BY_USER` | Left alone and listed as `unknown` (8.4). Nothing is resent |
 

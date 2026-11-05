@@ -635,3 +635,53 @@ def test_uncut_measurement_fails_a_rectangular_cut() -> None:
     m = make_clean_measurement()
     m["volume_m3"] = 6.0e-05
     assert _check(compare(expected_geometry(graph), m, {}), "volume").status == "failed"
+
+
+def _with_status(status: Any, reason: str | None = None) -> CheckResult:
+    return CheckResult(
+        requirement="r",
+        measured=None,
+        expected=None,
+        tolerance=None,
+        status=status,
+        method="m",
+        reason=reason,
+    )
+
+
+@pytest.mark.parametrize(
+    ("status", "reason"),
+    [
+        ("warning", None),
+        ("not_applicable", "The graph has no blind cut"),
+        ("not_evaluated", "not_executed"),
+        ("not_evaluated", "unsupported"),
+        ("not_evaluated", "missing_data"),
+        ("not_evaluated", "malformed_data"),
+    ],
+)
+def test_only_passed_counts_as_passed(status: str, reason: str | None) -> None:
+    """ADR-064: warning and not_applicable are separate from a pass, as not_evaluated is."""
+    assert _with_status(status, reason).passed is False
+
+
+def test_passed_status_counts_as_passed() -> None:
+    assert _with_status("passed").passed is True
+
+
+@pytest.mark.parametrize(
+    ("status", "reason"),
+    [
+        ("not_evaluated", None),
+        ("not_evaluated", "backend_said_so"),
+        ("not_applicable", None),
+        ("not_applicable", ""),
+        ("passed", "unsupported"),
+        ("failed", "unsupported"),
+        ("warning", "unsupported"),
+    ],
+)
+def test_reason_follows_the_status(status: str, reason: str | None) -> None:
+    """Spec 8.9.6: only ``not_evaluated`` and ``not_applicable`` carry a reason, and need one."""
+    with pytest.raises(ValueError, match="reason"):
+        _with_status(status, reason)

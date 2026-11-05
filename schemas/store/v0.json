@@ -202,6 +202,36 @@
       },
       "required": ["type", "ts", "job_id", "operation_id", "ok", "error_code"]
     },
+    "OpVerifiedRecord": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "op_verified" },
+        "ts": { "$ref": "#/$defs/Timestamp" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "operation_id": { "type": "string" },
+        "node": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "feature_id": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "observation": {
+          "anyOf": [{ "$ref": "../ipc/v0.json#/$defs/Observation" }, { "type": "null" }]
+        },
+        "checks": {
+          "type": "array",
+          "items": { "$ref": "../execution-evidence/v0.json#/$defs/PostconditionResult" }
+        },
+        "status": { "$ref": "../execution-evidence/v0.json#/$defs/VerificationStatus" }
+      },
+      "required": [
+        "type",
+        "ts",
+        "job_id",
+        "operation_id",
+        "node",
+        "feature_id",
+        "observation",
+        "checks",
+        "status"
+      ]
+    },
     "SnapshotRecord": {
       "type": "object",
       "properties": {
@@ -240,6 +270,7 @@
         { "$ref": "#/$defs/StateRecord" },
         { "$ref": "#/$defs/BatchSentRecord" },
         { "$ref": "#/$defs/OpResultRecord" },
+        { "$ref": "#/$defs/OpVerifiedRecord" },
         { "$ref": "#/$defs/SnapshotRecord" },
         { "$ref": "#/$defs/DocumentRecord" },
         { "$ref": "#/$defs/NoteRecord" }

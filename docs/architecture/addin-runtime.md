@@ -1,6 +1,6 @@
 # 8.6 Add-in Runtime
 
-> Specification v1.33, section 8.6. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.34, section 8.6. Index and section map: [specifications/README.md](../specifications/README.md).
 
 How the C# add-in (ADR-028) starts, is found by the core service (ADR-041), runs commands on SOLIDWORKS's thread, bounds their time, and leaves the engineer's SOLIDWORKS as it found it. The wire protocol is ADR-036; version handling is ADR-045.
 

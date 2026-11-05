@@ -7,6 +7,7 @@
   "x-errors": [
     "AUTH_PATH_DENIED",
     "BACKEND_BUSY",
+    "BACKEND_OPERATION_FAILED",
     "BACKEND_REBUILD_ERROR",
     "BACKEND_UI_BLOCKED",
     "IR_SCHEMA_INVALID"
@@ -101,6 +102,9 @@
         },
         "entity_count": {
           "type": "integer"
+        },
+        "observation": {
+          "$ref": "../v0.json#/$defs/Observation"
         }
       }
     }

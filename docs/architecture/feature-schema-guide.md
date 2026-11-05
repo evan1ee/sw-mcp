@@ -1,6 +1,6 @@
 # 5.7 Part Feature Graph Schema Guide
 
-> Specification v1.33, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.34, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
 
 Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3.2) read as one language and the compiler's defaults are explicit. Each type has one schema file, `schemas/part-feature-graph/features/<type>.json`, with one minimal example of at most 400 tokens (12.3).
 

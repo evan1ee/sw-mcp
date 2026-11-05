@@ -60,8 +60,8 @@ Full-model measurement after each feature is never required.
 | Class | Stage | Code |
 | --- | --- | --- |
 | `compilation` | VALIDATED | `COMPILE_FAILED` |
-| `execution` | EXECUTING, operation error | `BACKEND_REBUILD_ERROR`, `PROPOSED_OPERATION_FAILED` |
-| `feature_verification` | EXECUTING, contract failed | `PROPOSED_FEATURE_VERIFICATION_FAILED`, with `details.node` and `details.checks` |
+| `execution` | EXECUTING, operation error | `BACKEND_REBUILD_ERROR`, `BACKEND_OPERATION_FAILED` |
+| `feature_verification` | EXECUTING, contract failed | `FEATURE_VERIFICATION_FAILED`, with `details.node` and `details.checks` |
 | `final_verification` | VERIFYING | `PART_VERIFICATION_FAILED` |
 
 **8. Each contract states its level.** `level` is `exact`, `bounded`, `declared` or `structural`, as K16 recommends. Only `exact` is used until K16 is decided, so a later feature cannot look verified on weaker evidence.
@@ -96,7 +96,7 @@ Full-model measurement after each feature is never required.
 
 ## Where it applies
 
-Applied in specification v1.32. Code and schemas follow in roadmap A0, A2 and MVP Tasks 8 to 9b; they do not follow it yet.
+Applied in specification v1.32. Schemas follow it from v1.34 (roadmap A0). Code follows in roadmap A2 and MVP Tasks 8 to 9b.
 
 - [architecture/backend-operations.md](../architecture/backend-operations.md) — sections 6.5.2, 6.5.3
 - [architecture/solidworks-adapter.md](../architecture/solidworks-adapter.md) — section 8.8.9

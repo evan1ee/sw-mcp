@@ -7,6 +7,7 @@
   "x-errors": [
     "AUTH_PATH_DENIED",
     "BACKEND_BUSY",
+    "BACKEND_OPERATION_FAILED",
     "BACKEND_REBUILD_ERROR",
     "BACKEND_UI_BLOCKED",
     "IR_SCHEMA_INVALID"
@@ -55,9 +56,6 @@
         "end_condition": {
           "$ref": "#/$defs/EndCondition"
         },
-        "dir": {
-          "type": "boolean"
-        },
         "_meta": {
           "$ref": "../v0.json#/$defs/Meta"
         }
@@ -78,7 +76,15 @@
           "type": "string"
         },
         "status": {
-          "type": "string"
+          "enum": [
+            "ok",
+            "warning",
+            "error",
+            "suppressed"
+          ]
+        },
+        "observation": {
+          "$ref": "../v0.json#/$defs/Observation"
         }
       }
     }

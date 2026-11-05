@@ -3,7 +3,7 @@
 import math
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Literal, NamedTuple, cast
+from typing import Final, Literal, NamedTuple, cast
 
 from cad_ir.core.json_types import JsonValue
 from cad_ir.part_feature_graph.model import (
@@ -23,8 +23,13 @@ MM_PER_M = 1000.0
 MM2_PER_M2 = 1e6
 MM3_PER_M3 = 1e9
 
-type CheckStatus = Literal["passed", "failed", "not_evaluated"]
-type CheckReason = Literal["missing_data", "malformed_data"]
+type CheckStatus = Literal["passed", "failed", "warning", "not_applicable", "not_evaluated"]
+type NotEvaluatedReason = Literal["not_executed", "unsupported", "missing_data", "malformed_data"]
+type UnreadableReason = Literal["missing_data", "malformed_data"]
+
+NOT_EVALUATED_REASONS: Final = frozenset(
+    {"not_executed", "unsupported", "missing_data", "malformed_data"}
+)
 
 
 class Point3(NamedTuple):
@@ -134,11 +139,22 @@ class CheckResult:
     tolerance: float | None
     status: CheckStatus
     method: str
-    reason: CheckReason | None = None
+    reason: str | None = None
+
+    def __post_init__(self) -> None:
+        """Only ``not_evaluated`` and ``not_applicable`` carry a reason, and need one (8.9.6)."""
+        if self.status == "not_evaluated":
+            valid = self.reason in NOT_EVALUATED_REASONS
+        elif self.status == "not_applicable":
+            valid = bool(self.reason)
+        else:
+            valid = self.reason is None
+        if not valid:
+            raise ValueError(f"invalid reason {self.reason!r} for status {self.status!r}")
 
     @property
     def passed(self) -> bool:
-        """True only for ``passed``; ``not_evaluated`` never counts as passed (ADR-063)."""
+        """True only for ``passed``; no other status counts as passed (ADR-063, ADR-064)."""
         return self.status == "passed"
 
 
@@ -476,9 +492,9 @@ def _match_cylinders(
 class _UnreadableError(Exception):
     """A measured value is absent or malformed, so its check cannot be judged."""
 
-    def __init__(self, reason: CheckReason) -> None:
+    def __init__(self, reason: UnreadableReason) -> None:
         super().__init__(reason)
-        self.reason: CheckReason = reason
+        self.reason: UnreadableReason = reason
 
 
 type _Measured = Mapping[str, JsonValue]

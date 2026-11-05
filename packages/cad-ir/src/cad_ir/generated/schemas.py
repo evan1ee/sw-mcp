@@ -271,6 +271,25 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                   'description': 'One or more part '
                                                                                  'verification '
                                                                                  'checks failed.',
+                                                                  'x-retryable': 'after_fix'},
+                                                                 {'const': 'BACKEND_OPERATION_FAILED',
+                                                                  'description': 'A native call '
+                                                                                 'failed or its '
+                                                                                 'read-back '
+                                                                                 'disagreed; '
+                                                                                 'details.effect '
+                                                                                 'says whether the '
+                                                                                 'document may '
+                                                                                 'have changed.',
+                                                                  'x-retryable': 'after_fix'},
+                                                                 {'const': 'FEATURE_VERIFICATION_FAILED',
+                                                                  'description': 'A built feature '
+                                                                                 'failed its '
+                                                                                 'verification '
+                                                                                 'contract; '
+                                                                                 'details.node and '
+                                                                                 'details.checks '
+                                                                                 'name it.',
                                                                   'x-retryable': 'after_fix'}],
                                                        'title': 'Error catalogue (ADR-037)',
                                                        'type': 'string'},
@@ -1235,6 +1254,409 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                              'title': 'Drawing Template IR (spec '
                                                                       '11.12)',
                                                              'type': 'object'},
+ 'https://sw-mcp.invalid/schemas/execution-evidence/v0.json': {'$defs': {'Artifact': {'additionalProperties': False,
+                                                                                      'properties': {'fingerprint': {'$ref': '../common/v0.json#/$defs/ContentHash'},
+                                                                                                     'path': {'type': 'string'},
+                                                                                                     'published': {'type': 'boolean'}},
+                                                                                      'required': ['path',
+                                                                                                   'fingerprint',
+                                                                                                   'published'],
+                                                                                      'type': 'object'},
+                                                                         'CheckResult': {'$ref': '#/$defs/Verdict',
+                                                                                         'description': 'One '
+                                                                                                        'final '
+                                                                                                        'check '
+                                                                                                        '(spec '
+                                                                                                        '10.2.1), '
+                                                                                                        'against '
+                                                                                                        'the '
+                                                                                                        'IR.',
+                                                                                         'properties': {'check': {'minLength': 1,
+                                                                                                                  'type': 'string'},
+                                                                                                        'expected': True,
+                                                                                                        'measured': True,
+                                                                                                        'method': {'type': 'string'},
+                                                                                                        'reason': True,
+                                                                                                        'requirement': {'type': 'string'},
+                                                                                                        'source': {'items': {'type': 'string'},
+                                                                                                                   'type': 'array'},
+                                                                                                        'stage': {'enum': ['in_session',
+                                                                                                                           'reopened']},
+                                                                                                        'status': True,
+                                                                                                        'tolerance': {'$ref': '#/$defs/Tolerance'},
+                                                                                                        'unit': {'type': 'string'}},
+                                                                                         'required': ['check',
+                                                                                                      'stage',
+                                                                                                      'status'],
+                                                                                         'type': 'object',
+                                                                                         'unevaluatedProperties': False},
+                                                                         'CheckStatus': {'enum': ['passed',
+                                                                                                  'failed',
+                                                                                                  'warning',
+                                                                                                  'not_applicable',
+                                                                                                  'not_evaluated']},
+                                                                         'ContractCheck': {'additionalProperties': False,
+                                                                                           'description': 'One '
+                                                                                                          'check '
+                                                                                                          'of '
+                                                                                                          'a '
+                                                                                                          'contract. '
+                                                                                                          'not_applicable_reason '
+                                                                                                          'is '
+                                                                                                          'set '
+                                                                                                          'from '
+                                                                                                          'the '
+                                                                                                          'IR '
+                                                                                                          'alone, '
+                                                                                                          'so '
+                                                                                                          'a '
+                                                                                                          'backend '
+                                                                                                          'cannot '
+                                                                                                          'excuse '
+                                                                                                          'a '
+                                                                                                          'check '
+                                                                                                          '(ADR-064).',
+                                                                                           'properties': {'expected': True,
+                                                                                                          'name': {'minLength': 1,
+                                                                                                                   'type': 'string'},
+                                                                                                          'not_applicable_reason': {'minLength': 1,
+                                                                                                                                    'type': 'string'},
+                                                                                                          'required': {'type': 'boolean'},
+                                                                                                          'tolerance': {'$ref': '#/$defs/Tolerance'},
+                                                                                                          'unit': {'type': 'string'}},
+                                                                                           'required': ['name',
+                                                                                                        'required'],
+                                                                                           'type': 'object'},
+                                                                         'ContractLevel': {'description': 'Only '
+                                                                                                          'exact '
+                                                                                                          'is '
+                                                                                                          'used '
+                                                                                                          'until '
+                                                                                                          'K16 '
+                                                                                                          'is '
+                                                                                                          'decided '
+                                                                                                          '(ADR-064).',
+                                                                                           'enum': ['exact',
+                                                                                                    'bounded',
+                                                                                                    'declared',
+                                                                                                    'structural']},
+                                                                         'Environment': {'additionalProperties': False,
+                                                                                         'properties': {'addin_version': {'type': 'string'},
+                                                                                                        'profile_hash': {'$ref': '../common/v0.json#/$defs/ContentHash'},
+                                                                                                        'protocol': {'type': 'string'},
+                                                                                                        'solidworks': {'additionalProperties': False,
+                                                                                                                       'properties': {'service_pack': {'type': 'string'},
+                                                                                                                                      'ui_language': {'type': 'string'},
+                                                                                                                                      'version': {'type': 'string'}},
+                                                                                                                       'required': ['version',
+                                                                                                                                    'service_pack',
+                                                                                                                                    'ui_language'],
+                                                                                                                       'type': 'object'},
+                                                                                                        'template': {'additionalProperties': False,
+                                                                                                                     'properties': {'path': {'type': 'string'},
+                                                                                                                                    'sha256': {'pattern': '^[0-9a-f]{64}$',
+                                                                                                                                               'type': 'string'}},
+                                                                                                                     'required': ['path',
+                                                                                                                                  'sha256'],
+                                                                                                                     'type': 'object'}},
+                                                                                         'required': ['solidworks',
+                                                                                                      'addin_version',
+                                                                                                      'protocol',
+                                                                                                      'profile_hash',
+                                                                                                      'template'],
+                                                                                         'type': 'object'},
+                                                                         'ExecutionStatus': {'description': 'unknown '
+                                                                                                            'when '
+                                                                                                            'sent '
+                                                                                                            'without '
+                                                                                                            'an '
+                                                                                                            'answer '
+                                                                                                            '(13.2.3).',
+                                                                                             'enum': ['not_attempted',
+                                                                                                      'succeeded',
+                                                                                                      'failed',
+                                                                                                      'cancelled',
+                                                                                                      'unknown']},
+                                                                         'FailedArtifact': {'additionalProperties': False,
+                                                                                            'properties': {'path': {'type': 'string'}},
+                                                                                            'required': ['path'],
+                                                                                            'type': 'object'},
+                                                                         'FailureClass': {'description': 'The '
+                                                                                                         'stage '
+                                                                                                         'that '
+                                                                                                         'ended '
+                                                                                                         'the '
+                                                                                                         'job '
+                                                                                                         '(ADR-064).',
+                                                                                          'enum': ['compilation',
+                                                                                                   'execution',
+                                                                                                   'feature_verification',
+                                                                                                   'final_verification']},
+                                                                         'NativeFeature': {'additionalProperties': False,
+                                                                                           'properties': {'feature_id': {'type': 'string'},
+                                                                                                          'native_id': {'type': 'integer'},
+                                                                                                          'native_type': {'type': 'string'},
+                                                                                                          'status': {'type': 'string'}},
+                                                                                           'type': 'object'},
+                                                                         'NotEvaluatedReason': {'enum': ['not_executed',
+                                                                                                         'unsupported',
+                                                                                                         'missing_data',
+                                                                                                         'malformed_data']},
+                                                                         'OperationEvidence': {'additionalProperties': False,
+                                                                                               'if': {'required': ['blocked_by']},
+                                                                                               'properties': {'blocked_by': {'minLength': 1,
+                                                                                                                             'type': 'string'},
+                                                                                                              'effect': {'anyOf': [{'$ref': '../ipc/v0.json#/$defs/OperationEffect'},
+                                                                                                                                   {'type': 'null'}]},
+                                                                                                              'error': {'anyOf': [{'$ref': '../common/v0.json#/$defs/Error'},
+                                                                                                                                  {'type': 'null'}]},
+                                                                                                              'execution_status': {'$ref': '#/$defs/ExecutionStatus'},
+                                                                                                              'native': {'anyOf': [{'$ref': '#/$defs/NativeFeature'},
+                                                                                                                                   {'type': 'null'}]},
+                                                                                                              'observation': {'anyOf': [{'$ref': '../ipc/v0.json#/$defs/Observation'},
+                                                                                                                                        {'type': 'null'}]},
+                                                                                                              'op': {'minLength': 1,
+                                                                                                                     'type': 'string'},
+                                                                                                              'operation_id': {'minLength': 1,
+                                                                                                                               'type': 'string'},
+                                                                                                              'plan_op': {'minLength': 1,
+                                                                                                                          'type': 'string'},
+                                                                                                              'postconditions': {'items': {'$ref': '#/$defs/PostconditionResult'},
+                                                                                                                                 'type': 'array'},
+                                                                                                              'source': {'anyOf': [{'type': 'string'},
+                                                                                                                                   {'type': 'null'}]}},
+                                                                                               'required': ['plan_op',
+                                                                                                            'operation_id',
+                                                                                                            'op',
+                                                                                                            'source',
+                                                                                                            'execution_status',
+                                                                                                            'effect',
+                                                                                                            'native',
+                                                                                                            'observation',
+                                                                                                            'postconditions',
+                                                                                                            'error'],
+                                                                                               'then': {'properties': {'execution_status': {'const': 'not_attempted'}}},
+                                                                                               'type': 'object'},
+                                                                         'Outcome': {'additionalProperties': False,
+                                                                                     'description': 'Execution, '
+                                                                                                    'rebuild '
+                                                                                                    'and '
+                                                                                                    'verification '
+                                                                                                    'stay '
+                                                                                                    'separate '
+                                                                                                    'outcomes '
+                                                                                                    '(ADR-063).',
+                                                                                     'if': {'properties': {'job_state': {'const': 'COMMITTED'}},
+                                                                                            'required': ['job_state']},
+                                                                                     'properties': {'execution_status': {'$ref': '#/$defs/ExecutionStatus'},
+                                                                                                    'failure_class': {'$ref': '#/$defs/FailureClass'},
+                                                                                                    'job_state': {'enum': ['COMMITTED',
+                                                                                                                           'FAILED',
+                                                                                                                           'ABORTED']},
+                                                                                                    'rebuild_status': {'$ref': '#/$defs/RebuildStatus'},
+                                                                                                    'verification_status': {'$ref': '#/$defs/VerificationStatus'}},
+                                                                                     'required': ['job_state',
+                                                                                                  'execution_status',
+                                                                                                  'rebuild_status',
+                                                                                                  'verification_status'],
+                                                                                     'then': {'not': {'required': ['failure_class']},
+                                                                                              'properties': {'execution_status': {'const': 'succeeded'},
+                                                                                                             'rebuild_status': {'const': 'ok'},
+                                                                                                             'verification_status': {'const': 'passed'}}},
+                                                                                     'type': 'object'},
+                                                                         'PostconditionResult': {'$ref': '#/$defs/Verdict',
+                                                                                                 'description': 'One '
+                                                                                                                'contract '
+                                                                                                                'check '
+                                                                                                                'judged '
+                                                                                                                'against '
+                                                                                                                'an '
+                                                                                                                "operation's "
+                                                                                                                'observation.',
+                                                                                                 'properties': {'expected': True,
+                                                                                                                'measured': True,
+                                                                                                                'method': {'type': 'string'},
+                                                                                                                'name': {'minLength': 1,
+                                                                                                                         'type': 'string'},
+                                                                                                                'reason': True,
+                                                                                                                'required': {'type': 'boolean'},
+                                                                                                                'status': True,
+                                                                                                                'tolerance': {'$ref': '#/$defs/Tolerance'},
+                                                                                                                'unit': {'type': 'string'}},
+                                                                                                 'required': ['name',
+                                                                                                              'status'],
+                                                                                                 'type': 'object',
+                                                                                                 'unevaluatedProperties': False},
+                                                                         'RebuildStatus': {'enum': ['ok',
+                                                                                                    'errors',
+                                                                                                    'not_evaluated']},
+                                                                         'StageObservation': {'additionalProperties': False,
+                                                                                              'description': 'One '
+                                                                                                             'full '
+                                                                                                             'measurement '
+                                                                                                             '(tier '
+                                                                                                             'T3). '
+                                                                                                             'Measurements '
+                                                                                                             'and '
+                                                                                                             'IDs '
+                                                                                                             'only; '
+                                                                                                             'no '
+                                                                                                             'sketch '
+                                                                                                             'or '
+                                                                                                             'face '
+                                                                                                             'geometry '
+                                                                                                             'dump.',
+                                                                                              'properties': {'completeness': {'additionalProperties': {'$ref': '../ipc/v0.json#/$defs/CompletenessState'},
+                                                                                                                              'type': 'object'},
+                                                                                                             'dirty': {'type': 'boolean'},
+                                                                                                             'instance_id': {'type': 'string'},
+                                                                                                             'measured': {'type': 'object'},
+                                                                                                             'read_only': {'type': 'boolean'},
+                                                                                                             'stage': {'enum': ['in_session',
+                                                                                                                                'reopened']}},
+                                                                                              'required': ['stage',
+                                                                                                           'instance_id',
+                                                                                                           'read_only',
+                                                                                                           'dirty',
+                                                                                                           'completeness',
+                                                                                                           'measured'],
+                                                                                              'type': 'object'},
+                                                                         'Tolerance': {'additionalProperties': False,
+                                                                                       'properties': {'kind': {'enum': ['absolute',
+                                                                                                                        'relative']},
+                                                                                                      'value': {'minimum': 0,
+                                                                                                                'type': 'number'}},
+                                                                                       'required': ['kind',
+                                                                                                    'value'],
+                                                                                       'type': 'object'},
+                                                                         'Verdict': {'allOf': [{'if': {'properties': {'status': {'const': 'not_evaluated'}},
+                                                                                                       'required': ['status']},
+                                                                                                'then': {'properties': {'reason': {'$ref': '#/$defs/NotEvaluatedReason'}},
+                                                                                                         'required': ['reason']}},
+                                                                                               {'if': {'properties': {'status': {'const': 'not_applicable'}},
+                                                                                                       'required': ['status']},
+                                                                                                'then': {'required': ['reason']}},
+                                                                                               {'if': {'properties': {'status': {'enum': ['passed',
+                                                                                                                                          'failed',
+                                                                                                                                          'warning']}},
+                                                                                                       'required': ['status']},
+                                                                                                'then': {'not': {'required': ['reason']}}}],
+                                                                                     'description': 'not_evaluated '
+                                                                                                    'and '
+                                                                                                    'not_applicable '
+                                                                                                    'need '
+                                                                                                    'a '
+                                                                                                    'reason, '
+                                                                                                    'and '
+                                                                                                    'nothing '
+                                                                                                    'else '
+                                                                                                    'has '
+                                                                                                    'one '
+                                                                                                    '(spec '
+                                                                                                    '8.9.6).',
+                                                                                     'properties': {'reason': {'minLength': 1,
+                                                                                                               'type': 'string'},
+                                                                                                    'status': {'$ref': '#/$defs/CheckStatus'}},
+                                                                                     'required': ['status']},
+                                                                         'VerificationContract': {'additionalProperties': False,
+                                                                                                  'description': 'What '
+                                                                                                                 'one '
+                                                                                                                 'IR '
+                                                                                                                 'node '
+                                                                                                                 'must '
+                                                                                                                 'satisfy, '
+                                                                                                                 'from '
+                                                                                                                 'feature_contracts(graph). '
+                                                                                                                 'The '
+                                                                                                                 'plan '
+                                                                                                                 'holds '
+                                                                                                                 'no '
+                                                                                                                 'expected '
+                                                                                                                 'values '
+                                                                                                                 '(ADR-064).',
+                                                                                                  'properties': {'checks': {'items': {'$ref': '#/$defs/ContractCheck'},
+                                                                                                                            'minItems': 1,
+                                                                                                                            'type': 'array'},
+                                                                                                                 'hash': {'$ref': '../common/v0.json#/$defs/ContentHash'},
+                                                                                                                 'level': {'$ref': '#/$defs/ContractLevel'},
+                                                                                                                 'node': {'minLength': 1,
+                                                                                                                          'type': 'string'}},
+                                                                                                  'required': ['node',
+                                                                                                               'level',
+                                                                                                               'hash',
+                                                                                                               'checks'],
+                                                                                                  'type': 'object'},
+                                                                         'VerificationStatus': {'description': 'A '
+                                                                                                               'rollup. '
+                                                                                                               'A '
+                                                                                                               'warning '
+                                                                                                               'is '
+                                                                                                               'failed '
+                                                                                                               'in '
+                                                                                                               'the '
+                                                                                                               'MVP, '
+                                                                                                               'and '
+                                                                                                               'not_applicable '
+                                                                                                               'is '
+                                                                                                               'ignored '
+                                                                                                               '(ADR-064).',
+                                                                                                'enum': ['passed',
+                                                                                                         'failed',
+                                                                                                         'not_evaluated']}},
+                                                               '$id': 'https://sw-mcp.invalid/schemas/execution-evidence/v0.json',
+                                                               '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                                                               'additionalProperties': False,
+                                                               'allOf': [{'description': 'A job '
+                                                                                         'reaches '
+                                                                                         'COMMITTED '
+                                                                                         'only '
+                                                                                         'with a '
+                                                                                         'published '
+                                                                                         'artifact '
+                                                                                         '(spec '
+                                                                                         '8.9.6).',
+                                                                          'if': {'properties': {'outcome': {'properties': {'job_state': {'const': 'COMMITTED'}}}}},
+                                                                          'then': {'properties': {'artifact': {'properties': {'published': {'const': True}},
+                                                                                                               'type': 'object'}}}}],
+                                                               'properties': {'artifact': {'anyOf': [{'$ref': '#/$defs/Artifact'},
+                                                                                                     {'type': 'null'}]},
+                                                                              'checks': {'items': {'$ref': '#/$defs/CheckResult'},
+                                                                                         'type': 'array'},
+                                                                              'contracts': {'items': {'$ref': '#/$defs/VerificationContract'},
+                                                                                            'type': 'array'},
+                                                                              'environment': {'$ref': '#/$defs/Environment'},
+                                                                              'evidence_schema_version': {'const': '0.1'},
+                                                                              'failed_artifact': {'anyOf': [{'$ref': '#/$defs/FailedArtifact'},
+                                                                                                            {'type': 'null'}]},
+                                                                              'graph': {'$ref': '../common/v0.json#/$defs/DocumentRef'},
+                                                                              'job_id': {'$ref': '../store/v0.json#/$defs/JobId'},
+                                                                              'observations': {'items': {'$ref': '#/$defs/StageObservation'},
+                                                                                               'type': 'array'},
+                                                                              'operations': {'items': {'$ref': '#/$defs/OperationEvidence'},
+                                                                                             'type': 'array'},
+                                                                              'outcome': {'$ref': '#/$defs/Outcome'},
+                                                                              'plan_hash': {'$ref': '../common/v0.json#/$defs/ContentHash'},
+                                                                              'recovered': {'type': 'boolean'},
+                                                                              'warnings': {'items': {'$ref': '../store/v0.json#/$defs/JobWarning'},
+                                                                                           'type': 'array'}},
+                                                               'required': ['evidence_schema_version',
+                                                                            'job_id',
+                                                                            'graph',
+                                                                            'plan_hash',
+                                                                            'recovered',
+                                                                            'environment',
+                                                                            'outcome',
+                                                                            'contracts',
+                                                                            'operations',
+                                                                            'observations',
+                                                                            'checks',
+                                                                            'warnings',
+                                                                            'artifact',
+                                                                            'failed_artifact'],
+                                                               'title': 'Execution evidence of one '
+                                                                        'plan job (spec 8.9.6, '
+                                                                        'ADR-063, ADR-064)',
+                                                               'type': 'object'},
  'https://sw-mcp.invalid/schemas/execution-plan/v0.json': {'$defs': {'Operation': {'additionalProperties': False,
                                                                                    'properties': {'depends_on': {'items': {'$ref': '../common/v0.json#/$defs/ItemId'},
                                                                                                                  'type': 'array'},
@@ -1442,6 +1864,49 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                'x-mutates': 'session',
                                                                'x-op': 'document.open',
                                                                'x-since': '0.1'},
+ 'https://sw-mcp.invalid/schemas/ipc/ops/document.rebuild.json': {'$defs': {'Params': {'properties': {'_meta': {'$ref': '../v0.json#/$defs/Meta'},
+                                                                                                      'force': {'type': 'boolean'}},
+                                                                                       'type': 'object'},
+                                                                            'Result': {'properties': {'errors': {'items': {'type': 'string'},
+                                                                                                                 'type': 'array'},
+                                                                                                      'ok': {'description': 'Observed '
+                                                                                                                            'after '
+                                                                                                                            'the '
+                                                                                                                            'rebuild: '
+                                                                                                                            'no '
+                                                                                                                            'feature '
+                                                                                                                            'reports '
+                                                                                                                            'an '
+                                                                                                                            'error.',
+                                                                                                             'type': 'boolean'},
+                                                                                                      'rebuilt': {'description': 'The '
+                                                                                                                                 'rebuild '
+                                                                                                                                 "call's "
+                                                                                                                                 'own '
+                                                                                                                                 'return. '
+                                                                                                                                 'It '
+                                                                                                                                 'does '
+                                                                                                                                 'not '
+                                                                                                                                 'mean '
+                                                                                                                                 'error-free.',
+                                                                                                                  'type': 'boolean'}},
+                                                                                       'required': ['rebuilt',
+                                                                                                    'ok',
+                                                                                                    'errors'],
+                                                                                       'type': 'object'}},
+                                                                  '$id': 'https://sw-mcp.invalid/schemas/ipc/ops/document.rebuild.json',
+                                                                  '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                                                                  'title': 'Operation '
+                                                                           'document.rebuild (spec '
+                                                                           '6.5.2, 8.9.3)',
+                                                                  'x-errors': ['BACKEND_BUSY',
+                                                                               'BACKEND_OPERATION_FAILED',
+                                                                               'BACKEND_REBUILD_ERROR',
+                                                                               'BACKEND_UI_BLOCKED',
+                                                                               'FILE_NOT_FOUND'],
+                                                                  'x-mutates': 'document',
+                                                                  'x-op': 'document.rebuild',
+                                                                  'x-since': '0.1'},
  'https://sw-mcp.invalid/schemas/ipc/ops/document.save.json': {'$defs': {'Params': {'properties': {'_meta': {'$ref': '../v0.json#/$defs/Meta'},
                                                                                                    'path': {'type': 'string'},
                                                                                                    'target_path': {'type': 'string'}},
@@ -1492,7 +1957,6 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                            'required': ['type'],
                                                                                            'type': 'object'},
                                                                           'Params': {'properties': {'_meta': {'$ref': '../v0.json#/$defs/Meta'},
-                                                                                                    'dir': {'type': 'boolean'},
                                                                                                     'end_condition': {'$ref': '#/$defs/EndCondition'},
                                                                                                     'node_id': {'type': 'string'},
                                                                                                     'profile': {'type': 'string'},
@@ -1505,7 +1969,11 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                      'type': 'object'},
                                                                           'Result': {'properties': {'feature_id': {'type': 'string'},
                                                                                                     'native_id': {'type': 'integer'},
-                                                                                                    'status': {'type': 'string'}},
+                                                                                                    'observation': {'$ref': '../v0.json#/$defs/Observation'},
+                                                                                                    'status': {'enum': ['ok',
+                                                                                                                        'warning',
+                                                                                                                        'error',
+                                                                                                                        'suppressed']}},
                                                                                      'required': ['native_id',
                                                                                                   'feature_id',
                                                                                                   'status'],
@@ -1516,6 +1984,7 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                          '(spec 6.5.2)',
                                                                 'x-errors': ['AUTH_PATH_DENIED',
                                                                              'BACKEND_BUSY',
+                                                                             'BACKEND_OPERATION_FAILED',
                                                                              'BACKEND_REBUILD_ERROR',
                                                                              'BACKEND_UI_BLOCKED',
                                                                              'IR_SCHEMA_INVALID'],
@@ -1644,7 +2113,8 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                     'type': 'object'},
                                                                          'Result': {'properties': {'entity_count': {'type': 'integer'},
                                                                                                    'feature_id': {'type': 'string'},
-                                                                                                   'native_id': {'type': 'integer'}},
+                                                                                                   'native_id': {'type': 'integer'},
+                                                                                                   'observation': {'$ref': '../v0.json#/$defs/Observation'}},
                                                                                     'required': ['native_id',
                                                                                                  'feature_id',
                                                                                                  'entity_count'],
@@ -1655,6 +2125,7 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                         '(spec 6.5.2)',
                                                                'x-errors': ['AUTH_PATH_DENIED',
                                                                             'BACKEND_BUSY',
+                                                                            'BACKEND_OPERATION_FAILED',
                                                                             'BACKEND_REBUILD_ERROR',
                                                                             'BACKEND_UI_BLOCKED',
                                                                             'IR_SCHEMA_INVALID'],
@@ -1768,6 +2239,23 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                                                          'type': 'array'}},
                                                                                         'required': ['operation_ids'],
                                                                                         'type': 'object'},
+                                                          'CompletenessState': {'description': 'Missing '
+                                                                                               'means '
+                                                                                               'unavailable; '
+                                                                                               'empty '
+                                                                                               'is '
+                                                                                               'never '
+                                                                                               'evidence '
+                                                                                               'of '
+                                                                                               'success '
+                                                                                               'by '
+                                                                                               'itself '
+                                                                                               '(spec '
+                                                                                               '8.9.6).',
+                                                                                'enum': ['present',
+                                                                                         'empty',
+                                                                                         'unavailable',
+                                                                                         'unsupported']},
                                                           'DocumentEventParams': {'properties': {'_meta': {'$ref': '#/$defs/Meta'},
                                                                                                  'document': {'type': 'string'},
                                                                                                  'event': {'enum': ['regen',
@@ -1823,18 +2311,136 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                   'operation_id': {'type': 'string'},
                                                                                   'request_id': {'type': 'string'}},
                                                                    'type': 'object'},
+                                                          'NativeFailure': {'description': 'Diagnostics '
+                                                                                           'only. '
+                                                                                           'Agents '
+                                                                                           'never '
+                                                                                           'branch '
+                                                                                           'on '
+                                                                                           'these '
+                                                                                           '(ADR-037).',
+                                                                            'properties': {'call': {'type': 'string'},
+                                                                                           'error_code': {'type': 'integer'},
+                                                                                           'hresult': {'type': 'integer'},
+                                                                                           'returned': {'type': 'string'}},
+                                                                            'type': 'object'},
                                                           'Notification': {'properties': {'jsonrpc': {'const': '2.0'},
                                                                                           'method': {'type': 'string'},
                                                                                           'params': {'type': 'object'}},
                                                                            'required': ['jsonrpc',
                                                                                         'method'],
                                                                            'type': 'object'},
+                                                          'Observation': {'description': 'Facts '
+                                                                                         'read '
+                                                                                         'back in '
+                                                                                         'the same '
+                                                                                         'command, '
+                                                                                         'never '
+                                                                                         'copied '
+                                                                                         'from the '
+                                                                                         'request '
+                                                                                         '(ADR-064, '
+                                                                                         'spec '
+                                                                                         '8.9.3 '
+                                                                                         'rule 7). '
+                                                                                         'Judged '
+                                                                                         'by the '
+                                                                                         'core, '
+                                                                                         'not the '
+                                                                                         'add-in.',
+                                                                          'properties': {'completeness': {'$ref': '#/$defs/ObservationCompleteness'},
+                                                                                         'error_code': {'type': 'integer'},
+                                                                                         'is_warning': {'type': 'boolean'},
+                                                                                         'native_type': {'type': 'string'},
+                                                                                         'needs_rebuild': {'type': 'boolean'},
+                                                                                         'parameters': {'$ref': '#/$defs/ObservedParameters'},
+                                                                                         'parents': {'items': {'type': 'string'},
+                                                                                                     'type': 'array'},
+                                                                                         'solid_body_count': {'minimum': 0,
+                                                                                                              'type': 'integer'},
+                                                                                         'suppressed': {'type': 'boolean'},
+                                                                                         'type': {'type': 'string'},
+                                                                                         'update_stamp': {'type': 'integer'}},
+                                                                          'required': ['completeness'],
+                                                                          'type': 'object'},
+                                                          'ObservationCompleteness': {'description': 'Whether '
+                                                                                                     'each '
+                                                                                                     'observed '
+                                                                                                     'fact '
+                                                                                                     'was '
+                                                                                                     'read '
+                                                                                                     '(spec '
+                                                                                                     '8.9.3 '
+                                                                                                     'rule '
+                                                                                                     '7).',
+                                                                                      'properties': {'error_code': {'$ref': '#/$defs/CompletenessState'},
+                                                                                                     'needs_rebuild': {'$ref': '#/$defs/CompletenessState'},
+                                                                                                     'parameters': {'$ref': '#/$defs/CompletenessState'},
+                                                                                                     'parents': {'$ref': '#/$defs/CompletenessState'},
+                                                                                                     'solid_body_count': {'$ref': '#/$defs/CompletenessState'},
+                                                                                                     'suppressed': {'$ref': '#/$defs/CompletenessState'},
+                                                                                                     'type': {'$ref': '#/$defs/CompletenessState'},
+                                                                                                     'update_stamp': {'$ref': '#/$defs/CompletenessState'}},
+                                                                                      'type': 'object'},
+                                                          'ObservedParameters': {'description': 'Feature '
+                                                                                                'parameters '
+                                                                                                'read '
+                                                                                                'back, '
+                                                                                                'raw '
+                                                                                                'SI '
+                                                                                                '(spec '
+                                                                                                '8.7). '
+                                                                                                'Tier '
+                                                                                                'T1, '
+                                                                                                'once '
+                                                                                                'K15 '
+                                                                                                'clears '
+                                                                                                'the '
+                                                                                                'read.',
+                                                                                 'properties': {'depth_m': {'type': 'number'},
+                                                                                                'end_condition': {'type': 'string'}},
+                                                                                 'type': 'object'},
                                                           'Operation': {'properties': {'op': {'type': 'string'},
                                                                                        'operation_id': {'type': 'string'},
                                                                                        'params': {'type': 'object'}},
                                                                         'required': ['operation_id',
                                                                                      'op'],
                                                                         'type': 'object'},
+                                                          'OperationEffect': {'description': 'Whether '
+                                                                                             'a '
+                                                                                             'failed '
+                                                                                             'operation '
+                                                                                             'may '
+                                                                                             'have '
+                                                                                             'changed '
+                                                                                             'the '
+                                                                                             'document '
+                                                                                             '(spec '
+                                                                                             '8.9.5).',
+                                                                              'enum': ['none',
+                                                                                       'applied',
+                                                                                       'unknown']},
+                                                          'OperationFailureDetails': {'description': 'details '
+                                                                                                     'of '
+                                                                                                     'an '
+                                                                                                     'operation '
+                                                                                                     'failure '
+                                                                                                     '(spec '
+                                                                                                     '8.9.5). '
+                                                                                                     'Required '
+                                                                                                     'from '
+                                                                                                     'stage '
+                                                                                                     '3 '
+                                                                                                     'on.',
+                                                                                      'properties': {'effect': {'$ref': '#/$defs/OperationEffect'},
+                                                                                                     'native': {'$ref': '#/$defs/NativeFailure'},
+                                                                                                     'stage': {'enum': ['admit',
+                                                                                                                        'translate',
+                                                                                                                        'invoke',
+                                                                                                                        'read_back',
+                                                                                                                        'report']}},
+                                                                                      'required': ['effect'],
+                                                                                      'type': 'object'},
                                                           'OperationGroup': {'properties': {'document': {'type': 'string'},
                                                                                             'operations': {'items': {'$ref': '#/$defs/Operation'},
                                                                                                            'minItems': 1,
@@ -2891,6 +3497,7 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                             'JournalRecord': {'oneOf': [{'$ref': '#/$defs/StateRecord'},
                                                                                         {'$ref': '#/$defs/BatchSentRecord'},
                                                                                         {'$ref': '#/$defs/OpResultRecord'},
+                                                                                        {'$ref': '#/$defs/OpVerifiedRecord'},
                                                                                         {'$ref': '#/$defs/SnapshotRecord'},
                                                                                         {'$ref': '#/$defs/DocumentRecord'},
                                                                                         {'$ref': '#/$defs/NoteRecord'}]},
@@ -2918,6 +3525,29 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                             'ok',
                                                                                             'error_code'],
                                                                                'type': 'object'},
+                                                            'OpVerifiedRecord': {'properties': {'checks': {'items': {'$ref': '../execution-evidence/v0.json#/$defs/PostconditionResult'},
+                                                                                                           'type': 'array'},
+                                                                                                'feature_id': {'anyOf': [{'type': 'string'},
+                                                                                                                         {'type': 'null'}]},
+                                                                                                'job_id': {'$ref': '#/$defs/JobId'},
+                                                                                                'node': {'anyOf': [{'type': 'string'},
+                                                                                                                   {'type': 'null'}]},
+                                                                                                'observation': {'anyOf': [{'$ref': '../ipc/v0.json#/$defs/Observation'},
+                                                                                                                          {'type': 'null'}]},
+                                                                                                'operation_id': {'type': 'string'},
+                                                                                                'status': {'$ref': '../execution-evidence/v0.json#/$defs/VerificationStatus'},
+                                                                                                'ts': {'$ref': '#/$defs/Timestamp'},
+                                                                                                'type': {'const': 'op_verified'}},
+                                                                                 'required': ['type',
+                                                                                              'ts',
+                                                                                              'job_id',
+                                                                                              'operation_id',
+                                                                                              'node',
+                                                                                              'feature_id',
+                                                                                              'observation',
+                                                                                              'checks',
+                                                                                              'status'],
+                                                                                 'type': 'object'},
                                                             'ReportId': {'pattern': '^rep_[0-9A-HJKMNP-TV-Z]{26}$',
                                                                          'type': 'string'},
                                                             'ReportMeta': {'properties': {'created_at': {'$ref': '#/$defs/Timestamp'},

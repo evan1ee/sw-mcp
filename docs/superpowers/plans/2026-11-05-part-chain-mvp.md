@@ -406,7 +406,7 @@ Added by owner decision, 2026-11-05, from the [adapter roadmap](../../plans/soli
   - `test_publish_rechecks_path` (F6): a folder now resolving outside the root fails; no target.
   - `test_publish_order`: `publish_intent` before the rename, `published` after, then COMMITTED.
   - `test_cancel_after_publish_intent_has_no_effect` and `test_cancel_before_publish_intent_aborts`.
-  - `test_failed_contract_stops_the_job` (ADR-064): a wrong type or sick feature ends the job with `PROPOSED_FEATURE_VERIFICATION_FAILED`, names the node, sends nothing further, and journals `op_verified` first. A feature warning does the same (K22).
+  - `test_failed_contract_stops_the_job` (ADR-064): a wrong type or sick feature ends the job with `FEATURE_VERIFICATION_FAILED`, names the node, sends nothing further, and journals `op_verified` first. A feature warning does the same (K22).
   - `test_wrong_volume_fails`: `PART_VERIFICATION_FAILED`, `details` lists the check, no target, `.failed` present and named.
   - `test_reopen_mismatch_fails`: only the second measurement is wrong.
   - `test_op_error_fails_and_keeps_file`.

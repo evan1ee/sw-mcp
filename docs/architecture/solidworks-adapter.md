@@ -1,6 +1,6 @@
 # 8.8 SOLIDWORKS Adapter Architecture
 
-> Specification v1.33, section 8.8. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.34, section 8.8. Index and section map: [specifications/README.md](../specifications/README.md).
 
 **Status: Accepted by the owner, 2026-11-05. Not built yet.** Code and schemas follow it as the roadmap delivers each part. Contracts: [8.9](../specifications/solidworks-adapter.md). Decisions: [ADR-058](../adr/ADR-058-compiler-oriented-adapter.md) to [ADR-063](../adr/ADR-063-observation-verification-boundary.md). Delivery: [roadmap](../plans/solidworks-adapter-roadmap.md).
 
@@ -478,5 +478,5 @@ Reviewed against the existing decisions when written.
 | ADR-057 | Drawing adapters unchanged until the freeze lifts. The MVP plan's tasks are not replaced |
 | 8.7 ledger | Changed by owner decision (K17, closed). The code does not follow it yet: MVP Task 7a |
 | G1 and AGENTS.md | Updated to the release rule in ADR-059 (owner decision, 2026-11-05). The code does not follow it yet: MVP Task 7c fixes `SwAddin.cs:255` and `:434` |
-| New error code | Accepted addition, placeholder `PROPOSED_OPERATION_FAILED` until roadmap A0 adds it (8.9.5) |
+| New error code | `BACKEND_OPERATION_FAILED` added to the catalogue in v1.34 (8.9.5) |
 | Live evidence | **None gathered for this design.** API facts marked unverified in 8.9 must pass a spike before use |

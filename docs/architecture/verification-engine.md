@@ -1,6 +1,6 @@
 # 10. Verification Engine
 
-> Specification v1.33, section 10. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.34, section 10. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 10.1 Purpose
 
@@ -40,7 +40,7 @@ Any failure ends the job FAILED with `PART_VERIFICATION_FAILED` (ADR-037), whose
 
 ### 10.2.2 Per-operation verification ([ADR-064](../adr/ADR-064-per-operation-verification-contracts.md))
 
-**Not built yet.** `cad-verification` has no contracts or evaluator, operation results have no `observation`, and the compiler still emits `dir`. Roadmap A0 and A2 and MVP Tasks 8 to 9b deliver them.
+**Not built yet.** The schemas exist (roadmap A0), but `cad-verification` has no contracts or evaluator, and the add-in does not fill `observation` yet. Roadmap A2 and MVP Tasks 8 to 9b deliver them.
 
 A `plan` job judges every operation before it sends the next, so a failure names its node and check.
 
