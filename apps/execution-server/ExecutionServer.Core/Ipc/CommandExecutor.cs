@@ -17,6 +17,11 @@ internal static class CommandExecutor
                 return RpcFrames.Result(command.Id, handler.Snapshot(command.Snapshot, ct));
             }
 
+            if (command.Measure != null)
+            {
+                return RpcFrames.Result(command.Id, handler.MeasurePart(command.Measure, ct));
+            }
+
             var result = OpsBatchRunner.Run(command.Ops!, ledger, handler, ct);
             return RpcFrames.Result(command.Id, JToken.FromObject(result));
         }

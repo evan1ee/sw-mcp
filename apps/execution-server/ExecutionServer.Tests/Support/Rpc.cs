@@ -41,6 +41,7 @@ public static class Rpc
         new SessionConfig(token, HelloResult(), true, "unsupported", maxFrameBytes);
 
     public static JObject SnapshotParams(string document = "C:/d/x.slddrw") => new JObject { ["document"] = document };
+    public static JObject PartMeasureParams(string document = "C:/d/plate.sldprt") => new JObject { ["document"] = document };
 
     public static JObject OpsParams(string document, params string[] operationIds)
     {

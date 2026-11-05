@@ -17,6 +17,7 @@ namespace ExecutionServer.Tests.Support;
 public sealed class ScriptedHandler : ICommandHandler
 {
     private readonly ConcurrentQueue<string> _snapshotCalls = new ConcurrentQueue<string>();
+    private readonly ConcurrentQueue<string> _measureCalls = new ConcurrentQueue<string>();
     private readonly ConcurrentQueue<string> _executeCalls = new ConcurrentQueue<string>();
     private readonly ConcurrentQueue<byte[]> _injectOnNextRun = new ConcurrentQueue<byte[]>();
 
@@ -25,10 +26,15 @@ public sealed class ScriptedHandler : ICommandHandler
     public Func<SnapshotParams, CancellationToken, JToken> OnSnapshot { get; set; } =
         (p, ct) => new JObject { ["document"] = p.Document };
 
+    public Func<PartMeasureParams, CancellationToken, JToken> OnMeasure { get; set; } =
+        (p, ct) => new JObject { ["path"] = p.Document };
+
     public Func<string, Operation, CancellationToken, JToken> OnExecute { get; set; } =
         (doc, op, ct) => new JObject { ["done"] = op.OperationId };
 
     public IReadOnlyList<string> SnapshotCalls => _snapshotCalls.ToList();
+
+    public IReadOnlyList<string> MeasureCalls => _measureCalls.ToList();
 
     public IReadOnlyList<string> ExecuteCalls => _executeCalls.ToList();
 
@@ -40,6 +46,13 @@ public sealed class ScriptedHandler : ICommandHandler
         _snapshotCalls.Enqueue(p.Document);
         DeliverInjected();
         return OnSnapshot(p, ct);
+    }
+
+    public JToken MeasurePart(PartMeasureParams p, CancellationToken ct)
+    {
+        _measureCalls.Enqueue(p.Document);
+        DeliverInjected();
+        return OnMeasure(p, ct);
     }
 
     public JToken Execute(string document, Operation op, CancellationToken ct)
@@ -55,6 +68,9 @@ public sealed class ScriptedHandler : ICommandHandler
         var responses = TranscriptNormalizer.WholeResponses(t.Entries.Where(e => !e.CoreToAddin).ToList());
         var snapshotIds = t.Entries
             .Where(e => e.CoreToAddin && e.Method == "drawing.snapshot")
+            .Select(e => e.Frame!.Value<long>("id")).ToList();
+        var measureIds = t.Entries
+            .Where(e => e.CoreToAddin && e.Method == "part.measure")
             .Select(e => e.Frame!.Value<long>("id")).ToList();
         var outcomes = new Dictionary<string, JToken>();
         foreach (var kv in responses)
@@ -82,6 +98,34 @@ public sealed class ScriptedHandler : ICommandHandler
 
         var handler = new ScriptedHandler();
         var snapshotCall = 0;
+        var measureCall = 0;
+        handler.OnMeasure = (p, ct) =>
+        {
+            if (measureCall >= measureIds.Count)
+            {
+                throw new InvalidOperationException("transcript has no more part.measure entries");
+            }
+            var id = measureIds[measureCall++];
+            ct.ThrowIfCancellationRequested();
+            if (responses.TryGetValue(id, out var r))
+            {
+                var error = r["error"];
+                if (error != null)
+                {
+                    var data = error["data"];
+                    var code = data?["code"]?.Value<string>() ?? error.Value<string>("code") ?? "IR_REFERENCE_UNRESOLVED";
+                    var msg = data?["message"]?.Value<string>() ?? error.Value<string>("message") ?? string.Empty;
+                    throw new IpcException(code, msg, data?["details"]);
+                }
+
+                if (r["result"] != null)
+                {
+                    return r["result"]!;
+                }
+            }
+
+            throw new InvalidOperationException("transcript has no measure result or error for id " + id);
+        };
         handler.OnSnapshot = (p, ct) =>
         {
             var id = snapshotIds[snapshotCall++];

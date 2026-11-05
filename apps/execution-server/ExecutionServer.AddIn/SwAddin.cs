@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using ExecutionServer.Adapters.Documents;
 using ExecutionServer.Adapters.Drawings;
+using ExecutionServer.Adapters.Parts;
 using ExecutionServer.AddIn.Events;
 using ExecutionServer.AddIn.Diagnostics;
 using ExecutionServer.AddIn.Dispatch;
@@ -201,7 +202,7 @@ public class SwAddin : ISwAddin
                 _ledger);
             _eventMonitor.Attach(_swApp);
 
-            var handler = new DefaultAddinCommandHandler(_swApp, _router, _eventMonitor, _settingsGuard);
+            var handler = new DefaultAddinCommandHandler(_swApp, _router, _ownershipTable, _eventMonitor, _settingsGuard);
 
             // 5b. Start NamedPipeServer
             _pipeServer = new NamedPipeServer(pipeName, sessionConfig, _ledger, handler, _dispatcher,
@@ -506,6 +507,46 @@ public class SwAddin : ISwAddin
             return JObject.FromObject(res);
         });
 
+        var partCreation = new PartCreationAdapter(sw, ownership);
+        var sketchAdapter = new SketchAdapter(sw);
+        var featureAdapter = new FeatureAdapter(sw);
+
+        router.Register("part.create", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<PartCreateParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for part.create");
+            var res = partCreation.CreatePart(doc, p!, ExtractJobId(op), ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("sketch.create", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<SketchCreateParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for sketch.create");
+            var res = sketchAdapter.CreateSketch(doc, p!, ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("feature.create", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<FeatureCreateParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for feature.create");
+            var res = featureAdapter.CreateFeature(doc, p!, ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("document.rebuild", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<DocumentRebuildParams>()
+                : new DocumentRebuildParams();
+            var res = featureAdapter.Rebuild(doc, p ?? new DocumentRebuildParams(), ct);
+            return JObject.FromObject(res);
+        });
+
         return router;
     }
 
@@ -532,10 +573,12 @@ public class SwAddin : ISwAddin
         private readonly ExecutionServer.Core.Events.DocumentEventMonitor? _eventMonitor;
         private readonly SettingsGuard? _settingsGuard;
         private readonly DrawingSnapshotAdapter _snapshotAdapter;
+        private readonly PartMeasureAdapter _partMeasureAdapter;
 
         public DefaultAddinCommandHandler(
             ISldWorks sw,
             OperationRouter router,
+            DocumentOwnershipTable? ownershipTable = null,
             ExecutionServer.Core.Events.DocumentEventMonitor? eventMonitor = null,
             SettingsGuard? settingsGuard = null)
         {
@@ -544,6 +587,7 @@ public class SwAddin : ISwAddin
             _eventMonitor = eventMonitor;
             _settingsGuard = settingsGuard;
             _snapshotAdapter = new DrawingSnapshotAdapter(sw);
+            _partMeasureAdapter = new PartMeasureAdapter(sw, ownershipTable);
         }
 
         public JToken Snapshot(SnapshotParams p, CancellationToken ct)
@@ -555,6 +599,27 @@ public class SwAddin : ISwAddin
             try
             {
                 return _snapshotAdapter.Snapshot(p, ct);
+            }
+            finally
+            {
+                if (_eventMonitor != null)
+                {
+                    _eventMonitor.CurrentJobId = null;
+                }
+                _settingsGuard?.RestoreAll();
+            }
+        }
+
+        public JToken MeasurePart(PartMeasureParams p, CancellationToken ct)
+        {
+            if (_eventMonitor != null)
+            {
+                _eventMonitor.CurrentJobId = p.Meta?.JobId;
+            }
+            try
+            {
+                var res = _partMeasureAdapter.Measure(p, ct);
+                return JObject.FromObject(res);
             }
             finally
             {

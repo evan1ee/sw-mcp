@@ -2,14 +2,15 @@ using ExecutionServer.Core.Ipc.Generated;
 
 namespace ExecutionServer.Core.Ipc;
 
-/// <summary>A snapshot or ops.apply request waiting for the UI thread.</summary>
+/// <summary>A snapshot, part measure, or ops.apply request waiting for the UI thread.</summary>
 internal sealed class QueuedCommand
 {
-    public QueuedCommand(long id, SnapshotParams? snapshot, OpsApplyParams? ops)
+    public QueuedCommand(long id, SnapshotParams? snapshot, OpsApplyParams? ops, PartMeasureParams? measure = null)
     {
         Id = id;
         Snapshot = snapshot;
         Ops = ops;
+        Measure = measure;
     }
 
     public long Id { get; }
@@ -17,6 +18,8 @@ internal sealed class QueuedCommand
     public SnapshotParams? Snapshot { get; }
 
     public OpsApplyParams? Ops { get; }
+
+    public PartMeasureParams? Measure { get; }
 }
 
 /// <summary>The command the UI thread is running.</summary>

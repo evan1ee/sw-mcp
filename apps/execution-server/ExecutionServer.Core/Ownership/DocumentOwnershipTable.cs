@@ -97,6 +97,17 @@ public sealed class DocumentOwnershipTable
         }
     }
 
+    public string? GetInstanceId(string path, string? jobId = null)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+        var normalized = NormalizePath(path);
+        lock (_gate)
+        {
+            var entry = GetEntry(normalized, jobId);
+            return entry?.InstanceId;
+        }
+    }
+
     public void Record(string path, string jobId, bool owned, string instanceId, string? previousActive)
     {
         if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Path required", nameof(path));

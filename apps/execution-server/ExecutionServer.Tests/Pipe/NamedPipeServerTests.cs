@@ -231,6 +231,26 @@ public sealed class NamedPipeServerTests
     }
 
     [Fact]
+    public void PartMeasure_RunsThroughSession()
+    {
+        var sink = new RecordingSink();
+        var config = Rpc.Config();
+        var ledger = new OperationLedger();
+        var handler = new ScriptedHandler();
+        handler.OnMeasure = (p, ct) => new JObject { ["path"] = p.Document, ["volume_m3"] = 1.0 };
+        var session = new IpcSession(config, ledger, handler, sink);
+
+        session.Receive(Rpc.Hello(1, config.Token));
+        session.Receive(Rpc.Request(2, "part.measure", Rpc.PartMeasureParams("D:/work/plate.sldprt")));
+
+        Assert.True(session.HasQueuedCommands);
+        var ran = session.RunNext();
+        Assert.True(ran);
+        Assert.Single(handler.MeasureCalls);
+        Assert.Equal("D:/work/plate.sldprt", handler.MeasureCalls[0]);
+    }
+
+    [Fact]
     public void ResponseWrite_DoesNotBlockTheCommandThread()
     {
         var blockingStream = new BlockingStream();

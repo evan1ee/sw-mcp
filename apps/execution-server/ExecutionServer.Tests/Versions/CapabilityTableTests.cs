@@ -55,6 +55,13 @@ public sealed class CapabilityTableTests
         Assert.Equal(VersionSupport.Supported, tableSupported.Support);
         Assert.True(tableSupported.Has("drawing.snapshot"));
         Assert.True(tableSupported.Has("ops.apply"));
+        Assert.True(tableSupported.Has("part.measure"));
+        Assert.True(tableSupported.Has("op:feature.create:extrude"));
+        Assert.True(tableSupported.Has("op:feature.create:cut_extrude"));
+        Assert.True(tableSupported.Has("op:sketch.create:line"));
+        Assert.True(tableSupported.Has("op:sketch.create:circle"));
+        Assert.True(tableSupported.Has("op:sketch.create:arc"));
+        Assert.True(tableSupported.Has("op:sketch.create:relations"));
 
         // Newer service pack with a warning: 2025 SP5.0 or SP0.1
         var vNewerSp = SolidWorksVersion.Parse("33.5.0");

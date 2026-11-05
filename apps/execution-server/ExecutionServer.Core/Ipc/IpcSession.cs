@@ -255,6 +255,13 @@ public sealed partial class IpcSession
                 }
 
                 break;
+            case "part.measure":
+                if (TryParams<PartMeasureParams>(id, p, required: true, out var measure))
+                {
+                    Enqueue(new QueuedCommand(id, null, null, measure));
+                }
+
+                break;
             case "ops.apply":
                 if (TryParams<OpsApplyParams>(id, p, required: true, out var ops) && RpcParams.HasValidShape(ops!))
                 {

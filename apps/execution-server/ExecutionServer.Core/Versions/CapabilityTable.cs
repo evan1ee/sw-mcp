@@ -24,7 +24,14 @@ public sealed class CapabilityTable
     private static readonly string[] BaseCapabilities2025 =
     {
         "drawing.snapshot",
-        "ops.apply"
+        "ops.apply",
+        "part.measure",
+        "op:feature.create:extrude",
+        "op:feature.create:cut_extrude",
+        "op:sketch.create:line",
+        "op:sketch.create:circle",
+        "op:sketch.create:arc",
+        "op:sketch.create:relations"
     };
 
     private readonly HashSet<string> _names;

@@ -1,0 +1,253 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using ExecutionServer.Adapters.Native;
+using ExecutionServer.Core.Ipc;
+using ExecutionServer.Core.Ipc.Generated;
+using ExecutionServer.Core.Parts;
+using Newtonsoft.Json.Linq;
+using SolidWorks.Interop.sldworks;
+using SolidWorks.Interop.swconst;
+
+namespace ExecutionServer.Adapters.Parts;
+
+/// <summary>
+/// Implements operation feature.create (extrude, cut_extrude) and document.rebuild (spec 6.5.2, design 7, ADR-059, ADR-064).
+/// Selects sketch profile via Select2, invokes FeatureExtrusion3 or FeatureCut4 (with Dir=true for blind cuts),
+/// forces a rebuild, and returns T0 observation.
+/// </summary>
+public sealed class FeatureAdapter
+{
+    private readonly ISldWorks _sw;
+
+    public FeatureAdapter(ISldWorks sw)
+    {
+        _sw = sw ?? throw new ArgumentNullException(nameof(sw));
+    }
+
+    public FeatureCreateResult CreateFeature(string document, FeatureCreateParams p, CancellationToken ct)
+    {
+        if (p == null) throw new ArgumentNullException(nameof(p));
+        ct.ThrowIfCancellationRequested();
+
+        var doc = DocumentLocator.FindDocument(_sw, document);
+
+        // 1. Locate profile sketch by feature_id
+        var profileFeature = FindFeatureById(doc, p.Profile);
+        if (profileFeature == null)
+        {
+            throw new IpcException(ErrorCodes.IR_REFERENCE_UNRESOLVED, $"Profile feature '{p.Profile}' not found in document.");
+        }
+
+        // 2. Select sketch (Select2 with mark 0, never SelectByID2)
+        doc.ClearSelection2(true);
+        profileFeature.Select2(false, 0);
+
+        IFeature? createdFeature = null;
+
+        if (p.Type == FeatureCreateParamsType.Extrude)
+        {
+            double depthM = PartUnits.MmToMetres(p.EndCondition?.Depth ?? 0.0);
+
+            createdFeature = (IFeature?)doc.FeatureManager.FeatureExtrusion3(
+                true, // Sd
+                false, // Flip
+                false, // Dir
+                (int)swEndConditions_e.swEndCondBlind, // T1
+                0, // T2
+                depthM, // D1
+                0.0, // D2
+                false, false, false, false, 0.0, 0.0, false, false, false, false,
+                true, // Merge
+                true, // UseFeatScope
+                true, // UseAutoSelect
+                0, 0.0, false);
+        }
+        else if (p.Type == FeatureCreateParamsType.CutExtrude)
+        {
+            var endType = p.EndCondition?.Type;
+            if (endType == FeatureCreateEndConditionType.ThroughAllBoth)
+            {
+                // Sd = false, T1 = swEndCondThroughAll (1), T2 = swEndCondThroughAll (1) (spike answer 2)
+                createdFeature = (IFeature?)doc.FeatureManager.FeatureCut4(
+                    false, // Sd
+                    false, // Flip
+                    false, // Dir
+                    (int)swEndConditions_e.swEndCondThroughAll, // T1
+                    (int)swEndConditions_e.swEndCondThroughAll, // T2
+                    0.0, // D1
+                    0.0, // D2
+                    false, false, false, false, 0.0, 0.0, false, false, false, false, false,
+                    true, // UseFeatScope
+                    true, // UseAutoSelect
+                    false, false, false, 0, 0.0, false, false);
+            }
+            else if (endType == FeatureCreateEndConditionType.Blind)
+            {
+                // Blind cut: Dir = true (third arg) cuts into body! (spike answer 4)
+                double depthM = PartUnits.MmToMetres(p.EndCondition?.Depth ?? 0.0);
+
+                createdFeature = (IFeature?)doc.FeatureManager.FeatureCut4(
+                    true, // Sd
+                    false, // Flip
+                    true, // Dir = true
+                    (int)swEndConditions_e.swEndCondBlind, // T1
+                    0, // T2
+                    depthM, // D1
+                    0.0, // D2
+                    false, false, false, false, 0.0, 0.0, false, false, false, false, false,
+                    true, // UseFeatScope
+                    true, // UseAutoSelect
+                    false, false, false, 0, 0.0, false, false);
+            }
+            else
+            {
+                throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, $"Unsupported end condition type '{endType}' for cut_extrude.");
+            }
+        }
+        else
+        {
+            throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, $"Unsupported feature type '{p.Type}'.");
+        }
+
+        // 3. Check feature creation outcome (null feature fails with BACKEND_REBUILD_ERROR)
+        if (createdFeature == null)
+        {
+            var details = new JObject
+            {
+                ["effect"] = "none",
+                ["stage"] = "invoke",
+                ["native"] = new JObject
+                {
+                    ["call"] = p.Type == FeatureCreateParamsType.Extrude ? "FeatureExtrusion3" : "FeatureCut4",
+                    ["returned"] = "null"
+                }
+            };
+            throw new IpcException(ErrorCodes.BACKEND_REBUILD_ERROR, $"{p.Type} failed to create a feature.", details);
+        }
+
+        // 4. Solid features are followed by a forced rebuild before save (design 7)
+        doc.ForceRebuild3(false);
+
+        // 5. Read back feature properties and observation
+        int nativeId = createdFeature.GetID();
+        string featureId = $"f{nativeId}";
+        int errCode = createdFeature.GetErrorCode2(out bool isWarning);
+        bool suppressed = createdFeature.IsSuppressed();
+
+        FeatureCreateResultStatus status = FeatureCreateResultStatus.Ok;
+        if (suppressed)
+        {
+            status = FeatureCreateResultStatus.Suppressed;
+        }
+        else if (errCode != 0)
+        {
+            status = FeatureCreateResultStatus.Error;
+        }
+        else if (isWarning)
+        {
+            status = FeatureCreateResultStatus.Warning;
+        }
+
+        var parents = new List<string>();
+        object[]? parentsObj = (object[]?)createdFeature.GetParents();
+        if (parentsObj != null)
+        {
+            foreach (var pObj in parentsObj)
+            {
+                if (pObj is IFeature pf)
+                {
+                    parents.Add($"f{pf.GetID()}");
+                }
+            }
+        }
+        if (parents.Count == 0 && !string.IsNullOrEmpty(p.Profile))
+        {
+            parents.Add(p.Profile);
+        }
+
+        var observation = new Observation
+        {
+            NativeType = createdFeature.GetTypeName2(),
+            Type = p.Type == FeatureCreateParamsType.Extrude ? "extrude" : "cut_extrude",
+            ErrorCode = errCode,
+            IsWarning = isWarning,
+            Suppressed = suppressed,
+            Parents = parents,
+            UpdateStamp = createdFeature.GetUpdateStamp(),
+            Completeness = new ObservationCompleteness
+            {
+                Type = CompletenessState.Present,
+                ErrorCode = CompletenessState.Present,
+                Suppressed = CompletenessState.Present,
+                Parents = CompletenessState.Present,
+                Parameters = CompletenessState.Unsupported
+            }
+        };
+
+        return new FeatureCreateResult
+        {
+            NativeId = nativeId,
+            FeatureId = featureId,
+            Status = status,
+            Observation = observation
+        };
+    }
+
+    public DocumentRebuildResult Rebuild(string document, DocumentRebuildParams p, CancellationToken ct)
+    {
+        if (p == null) throw new ArgumentNullException(nameof(p));
+        ct.ThrowIfCancellationRequested();
+
+        var doc = DocumentLocator.FindDocument(_sw, document);
+        bool force = p.Force ?? false;
+
+        bool rebuilt = doc.ForceRebuild3(!force);
+
+        var errors = new List<string>();
+        var feat = (IFeature?)doc.FirstFeature();
+        while (feat != null)
+        {
+            int err = feat.GetErrorCode2(out _);
+            if (err != 0)
+            {
+                errors.Add($"f{feat.GetID()}");
+            }
+            feat = (IFeature?)feat.GetNextFeature();
+        }
+
+        return new DocumentRebuildResult
+        {
+            Rebuilt = rebuilt,
+            Ok = errors.Count == 0,
+            Errors = errors
+        };
+    }
+
+    private static IFeature? FindFeatureById(IModelDoc2 doc, string featureId)
+    {
+        if (string.IsNullOrWhiteSpace(featureId)) return null;
+
+        int targetId;
+        if (featureId.StartsWith("f", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!int.TryParse(featureId.Substring(1), out targetId)) return null;
+        }
+        else
+        {
+            if (!int.TryParse(featureId, out targetId)) return null;
+        }
+
+        var feat = (IFeature?)doc.FirstFeature();
+        while (feat != null)
+        {
+            if (feat.GetID() == targetId)
+            {
+                return feat;
+            }
+            feat = (IFeature?)feat.GetNextFeature();
+        }
+
+        return null;
+    }
+}
