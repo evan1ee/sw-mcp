@@ -120,6 +120,22 @@ async def _mcp_call_tool(
         client.close()
 
 
+_FORBIDDEN_KEYS = frozenset({"$ref", "$id", "$schema", "$defs"})
+
+
+def _keys(node: object) -> set[str]:
+    """Every object key in a JSON value, at any depth."""
+    found: set[str] = set()
+    if isinstance(node, dict):
+        for key, value in cast("dict[str, object]", node).items():
+            found.add(key)
+            found |= _keys(value)
+    elif isinstance(node, list):
+        for item in cast("list[object]", node):
+            found |= _keys(item)
+    return found
+
+
 def test_list_matches_contracts(tmp_path: Path) -> None:
     contracts = load_contracts()
     service, host, pipe_name, token, _drawing = _start_stack(
@@ -137,7 +153,9 @@ def test_list_matches_contracts(tmp_path: Path) -> None:
             raw = json.loads((SCHEMAS_MCP / f"{name}.json").read_text(encoding="utf-8"))
             contract = contracts[name]
             assert tool.description == raw["description"]
-            assert tool.input_schema == raw["input"]
+            assert tool.input_schema == contract.input_schema
+            for schema in (tool.input_schema, tool.output_schema):
+                assert not _FORBIDDEN_KEYS & _keys(schema), name
             assert tool.output_schema is not None
             assert tool.output_schema.get("type") == "object"
             assert tool.output_schema == contract.output_schema

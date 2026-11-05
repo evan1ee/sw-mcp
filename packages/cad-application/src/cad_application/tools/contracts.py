@@ -18,6 +18,8 @@ _COMMON_ID: Final = "https://sw-mcp.invalid/schemas/common/v0.json"
 _META_PREFIX: Final = MCP_PREFIX + "contract/"
 _DESTRUCTIVE: Final = frozenset({"delete_feature", "close_cad_file"})
 _IDEMPOTENT_KINDS: Final = frozenset({"store", "cad-read"})
+# Document-level keywords that must not survive inlining: a client rejects two schemas with one $id.
+_DOCUMENT_KEYS: Final = frozenset({"$id", "$schema", "$defs"})
 
 
 def _resolve_refs(node: JsonValue, base_uri: str) -> JsonValue:
@@ -34,7 +36,9 @@ def _resolve_refs(node: JsonValue, base_uri: str) -> JsonValue:
                         if isinstance(target, dict):
                             target = target.get(part)
                 if isinstance(target, dict):
-                    merged: dict[str, JsonValue] = dict(target)
+                    merged: dict[str, JsonValue] = {
+                        key: value for key, value in target.items() if key not in _DOCUMENT_KEYS
+                    }
                     for key, value in node.items():
                         if key != "$ref":
                             merged[key] = value
@@ -160,8 +164,11 @@ class ToolContract:
         errors = tuple(str(code) for code in _items(doc, "errors"))
         raw_input = doc.get("input")
         raw_output = doc.get("output")
-        input_schema: dict[str, JsonValue] = (
-            dict(raw_input) if isinstance(raw_input, dict) else {"type": "object"}
+        input_schema = cast(
+            "dict[str, JsonValue]",
+            _resolve_refs(
+                dict(raw_input) if isinstance(raw_input, dict) else {"type": "object"}, schema_id
+            ),
         )
         output_node: dict[str, JsonValue] = (
             dict(raw_output) if isinstance(raw_output, dict) else {"type": "object"}
