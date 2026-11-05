@@ -298,6 +298,39 @@ def _check_extrude_profile(
         )
 
 
+def _chain_lines_into_loop(lines: list[Line]) -> list[tuple[float, float]]:
+    """Chain line segments into an ordered directed vertex loop."""
+    if not lines:
+        return []
+    remaining = list(lines)
+    first = remaining.pop(0)
+    loop: list[tuple[float, float]] = [first.start]
+    curr = first.end
+
+    while remaining:
+        found = False
+        for idx, line in enumerate(remaining):
+            if math.hypot(line.start[0] - curr[0], line.start[1] - curr[1]) <= _QUANTUM:
+                loop.append(curr)
+                curr = line.end
+                remaining.pop(idx)
+                found = True
+                break
+            if math.hypot(line.end[0] - curr[0], line.end[1] - curr[1]) <= _QUANTUM:
+                loop.append(curr)
+                curr = line.start
+                remaining.pop(idx)
+                found = True
+                break
+        if not found:
+            loop.append(curr)
+            for r in remaining:
+                loop.append(r.start)
+            break
+
+    return loop
+
+
 def _check_cut_circles_inside(
     cut_prof_id: str,
     cut_circles: list[tuple[str, Circle]],
@@ -307,7 +340,7 @@ def _check_cut_circles_inside(
     ext_lines = [e for e in extrude_sketch.entities.values() if isinstance(e, Line)]
     if not ext_lines:
         return
-    poly_pts = [line.start for line in ext_lines]
+    poly_pts = _chain_lines_into_loop(ext_lines)
     for eid, circ in cut_circles:
         r = circ.diameter / 2.0
         cx, cy = circ.center

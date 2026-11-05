@@ -420,3 +420,62 @@ def test_degenerate_rejected(
         if i.code == ErrorCode.IR_RULE_VIOLATED and i.pointer.startswith(pointer_prefix)
     ]
     assert matching, f"Degenerate case {case_name} was not rejected. Got: {issues}"
+
+
+def test_unordered_sketch_lines() -> None:
+    base = _plate_graph()
+    sketch = base.nodes["sketch_base"]
+    assert isinstance(sketch, SketchNode)
+    shuffled_entities = {
+        "l3": Line(start=(50.0, -30.0), end=(50.0, 30.0)),
+        "l1": Line(start=(50.0, 30.0), end=(-50.0, 30.0)),
+        "l4": Line(start=(-50.0, 30.0), end=(-50.0, -30.0)),
+        "l2": Line(start=(-50.0, -30.0), end=(50.0, -30.0)),
+    }
+    nodes = dict(base.nodes)
+    nodes["sketch_base"] = SketchNode(
+        plane=sketch.plane,
+        entities=shuffled_entities,
+        dependencies=sketch.dependencies,
+    )
+    g = PartGraph(
+        id=base.id,
+        schema_version=base.schema_version,
+        units=base.units,
+        origin=base.origin,
+        nodes=nodes,
+    )
+    issues = validate_graph(g)
+    assert issues == (), f"Expected zero issues with unordered lines, got {issues}"
+
+
+def test_unordered_sketch_lines_rejects_hole_outside() -> None:
+    base = _plate_graph()
+    sketch = base.nodes["sketch_base"]
+    assert isinstance(sketch, SketchNode)
+    shuffled_entities = {
+        "l3": Line(start=(50.0, -30.0), end=(50.0, 30.0)),
+        "l1": Line(start=(50.0, 30.0), end=(-50.0, 30.0)),
+        "l4": Line(start=(-50.0, 30.0), end=(-50.0, -30.0)),
+        "l2": Line(start=(-50.0, -30.0), end=(50.0, -30.0)),
+    }
+    nodes = dict(base.nodes)
+    nodes["sketch_base"] = SketchNode(
+        plane=sketch.plane,
+        entities=shuffled_entities,
+        dependencies=sketch.dependencies,
+    )
+    nodes["sketch_holes"] = SketchNode(
+        plane="plane:front",
+        entities={"c1": Circle(center=(100.0, 100.0), diameter=8.0)},
+        dependencies=base.nodes["sketch_holes"].dependencies,
+    )
+    g = PartGraph(
+        id=base.id,
+        schema_version=base.schema_version,
+        units=base.units,
+        origin=base.origin,
+        nodes=nodes,
+    )
+    issues = validate_graph(g)
+    assert any(i.code == ErrorCode.IR_RULE_VIOLATED and "outside" in i.message for i in issues)

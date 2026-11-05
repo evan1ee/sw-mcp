@@ -271,30 +271,37 @@ class ExecutionPlannerStage:
 
 def compile_bundle(source: CompileInput, ctx: CompileContext) -> CompileResult:
     """Run compiler stages to produce an Execution Plan from an IR bundle (spec 6.7)."""
+    accumulated_diagnostics: list[Diagnostic] = []
+    plan: dict[str, Any] | None = None
+    plan_hash: str | None = None
+
+    # Stage 1: Parser (spec 6.7.1)
     p_res = ParserStage.run(source, ctx)
-    if p_res.has_errors or p_res.output is None:
-        return CompileResult(plan=None, plan_hash=None, diagnostics=p_res.diagnostics)
+    accumulated_diagnostics.extend(p_res.diagnostics)
+    if not p_res.has_errors and p_res.output is not None:
+        # Stage 2: Semantic Validator (spec 6.7.2)
+        v_res = SemanticValidatorStage.run(p_res.output, ctx)
+        accumulated_diagnostics.extend(v_res.diagnostics)
+        if not v_res.has_errors and v_res.output is not None:
+            # Stage 3: Graph Analyzer (spec 6.7.3)
+            a_res = GraphAnalyzerStage.run(v_res.output, ctx)
+            accumulated_diagnostics.extend(a_res.diagnostics)
+            if not a_res.has_errors and a_res.output is not None:
+                # Stage 4: Geometry Resolver (spec 6.7.4)
+                g_res = GeometryResolverStage.run(v_res.output, ctx)
+                accumulated_diagnostics.extend(g_res.diagnostics)
+                if not g_res.has_errors and g_res.output is not None:
+                    # Stage 5: Feature Lowering (spec 6.7.5)
+                    l_res = FeatureLoweringStage.run((g_res.output, a_res.output), ctx)
+                    accumulated_diagnostics.extend(l_res.diagnostics)
+                    if not l_res.has_errors and l_res.output is not None:
+                        # Stage 6: Execution Planner (spec 6.7.6)
+                        pl_res = ExecutionPlannerStage.run((source.manifest, l_res.output), ctx)
+                        accumulated_diagnostics.extend(pl_res.diagnostics)
+                        if not pl_res.has_errors and pl_res.output is not None:
+                            plan, plan_hash = pl_res.output
 
-    graph = p_res.output
-    for step_fn in (SemanticValidatorStage.run, GeometryResolverStage.run):
-        step_res = step_fn(graph, ctx)
-        if step_res.has_errors or step_res.output is None:
-            return CompileResult(plan=None, plan_hash=None, diagnostics=step_res.diagnostics)
-
-    a_res = GraphAnalyzerStage.run(graph, ctx)
-    if a_res.has_errors or a_res.output is None:
-        return CompileResult(plan=None, plan_hash=None, diagnostics=a_res.diagnostics)
-
-    l_res = FeatureLoweringStage.run((graph, a_res.output), ctx)
-    if l_res.has_errors or l_res.output is None:
-        return CompileResult(plan=None, plan_hash=None, diagnostics=l_res.diagnostics)
-
-    pl_res = ExecutionPlannerStage.run((source.manifest, l_res.output), ctx)
-    if pl_res.has_errors or pl_res.output is None:
-        return CompileResult(plan=None, plan_hash=None, diagnostics=pl_res.diagnostics)
-
-    plan, plan_hash = pl_res.output
-    return CompileResult(plan=plan, plan_hash=plan_hash, diagnostics=())
+    return CompileResult(plan=plan, plan_hash=plan_hash, diagnostics=tuple(accumulated_diagnostics))
 
 
 __all__ = [

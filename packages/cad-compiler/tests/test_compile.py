@@ -6,7 +6,21 @@ import sys
 from pathlib import Path
 from typing import Any, Final, cast
 
-from cad_compiler.api import WORKING, CompileContext, CompileInput, compile_bundle
+import pytest
+from cad_compiler.api import (
+    WORKING,
+    CompileContext,
+    CompileInput,
+    Diagnostic,
+    ExecutionPlannerStage,
+    FeatureLoweringStage,
+    GeometryResolverStage,
+    GraphAnalyzerStage,
+    ParserStage,
+    SemanticValidatorStage,
+    StageResult,
+    compile_bundle,
+)
 from cad_compiler.profile import CapabilityProfile
 from cad_ir.bundle.manifest import BundleManifest
 from cad_ir.core.refs import parse_document_ref
@@ -219,3 +233,80 @@ def test_missing_operation() -> None:
     result = compile_bundle(source, ctx)
     assert result.plan is None
     assert any(d.code == ErrorCode.BACKEND_CAPABILITY_MISSING for d in result.diagnostics)
+
+
+def test_compile_preserves_warning_diagnostics(monkeypatch: pytest.MonkeyPatch) -> None:
+    source, ctx = _plate_input(revision=1)
+    orig_validate = SemanticValidatorStage.run
+
+    def mock_run(graph: Any, ctx: Any) -> Any:
+        res = orig_validate(graph, ctx)
+        warning = Diagnostic(
+            stage="semantic_validator",
+            code=ErrorCode.IR_RULE_VIOLATED,
+            pointer="/test",
+            message="Test non-fatal warning",
+            severity="warning",
+        )
+        return StageResult(output=res.output, diagnostics=(warning,))
+
+    monkeypatch.setattr(SemanticValidatorStage, "run", mock_run)
+    result = compile_bundle(source, ctx)
+    assert result.plan is not None
+    assert len(result.diagnostics) == 1
+    assert result.diagnostics[0].severity == "warning"
+    assert result.diagnostics[0].message == "Test non-fatal warning"
+
+
+def test_stage_execution_order_and_propagation(monkeypatch: pytest.MonkeyPatch) -> None:
+    called_stages: list[str] = []
+
+    orig_p = ParserStage.run
+    orig_v = SemanticValidatorStage.run
+    orig_a = GraphAnalyzerStage.run
+    orig_g = GeometryResolverStage.run
+    orig_l = FeatureLoweringStage.run
+    orig_pl = ExecutionPlannerStage.run
+
+    def mock_p(inp: Any, ctx: Any) -> Any:
+        called_stages.append("parser")
+        return orig_p(inp, ctx)
+
+    def mock_v(inp: Any, ctx: Any) -> Any:
+        called_stages.append("semantic_validator")
+        return orig_v(inp, ctx)
+
+    def mock_a(inp: Any, ctx: Any) -> Any:
+        called_stages.append("graph_analyzer")
+        return orig_a(inp, ctx)
+
+    def mock_g(inp: Any, ctx: Any) -> Any:
+        called_stages.append("geometry_resolver")
+        return orig_g(inp, ctx)
+
+    def mock_l(inp: Any, ctx: Any) -> Any:
+        called_stages.append("feature_lowering")
+        return orig_l(inp, ctx)
+
+    def mock_pl(inp: Any, ctx: Any) -> Any:
+        called_stages.append("execution_planner")
+        return orig_pl(inp, ctx)
+
+    monkeypatch.setattr(ParserStage, "run", mock_p)
+    monkeypatch.setattr(SemanticValidatorStage, "run", mock_v)
+    monkeypatch.setattr(GraphAnalyzerStage, "run", mock_a)
+    monkeypatch.setattr(GeometryResolverStage, "run", mock_g)
+    monkeypatch.setattr(FeatureLoweringStage, "run", mock_l)
+    monkeypatch.setattr(ExecutionPlannerStage, "run", mock_pl)
+
+    source, ctx = _plate_input(revision=1)
+    res = compile_bundle(source, ctx)
+    assert res.plan is not None
+    assert called_stages == [
+        "parser",
+        "semantic_validator",
+        "graph_analyzer",
+        "geometry_resolver",
+        "feature_lowering",
+        "execution_planner",
+    ]
