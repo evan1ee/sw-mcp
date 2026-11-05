@@ -15,7 +15,7 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-Two open items: K3 and J11. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+Five open items: K3, J11, K8, K9 and K10. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
 
 ### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
 
@@ -35,6 +35,27 @@ Two open items: K3 and J11. Every decision found in the v1.11 review is recorded
 - **Recommendation.** When the adapter is built, add an optional per-view `quality_switched: true` to the snapshot's `View` (11.5.1), or a `warnings` list to the `drawing.snapshot` result (8.7), and map it to a `draft_view_switched` job warning. Decide with the live read-back, which shows whether the switch is per view or per sheet.
 - **Document:** Spec (11.5.1 or 8.7, and 8.4).
 - **Blocks:** `1a` (live read-back only).
+
+### K8: Snapshot keys when native names change or repeat
+
+- **Why it matters.** 11.5.1 derives an untagged item's key from its native name, so a rename changes the key. Widening the hash from 10 to 16 characters separates a hash collision, but not two items with the same native name, because the same input gives the same hash at any length. Once keys are deterministic, those items would overwrite each other in the snapshot. The add-in does not follow the rule today: it uses random GUIDs. ADR-056 (Proposed) describes keys from identity tuples and cites 11.5.1, which does not specify them, so two key rules are in circulation. Whether native names repeat, and whether they survive save and reopen, a rename or a change of UI language, has not been tested.
+- **Recommendation.** Keep the 11.5.1 rule until this closes. Define what happens when two items in one snapshot share a native name, and measure the cases above on recorded live snapshots before changing the key source. Keys only need to be repeatable; persistent identity belongs to K9.
+- **Document:** Spec (11.5.1).
+- **Blocks:** `1a` (live read-back only; deterministic keys for unique native names are already specified).
+
+### K9: How view and annotation identity persists across sessions
+
+- **Why it matters.** Pins, overrides and later re-checks need to find the same view or annotation again. 11.11 and A3 name pipeline-set names, but 11.11 also reports that native names change on hide and re-insert, and `annotation.tag` is not implemented. ADR-056 (Proposed) describes a document-level view map, which is only as good as the native names it stores and goes stale on a rename or re-insert. Its spike S1 compares that map with feature attributes, and neither has been tested.
+- **Recommendation.** Compare annotation attributes, pipeline-set names, a document map and attachment matching against save and reopen, rename, hide and re-insert, and delete and recreate. Record the choice in an ADR. A new item must not inherit a deleted item's identity, even if SOLIDWORKS reuses the name.
+- **Document:** ADR, then Spec (11.5.1, 11.11).
+- **Blocks:** `1b`.
+
+### K10: The form of the `produce_drawing` orchestrator
+
+- **Why it matters.** The multi-step sequence exists only in a live test, with no production runner. 6.5.3 and 8.4 say the job emits batches of existing operations. ADR-056 (Proposed) adds `ProduceDrawingRunner`, Stage Plans and more journal records. The 2026-11-05 architecture review argues for functions in the job, with a persisted type only when a real need appears. Implementers would build different things until this is settled.
+- **Recommendation.** Settle it through ADR-056's decision (owner decision O1 in the [architecture roadmap](../superpowers/review/2026-11-05-architecture-roadmap.md)), after real read-back exists. 6.5.3 and 8.4 stay as written until then. Any new journal record also needs a change to `schemas/store/v0.json` (ADR-035).
+- **Document:** ADR-056 (accept or reject), then Spec (6.5.3, 8.4).
+- **Blocks:** `1b`.
 
 ---
 
