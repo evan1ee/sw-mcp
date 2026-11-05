@@ -1,121 +1,104 @@
-"""Stateless MCP stdio server forwarding tool calls to the core service (ADR-041)."""
+"""Stateless MCP stdio front-end on the official MCP SDK (ADR-034, ADR-041, ADR-044, 12.3)."""
 
 import json
 import sys
-from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from mcp_server.client import CorePipeClient
+import anyio
+from mcp import MCPError, types
+from mcp.server.lowlevel import Server
+from mcp.server.stdio import stdio_server
+
+from mcp_server.client import CorePipeClient, CorePipeError
 
 
-class McpServer:
-    """Lightweight MCP server delegating tool operations to the CoreService pipe."""
+def create_mcp_server(client: CorePipeClient) -> Server:
+    """Create the low-level MCP server backed by ``client``."""
 
-    def __init__(
-        self,
-        client: CorePipeClient | None = None,
-        *,
-        pipe_name: str | None = None,
-        token: str | None = None,
-        session_file: Path | str | None = None,
-    ) -> None:
-        self._client = (
-            client
-            if client is not None
-            else CorePipeClient(
-                pipe_name=pipe_name,
-                token=token,
-                session_file=session_file,
+    async def _on_list_tools(
+        _ctx: Any, _params: types.PaginatedRequestParams | None
+    ) -> types.ListToolsResult:
+        raw_tools = await anyio.to_thread.run_sync(client.list_tools)
+        tools: list[types.Tool] = []
+        for item in raw_tools:
+            raw_ann = item.get("annotations")
+            annotations = (
+                types.ToolAnnotations.model_validate(raw_ann) if isinstance(raw_ann, dict) else None
             )
+            input_schema = item.get("inputSchema")
+            output_schema = item.get("outputSchema")
+            tools.append(
+                types.Tool(
+                    name=str(item["name"]),
+                    description=str(item.get("description", "")),
+                    input_schema=(
+                        cast("dict[str, Any]", input_schema)
+                        if isinstance(input_schema, dict)
+                        else {"type": "object"}
+                    ),
+                    output_schema=(
+                        cast("dict[str, Any]", output_schema)
+                        if isinstance(output_schema, dict)
+                        else None
+                    ),
+                    annotations=annotations,
+                )
+            )
+        return types.ListToolsResult(tools=tools)
+
+    async def _on_call_tool(_ctx: Any, params: types.CallToolRequestParams) -> types.CallToolResult:
+        arguments: dict[str, Any] = dict(params.arguments) if params.arguments is not None else {}
+        try:
+            raw = await anyio.to_thread.run_sync(client.call_tool, params.name, arguments)
+        except CorePipeError as exc:
+            raise MCPError(code=exc.code, message=exc.message, data=exc.data) from exc
+
+        if "envelope" in raw and isinstance(raw["envelope"], dict):
+            envelope = cast("dict[str, Any]", raw["envelope"])
+            summary = str(raw.get("summary", ""))
+        else:
+            envelope = raw
+            summary = json.dumps(envelope)
+
+        is_error = not bool(envelope.get("ok", False))
+        return types.CallToolResult(
+            content=[types.TextContent(type="text", text=summary)],
+            structured_content=envelope,
+            is_error=is_error,
         )
 
-    def connect(self, timeout_s: float = 5.0) -> None:
-        self._client.connect(timeout_s=timeout_s)
+    return Server(
+        name="sw-mcp",
+        version="0.1.0",
+        on_list_tools=_on_list_tools,
+        on_call_tool=_on_call_tool,
+    )
 
-    def close(self) -> None:
-        self._client.close()
 
-    def handle_message(self, message: dict[str, Any]) -> dict[str, Any] | None:
-        msg_id = message.get("id")
-        method = message.get("method")
-        params = message.get("params", {})
+async def _serve_stdio(client: CorePipeClient) -> None:
+    server = create_mcp_server(client)
+    init_options = server.create_initialization_options()
+    async with stdio_server() as (read_stream, write_stream):
+        await server.run(read_stream, write_stream, init_options)
 
-        if method == "initialize":
-            return {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "result": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "sw-mcp", "version": "0.1.0"},
-                },
-            }
 
-        if method == "notifications/initialized":
-            return None
+def run_stdio_server(client: CorePipeClient | None = None) -> None:
+    """Connect to the per-user core service and serve MCP over UTF-8 stdio."""
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8")
 
-        if method == "tools/list":
-            tools = self._client.list_tools()
-            return {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "result": {"tools": tools},
-            }
-
-        if method == "tools/call":
-            tool_name = params.get("name", "")
-            tool_args = params.get("arguments", {})
-            envelope = self._client.call_tool(tool_name, tool_args)
-            is_error = not envelope.get("ok", False)
-            content = [
-                {
-                    "type": "text",
-                    "text": json.dumps(envelope),
-                }
-            ]
-            return {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "result": {
-                    "content": content,
-                    "isError": is_error,
-                },
-            }
-
-        if msg_id is not None:
-            return {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "error": {
-                    "code": -32601,
-                    "message": f"Method {method} not found",
-                },
-            }
-        return None
-
-    def run_stdio(self) -> None:
-        """Run stdio loop reading from sys.stdin and writing to sys.stdout."""
-        self.connect()
-        try:
-            for raw_line in sys.stdin:
-                line = raw_line.strip()
-                if not line:
-                    continue
-                try:
-                    msg = json.loads(line)
-                except Exception:
-                    continue
-                res = self.handle_message(msg)
-                if res is not None:
-                    sys.stdout.write(json.dumps(res) + "\n")
-                    sys.stdout.flush()
-        finally:
-            self.close()
+    active_client = client if client is not None else CorePipeClient()
+    active_client.connect()
+    try:
+        anyio.run(_serve_stdio, active_client)
+    finally:
+        active_client.close()
 
 
 def main() -> None:
-    server = McpServer()
-    server.run_stdio()
+    run_stdio_server()
 
 
 if __name__ == "__main__":

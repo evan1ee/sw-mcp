@@ -36,7 +36,7 @@ class Settings:
 
     allowed_roots: tuple[str, ...] = ()
     pdm_vault_roots: tuple[str, ...] = ()
-    toolsets: tuple[str, ...] = ("core", "drawing")
+    toolsets: tuple[str, ...] = ("core",)
     idle_shutdown_min: int = 30
     job_retention_days: int = 7
     solidworks_session: str | int = "auto"
