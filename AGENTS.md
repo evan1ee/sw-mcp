@@ -116,6 +116,7 @@ dotnet build apps/execution-server/ExecutionServer.sln
 ### Live SOLIDWORKS Tests
 - Live suites require a dedicated Windows x64 environment with a licensed SOLIDWORKS 2025+ install, an active interactive user desktop session, and a visible SOLIDWORKS window (Section 15.2, ADR-039).
 - Live tests do not run in headless CI environments.
+- `uv run pytest` leaves them out. Run them with `uv run pytest tests/live -m live`, only on a throwaway SOLIDWORKS instance, because they drive whichever instance has the add-in loaded.
 
 ---
 

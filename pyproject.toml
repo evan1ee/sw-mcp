@@ -60,7 +60,8 @@ venvPath = "."
 venv = ".venv"
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib"
+# Live tests drive whichever SOLIDWORKS is open, so they run only with `-m live` (ADR-039).
+addopts = "--import-mode=importlib -m 'not live'"
 testpaths = ["packages", "apps/mcp-server", "apps/core-service", "tests"]
 markers = [
     "live: live SOLIDWORKS tests requiring interactive session (ADR-039)",
