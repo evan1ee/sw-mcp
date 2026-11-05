@@ -21,6 +21,7 @@ from cad_drawing.view_planning.planner import plan_ortho_views
 from cad_ir.core.json_types import JsonValue
 from cad_ir.core.schema_validation import validate_against_schema
 from cad_ir.generated.ipc import Operation, OperationGroup
+from cad_protocol.backend import IpcBackend
 from core_service.discovery import (
     NamedPipeBackendProvider,
     SessionInfo,
@@ -204,6 +205,9 @@ def test_live_view_planning_and_creation_pipeline() -> None:  # noqa: PLR0915
                     params={},
                 )
                 backend.apply_ops([OperationGroup(document=created_doc, operations=(close_op,))])
+        if isinstance(backend, IpcBackend):
+            with contextlib.suppress(Exception):
+                backend.close()
         # Cleanup: Remove scratch files
         for p in (format_path, save_target, str(model_scratch)):
             with contextlib.suppress(OSError):
