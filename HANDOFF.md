@@ -4,11 +4,11 @@ Last updated: 2026-11-05. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Current State
 
-- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. No part-chain code exists yet, and the MVP design is not written.
+- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. No part-chain code exists yet. The MVP [design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md) are written and await owner approval.
 - **Frozen drawing state:** Annotation and dimension placement increment implemented and exercised by a live test script (Spec §11.4, §11.5, §11.10, §11.10.1, §6.5.2). This work was called "Phase 1c" here, but roadmap §18 defines Phase 1c as IR-built parts; by §18 it is partial Phase 1b, and Phase 1a acceptance is not yet met. The live test passes against local SOLIDWORKS 2025 SP0.1 with 0 violations, **but that is not evidence of drawing correctness for D1, D2, D3 or D7**: the add-in reads no line or text geometry and reports a fixed border and title block ([architecture review](docs/superpowers/review/2026-11-05-architecture-review.md) F1 to F3).
 - **Architecture review:** completed 2026-11-05: [review](docs/superpowers/review/2026-11-05-architecture-review.md), [roadmap](docs/superpowers/review/2026-11-05-architecture-roadmap.md). The design and foundations are sound; the SOLIDWORKS adapters are prototype quality. Awaiting owner decisions (see Next Steps).
-- **Spec:** v1.28 across all topic files in `docs/`. Section 18 now carries the Phase 1 work order (M0 to M11). Section 11.10 (Drawing Intent IR) and Section 11.10.1 (Resolved Scheme IR) normative schemas defined. Section 6.5.2 updated for 6 IPC annotation operations: `model_items.insert`, `dimensions.auto_arrange`, `center_mark.add`, `dimension.hide`, `dimension.show`, `dimension.move`. 5 open decisions remain: K3 (title block locators), J11 (draft-view switched indicator), K8 (snapshot keys), K9 (identity) and K10 (orchestrator form). Catalogue has 40 codes.
-- **Branch:** `feat/drawing-annotation-pipeline` (PR #12 merged to `main` at `eea9389`; subsequent docs freeze commits on this branch).
+- **Spec:** v1.29 across all topic files in `docs/`. Section 18 now carries the current focus with the MVP's stages, and the paused Phase 1 work order (M0 to M11). Section 11.10 (Drawing Intent IR) and Section 11.10.1 (Resolved Scheme IR) normative schemas defined. Section 6.5.2 updated for 6 IPC annotation operations: `model_items.insert`, `dimensions.auto_arrange`, `center_mark.add`, `dimension.hide`, `dimension.show`, `dimension.move`. 5 open decisions remain: K3 (title block locators), J11 (draft-view switched indicator), K8 (snapshot keys), K9 (identity) and K10 (orchestrator form). Catalogue has 40 codes.
+- **Branch:** `feat/part-chain-mvp`, from `feat/drawing-annotation-pipeline` at `961c629` (PR #12 merged to `main` at `eea9389`; the docs freeze commits are on that branch). Neither branch's newer commits are pushed.
 - **Verification Suite Evidence:**
   - `uv run python scripts/generate_contracts.py --check` passes cleanly (0 drift across C# and Python contracts).
   - `uv run ruff check` passes. `uv run ruff format --check` passes (387 files, re-verified 2026-11-05 at `6dae76d`).
@@ -82,14 +82,15 @@ Last updated: 2026-11-05. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
   - **Added in Revision 2:** full check of the pipeline review (review section 7.1): 20 contradictions with the spec, ADRs or itself, 5 unevidenced claims, 4 stale descriptions. That file was not edited. Its direction is sound, but it is not a verified baseline; do not implement from it until corrected.
   - **Spec cleanup after the review (O2 decided by the owner):** reverted the §6.5.3 and §8.4 edits and logged K8, K9 and K10 in `docs/specifications/open-decisions.md`.
 - **Spec v1.28 (section 18 rewrite, at the owner's request):** `docs/specifications/roadmap.md` restructured for readability, with the review roadmap's M0 to M11 order added as the Phase 1 work order. Phase scope, acceptance criteria and A1 to A17 are unchanged. O1, O5 and O6 stay open, and the order remains a recommendation until O1 is decided.
+- **Part chain MVP design and plan (v1.29):** written on `feat/part-chain-mvp`, with a builder check on the design, then revised after the [pre-implementation review](docs/superpowers/review/2026-11-05-part-chain-mvp-pre-implementation-review.md) (CONDITIONAL GO; F1 to F24 applied). No code changed, and SOLIDWORKS behaviour is unverified.
 
 ## Next Steps
 
 **Part chain MVP (current work, ADR-057):**
 
-1. Settle the first part. Proposed, not yet confirmed: a 100 × 60 × 10 mm plate with four Ø8 mm through holes, expected volume about 57,989.38 mm³.
-2. Write the MVP design in `docs/superpowers/specs/`, covering what "verified" requires (proposed: 10.2 layers 1 and 2, measured from SOLIDWORKS, still valid after save and reopen), saving a new part (6.5.2 and ADR-046 limit this today) and failure handling (ADR-046 relies on undo, and A6 is unproven).
-3. Plan and build: Part Feature Graph schema and model, compiler, Execution Plan schema, `sketch.create` and `feature.create`, the `plan` job, and verification.
+1. **Owner:** approve the [MVP design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md) as a whole. D1 to D5 were decided on 2026-11-05 (design section 14), including a temporary MVP exception to rule 13's Stop banner. The MVP runs from Claude over MCP to a verified `.SLDPRT`; first part: a 100 × 60 × 10 mm plate with four Ø8 mm through holes.
+2. **After approval:** run plan Task 0 (live drawing baseline) and Task 1 (live API spike and A14). A failed assumption comes back to the owner before Task 2.
+3. Follow the plan's revised order: spec v1.30, Part Feature Graph, IPC contracts, compiler and verification, add-in, store and journal, `plan` job, MCP tools, runtime, live acceptance, then the run from Claude and the owner's sign-off.
 
 Do not continue drawing work, including the ADR-056 list below, until the owner lifts the freeze.
 

@@ -2,6 +2,10 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.29
+
+Adds the part chain MVP to the current focus of the roadmap (section 18): its stages, finish line and exclusions, linking its [design](../superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](../superpowers/plans/2026-11-05-part-chain-mvp.md), both awaiting the owner's approval. No contract changes; those come with the MVP's first specification task.
+
 ## What changed in 1.28
 
 Rewrites the roadmap (section 18) for readability, adds the order of work for Phase 1, and records the owner's decision to freeze drawing work and build the part chain first. Phase scope, acceptance criteria and assumptions A1–A17 are unchanged.

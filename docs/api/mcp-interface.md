@@ -1,6 +1,6 @@
 # 12. MCP Interface
 
-> Specification v1.28, section 12. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.29, section 12. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 12.1 Principles
 

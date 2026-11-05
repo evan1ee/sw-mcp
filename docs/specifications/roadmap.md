@@ -1,6 +1,6 @@
 # 18. Roadmap
 
-> Specification v1.28, section 18. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.29, section 18. Index and section map: [specifications/README.md](../specifications/README.md).
 
 This section says what each phase delivers, how it is accepted and, for Phase 1, in what order the work runs. Current status is in [`HANDOFF.md`](../../HANDOFF.md).
 
@@ -13,6 +13,21 @@ Part Feature Graph IR → compiler → Execution Plan → executor → verified 
 - **This changes the order only.** The phases and their acceptance below are unchanged, and the MVP alone does not complete Phase 1c, which also requires benchmark parts and drawings passing D1–D10.
 - **While frozen:** no new drawing features. Shared code may change when the part chain needs it, and the drawing tests must keep passing.
 - **Phase 1 work order:** paused, except for M0 and the parts of M2 and M3 the part chain needs. The rest resumes when the owner lifts the freeze.
+
+**The MVP** ([design](../superpowers/specs/2026-11-05-part-chain-mvp-design.md), [plan](../superpowers/plans/2026-11-05-part-chain-mvp.md); awaiting the owner's approval). You ask Claude for a part over MCP, and a `.SLDPRT` appears only if measurements in SOLIDWORKS match the IR. Its first part is a 100 × 60 × 10 mm plate with four Ø8 mm through holes.
+
+| Stage | Delivers | Done when |
+| --- | --- | --- |
+| 1. API spike | Recorded SOLIDWORKS behaviour | Sketch axes, feature calls, feature ID stability and close behaviour are all answered |
+| 2. Contracts | Spec changes, Part Feature Graph, operation and plan schemas | Schemas and fixtures pass, and the spec is bumped |
+| 3. Pure core | Compiler and expected geometry | The same graph gives a byte-identical plan, and the plate's expected values are correct |
+| 4. Add-in | Ownership enforcement, part operations, `part.measure` | The plate builds by operations on scratch files, and engineers' documents stay untouched |
+| 5. `plan` job | Build, verify, save and rename | A wrong measurement never produces the target file |
+| 6. MCP and runtime | Part tools, entry points, official SDK front-end | An MCP client lists and calls the tools against a real core |
+| 7. Live acceptance | The chain on real SOLIDWORKS | The plate commits, and a deliberately wrong plan fails with no target |
+| 8. Run from Claude | The finish line | You ask Claude for two different parts, open them, and sign off |
+
+The MVP leaves out other feature types, sketch relations and dimensions, editing a built part, reading existing parts, and overwriting files. Drawing tools stay out of Claude's default tool list while the freeze lasts.
 
 ## Phases at a glance
 
