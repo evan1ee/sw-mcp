@@ -143,7 +143,7 @@ class _Run:
         self._plan_hash: str | None = None
         self._feature_ids: dict[str, str] = {}
         self._first_instance_id: str | None = None
-        self._published_intent = False
+        self._in_publish = False
         self._last_op_id: str = ""
 
     def execute(self) -> Outcome:
@@ -529,6 +529,7 @@ class _Run:
         checks_2: tuple[CheckResult, ...],
     ) -> None:
         # 5. Re-check 12.5 path checks on target
+        self._in_publish = True
         auth = authorize(
             self._target_path,
             self._ctx.settings,
@@ -543,6 +544,7 @@ class _Run:
         data_post = self._ctx.fs.read_bytes(self._work_path)
         fp_post = f"sha256:{hashlib.sha256(data_post).hexdigest()}"
         if fp_post != fp_pre:
+            self._in_publish = False
             raise JobStop(
                 ErrorCode.PART_VERIFICATION_FAILED.value,
                 f"Working file fingerprint changed during verification: {fp_post} != {fp_pre}",
@@ -555,7 +557,6 @@ class _Run:
                 self._h.timestamp(), self._h.record.job_id, self._target_path, fp_pre
             )
         )
-        self._published_intent = True
 
         # 8. Atomic rename with retry through clock
         self._rename_with_retry(self._work_path, self._target_path)
@@ -635,9 +636,6 @@ class _Run:
         return Outcome("FAILED", stop.code)
 
     def _handle_cancel(self, stop: JobStop) -> Outcome:
-        if self._published_intent:
-            # Cancel after publish_intent has no effect
-            return Outcome("COMMITTED")
         # Best effort close
         self._best_effort_close()
         changes: list[JsonValue] = []
@@ -666,7 +664,7 @@ class _Run:
         self._best_effort_save_and_close()
         fail_p = failed_path(self._target_path, self._h.record.job_id)
         renamed = False
-        if self._ctx.fs.stat(self._work_path) is not None:
+        if self._ctx.fs.stat(self._work_path) is not None and not self._in_publish:
             with contextlib.suppress(Exception):
                 self._ctx.fs.rename_new(self._work_path, fail_p)
                 renamed = True
@@ -675,11 +673,11 @@ class _Run:
         if renamed:
             details["failed_path"] = fail_p
             details["failed_file"] = fail_p
-        else:
+        elif self._ctx.fs.stat(self._work_path) is not None:
             details["working_path"] = self._work_path
             details["working_file"] = self._work_path
-            details["failed_path"] = fail_p
-        stop.details = details
+        if details or isinstance(stop.details, dict):
+            stop.details = details
 
         self._h.edit(lambda r: replace(r, documents=()))
         self._h.advance("FAILED", stop.message, stop.error())

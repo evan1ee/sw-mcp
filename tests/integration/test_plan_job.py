@@ -33,6 +33,7 @@ from cad_application.testing.fakes import (
     ListEventLog,
     SequentialIdSource,
 )
+from cad_application.testing.job_rig import make_rig
 from cad_application.testing.memory_fs import MemoryFileSystem
 from cad_ir.core.json_types import JsonValue
 from cad_ir.generated import ErrorCode
@@ -709,6 +710,7 @@ def test_wrong_volume_fails() -> None:
     details = rec.error["details"]
     assert isinstance(details, dict)
     assert details["failed_path"] == fail_p
+    assert details["checks"] == ["volume"]
 
 
 def test_reopen_mismatch_fails() -> None:
@@ -811,6 +813,15 @@ def test_keep_partial_renames() -> None:
     part_p = partial_path(TARGET_PATH, job_id)
     assert rig.fs.stat(part_p) is not None
     assert rig.fs.stat(TARGET_PATH) is None
+    assert rec.error is not None
+    details = rec.error["details"]
+    assert isinstance(details, dict)
+    changes = details["changes"]
+    assert isinstance(changes, list)
+    assert any(
+        isinstance(c, dict) and c.get("document") == part_p and c.get("action") == "renamed"
+        for c in changes
+    )
 
 
 def test_backend_lost_leaves_files() -> None:
@@ -904,24 +915,29 @@ def test_two_jobs_same_target() -> None:
     assert rec2.state == "FAILED"
     assert rec2.error is not None
     assert rec2.error["code"] == ErrorCode.AUTH_SOURCE_WRITE_NOT_ALLOWED.value
+    assert rec2.error.get("details") is None
     # Target unchanged
     assert rig.fs.read_bytes(TARGET_PATH) == orig_bytes
 
 
 def test_rename_blocked() -> None:
     rig = PartRig()
+    orig_rename = rig.fs.rename_new
 
-    # Make rename_new fail with persistent lock / error
+    # Make rename_new fail with persistent lock / error only when renaming to TARGET_PATH
     def _fail_rename(src: str, dst: str) -> None:
-        raise OSError("Access is denied")
+        if dst == TARGET_PATH:
+            raise OSError("Access is denied")
+        orig_rename(src, dst)
 
-    rig.fs.rename_new = _fail_rename  # type: ignore
+    rig.fs.rename_new = _fail_rename  # type: ignore[method-assign]
     job_id = rig.submit()
     assert rig.engine.run_next()
 
     rec = rig.job(job_id)
     assert rec.state == "FAILED"
     assert rig.fs.stat(TARGET_PATH) is None
+    assert rig.fs.stat(failed_path(TARGET_PATH, job_id)) is None
     # Working file kept and named
     work_p = working_path(TARGET_PATH, job_id)
     assert rig.fs.stat(work_p) is not None
@@ -929,6 +945,7 @@ def test_rename_blocked() -> None:
     details = rec.error["details"]
     assert isinstance(details, dict)
     assert details["working_path"] == work_p
+    assert "failed_path" not in details
 
 
 def test_close_after_final_state() -> None:
@@ -961,6 +978,13 @@ def test_close_after_final_state() -> None:
     assert rig2.engine.run_next()
     assert rig2.job(job2_id).state == "COMMITTED"
     assert any(e.event == "backend.close_failed" for e in rig2.log.events)
+
+    # Also verify backend.close() runs for check_drawing jobs too
+    dwg_rig = make_rig(snapshot={"schema_version": "0.1"})
+    dwg_job = dwg_rig.submit()
+    assert dwg_rig.engine.run_next()
+    assert dwg_rig.job(dwg_job.job_id).state == "FAILED"
+    assert dwg_rig.backend.closed is True
 
 
 def test_second_job_reconnects() -> None:
