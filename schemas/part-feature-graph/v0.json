@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/part-feature-graph/v0.json",
+  "title": "Part Feature Graph IR (spec 5.7)",
+  "type": "object",
+  "required": [
+    "module",
+    "id",
+    "schema_version",
+    "units",
+    "origin",
+    "nodes"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "module": {
+      "const": "part"
+    },
+    "id": {
+      "$ref": "../common/v0.json#/$defs/DocumentId"
+    },
+    "revision": {
+      "$ref": "../common/v0.json#/$defs/Revision"
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.(0|[1-9][0-9]*)$"
+    },
+    "units": {
+      "const": "mm"
+    },
+    "origin": {
+      "const": "built"
+    },
+    "nodes": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "../common/v0.json#/$defs/ItemId"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "enum": [
+              "sketch",
+              "extrude",
+              "cut_extrude"
+            ]
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "sketch"
+                }
+              }
+            },
+            "then": {
+              "$ref": "features/sketch.json"
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "extrude"
+                }
+              }
+            },
+            "then": {
+              "$ref": "features/extrude.json"
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "cut_extrude"
+                }
+              }
+            },
+            "then": {
+              "$ref": "features/cut_extrude.json"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "Line": {
+      "type": "object",
+      "required": [
+        "type",
+        "start",
+        "end"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "line"
+        },
+        "start": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/v0.json#/$defs/Length"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "end": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/v0.json#/$defs/Length"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "Circle": {
+      "type": "object",
+      "required": [
+        "type",
+        "center",
+        "diameter"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "circle"
+        },
+        "center": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/v0.json#/$defs/Length"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "diameter": {
+          "$ref": "../common/v0.json#/$defs/Length",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "SketchEntity": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "line",
+            "circle"
+          ]
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "line"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/Line"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "circle"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/Circle"
+          }
+        }
+      ]
+    },
+    "EndConditionBlind": {
+      "type": "object",
+      "required": [
+        "type",
+        "depth"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "blind"
+        },
+        "depth": {
+          "$ref": "../common/v0.json#/$defs/Length",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "EndConditionThroughAllBoth": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "through_all_both"
+        }
+      }
+    },
+    "EndCondition": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "blind",
+            "through_all_both"
+          ]
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "blind"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/EndConditionBlind"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "through_all_both"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/EndConditionThroughAllBoth"
+          }
+        }
+      ]
+    }
+  }
+}

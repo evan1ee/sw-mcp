@@ -1,0 +1,41 @@
+{
+  "module": "part",
+  "id": "plate_4h",
+  "schema_version": "0.1",
+  "units": "mm",
+  "origin": "built",
+  "nodes": {
+    "sketch_base": {
+      "type": "sketch",
+      "plane": "plane:front",
+      "entities": {
+        "l1": { "type": "line", "start": [-50, -30], "end": [50, -30] },
+        "l2": { "type": "line", "start": [50, -30], "end": [50, 30] },
+        "l3": { "type": "line", "start": [50, 30], "end": [-50, 30] },
+        "l4": { "type": "line", "start": [-50, 30], "end": [-50, -30] }
+      }
+    },
+    "extrude_base": {
+      "type": "extrude",
+      "dependencies": ["sketch_base"],
+      "profile": "sketch_base",
+      "end_condition": { "type": "blind", "depth": 10 }
+    },
+    "sketch_holes": {
+      "type": "sketch",
+      "plane": "plane:front",
+      "entities": {
+        "c1": { "type": "circle", "center": [-40, -20], "diameter": 8 },
+        "c2": { "type": "circle", "center": [40, -20], "diameter": 8 },
+        "c3": { "type": "circle", "center": [40, 20], "diameter": 8 },
+        "c4": { "type": "circle", "center": [-40, 20], "diameter": 8 }
+      }
+    },
+    "cut_holes": {
+      "type": "cut_extrude",
+      "dependencies": ["sketch_holes", "extrude_base"],
+      "profile": "sketch_holes",
+      "end_condition": { "type": "through_all_both" }
+    }
+  }
+}
