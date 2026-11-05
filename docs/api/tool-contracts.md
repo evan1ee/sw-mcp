@@ -1,6 +1,6 @@
 # 12.4 Tool Contracts and 12.5 File Access
 
-> Specification v1.29, sections 12.4–12.5. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.30, sections 12.4–12.5. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 12.4 Tool Contracts
 
@@ -34,7 +34,7 @@ Generated MCP tool definitions map `input` to `inputSchema` and `output` (wrappe
 - References use the forms of 3.4.2. File paths are absolute Windows paths, checked by 12.5.
 - `detail`: `"summary"` (default) or `"full"` on every tool that can return large data (12.3 rule 4).
 - Pagination: `cursor` (opaque string from the previous response) and `page_size` (default 50, maximum 200). Responses carry `next_cursor`, absent on the last page. A cursor is valid for 10 minutes and only for the same call arguments.
-- `expected_revision`: required on every mutating tool that changes a store document. Omitting it is a schema error, not "latest wins".
+- `expected_revision`: required on every mutating tool that changes a store document. Omitting it is a schema error, not "latest wins". The one exception is `apply_part_graph`, where it is optional: a new document ID needs none, and an existing ID with different content fails with `REV_CONFLICT` without a matching one (3.4.5) **[Builder's call]**.
 - IR documents: `create_*` and `apply_*` take the whole document; `update_*` takes `{ref, expected_revision, patch}` with an RFC 6902 JSON Patch; all other tools take `DocumentRef`s or a bundle manifest (ADR-048).
 - No tool takes a `request_id`; the front-end assigns one per call (ADR-041) and returns it in `ids`.
 
@@ -44,7 +44,7 @@ Generated MCP tool definitions map `input` to `inputSchema` and `output` (wrappe
 - Numbers follow 3.4.3: lengths in the document's units, angles in degrees, sheet coordinates in millimetres.
 - `ids` [Builder's call]: always `request_id`; `execution_id` whenever the call names or creates a job; `report_id` whenever the response is about a stored report. The values repeat those in `data` so a client can correlate without reading `data`.
 
-**Arguments and unknown tools [Builder's call].** Arguments that fail the contract's `input` schema, including an unknown property, a missing required one or an invalid `cursor`, return `IR_SCHEMA_INVALID` with `details.issues` (3.4.7 issues, pointers into the arguments). A tool name with no contract file is not a tool: the core answers a protocol error, which the front-end turns into an MCP `-32602` error, never an envelope. In process, `CoreService.call_tool` raises `UnknownTool` for it (a name that is not a string included), and the transport (milestone 6) maps that to the protocol error (register J14). An unexpected exception in a handler is a defect, not an input problem: `call_tool` lets it through like a contract violation, and the transport answers JSON-RPC `-32603`, logging the exception's class name only. An `OSError` from the store is not unexpected: it is `STORE_UNAVAILABLE` (13.2.2) (register J13).
+**Arguments and unknown tools [Builder's call].** Arguments that fail the contract's `input` schema, including an unknown property, a missing required one or an invalid `cursor`, return `IR_SCHEMA_INVALID` with `details.issues` (3.4.7 issues, pointers into the arguments). A tool name with no contract file, or one outside the configured `mcp.toolsets` (12.3), is not a tool: the core answers a protocol error, which the front-end turns into an MCP `-32602` error, never an envelope. In process, `CoreService.call_tool` raises `UnknownTool` for it (a name that is not a string included), and the transport (milestone 6) maps that to the protocol error (register J14). An unexpected exception in a handler is a defect, not an input problem: `call_tool` lets it through like a contract violation, and the transport answers JSON-RPC `-32603`, logging the exception's class name only. An `OSError` from the store is not unexpected: it is `STORE_UNAVAILABLE` (13.2.2) (register J13).
 
 **Handler result [Builder's call].** Handlers in `cad-application` return a `ToolResult`: the envelope (ADR-037) and `summary`, the one-line text of ADR-044, at most 200 characters. The transport milestone carries exactly this through the core pipe; the front-end maps `summary` to the text content and the envelope to `structuredContent`.
 
@@ -120,6 +120,8 @@ Every tool in 12.2, its toolset, first phase, kind and whether it mutates. This 
 
 `apply_part_graph` and `update_part_graph` store the graph and build it in one job, which is why the `core` toolset needs no separate compile and execute tools. Creating sends a document by value, updating sends a JSON Patch, and everything else takes references (ADR-048).
 
+**Four tools ship before Phase 1c [Builder's call].** Under ADR-057 the part chain MVP ships `apply_part_graph`, `validate_part_graph`, `list_feature_types` and `get_feature_schema` before Phase 1c starts. Their rows keep Phase `1c`; the CI check's list of shipped phases (`SHIPPED_PHASES` in `test_tool_table.py`) gains those four names only, so no other `1c` row needs a contract file yet. `compile_bundle` and `execute_plan` stay unbuilt, because `apply_part_graph` makes them unnecessary for the `core` toolset. Their contracts are in 12.4.5.
+
 ### 12.4.5 Phase 1a contracts
 
 The four tools Phase 1a ships. Their contract files are `schemas/mcp/<tool>.json`, written from this section **[Builder's call]**. IDs in inputs are checked by pattern: `job_`, `rep_` or `snap_` plus a 26-character Crockford ULID (13.2.1).
@@ -143,6 +145,23 @@ The four tools Phase 1a ships. Their contract files are `schemas/mcp/<tool>.json
 
 **`cancel_execution`.** Errors: `IR_SCHEMA_INVALID`, `EXEC_NOT_FOUND`, `STORE_UNAVAILABLE`. A PLANNED job is ABORTED before the call returns; a running one gets a cancel request (8.4) and the call returns at once with its current state and `final: false`, after which the agent polls `get_execution_status`. A finished job is left alone and returned with `final: true`; this is not an error. `changes` lists `{document, action}` for what the job changed; `keep_partial` keeps a partial result where a job type has one (ADR-046). `check_drawing` changes nothing, so its `changes` is always `[]` and `keep_partial` has no effect. Summary line: `job_… ABORTED` or `cancel requested: job_… EXECUTING`.
 
+#### Part chain MVP tools (ADR-057) [Builder's call]
+
+The four `core` tools of Phase 1c that ship early with the part chain MVP, in the `core` toolset. Their contract files are `schemas/mcp/<tool>.json`, written from this subsection. Rows of 12.4.4 stay as they are.
+
+| Tool | Kind | Input | `data` |
+| --- | --- | --- | --- |
+| `apply_part_graph` | job | `graph` (a Part Feature Graph document by value), `target_path` (absolute, ending `.SLDPRT` in any case), optional `expected_revision` | `execution_id`, `queued_position`, `document` (the pinned ref, `part:<id>@<revision>`) |
+| `validate_part_graph` | store | `graph` | `valid`, `issues` (3.4.7), `build_order`, `expected` (the expected geometry of 10.2.1, computed from the IR) |
+| `list_feature_types` | store | none | The three MVP types (`sketch`, `extrude`, `cut_extrude`), each with a one-line description and its support |
+| `get_feature_schema` | store | `types` | A compact schema and a minimal example (at most 400 tokens) per requested type |
+
+**`apply_part_graph`.** Validates the IR (5.7, 3.4.7), authorizes `target_path` and stores the revision (3.4.5), then queues a `plan` job (8.4.1) and returns at once. The call fails, and creates no job, for a graph that breaks the schema or the semantic rules (`IR_SCHEMA_INVALID`, `IR_RULE_VIOLATED`, `IR_REFERENCE_UNRESOLVED`, `IR_CYCLE`), a revision conflict (`REV_CONFLICT`, 3.4.5), and a target that fails the checks below (`AUTH_PATH_DENIED` or `AUTH_SOURCE_WRITE_NOT_ALLOWED`, with the reason in `details`). Everything after the job exists is the job's `error`, including the unset or missing template (`CONFIG_INVALID` or `FILE_NOT_FOUND`, `details.setting: part.template`) and `PART_VERIFICATION_FAILED`. Summary line: `part build queued: job_… (position 0)`.
+
+**Target path rules.** The target passes the 12.5 checks, its parent folder exists, it is not in a PDM vault (`access.pdm_vault_roots`), no file exists there, and the working path (the target's name plus about 44 characters) stays under 260 characters.
+
+**`get_execution_status`** gains, for `plan` jobs, an additive `part_result` (13.2.1): `path`, `fingerprint`, `checks` and `measured`. **`cancel_execution`** is unchanged, and its `changes` lists the working file (8.4.1).
+
 ## 12.5 Projects and File Access
 
 **Allowed roots.** The core service reads and writes only below the roots listed in the user configuration (`access.allowed_roots`, 13.3). Project configuration cannot add roots. A path outside every root fails with `AUTH_PATH_DENIED`. With no roots configured, every file tool fails with that error and a message naming the setting.
@@ -157,4 +176,4 @@ The four tools Phase 1a ships. Their contract files are `schemas/mcp/<tool>.json
 
 **Projects.** A file's project is the nearest ancestor folder, up to its allowed root, that contains a `.cad/` store. If none does, the project is the allowed root itself, and its store is created there on the first write. When the project folder is inside a SOLIDWORKS PDM local view (`access.pdm_vault_roots`, 13.3), the store is never created in the vault. It goes to `%LOCALAPPDATA%\sw-mcp\stores\<sha256 of the normalized project path>\` instead, so the system never adds files to the vault.
 
-**What may be written.** Store files; drawings and exports the system produced, under ADR-046; and nothing else. Source parts, assemblies and anything in a PDM vault are read-only (ADR-022). A write anywhere else fails with `AUTH_SOURCE_WRITE_NOT_ALLOWED`.
+**What may be written.** Store files; drawings and exports the system produced, under ADR-046; new parts the system produced (the `plan` job, 8.4.1), at a target path where no file exists and never over an existing file, together with their working files `<name>.<job_id>.building.SLDPRT`, `.failed.SLDPRT` and `.partial.SLDPRT` beside the target **[Builder's call]**; and nothing else. The part template (13.3 `part.template`) is read and never written, and may lie outside the allowed roots. Source parts, assemblies and anything in a PDM vault are read-only (ADR-022). A write anywhere else fails with `AUTH_SOURCE_WRITE_NOT_ALLOWED`.

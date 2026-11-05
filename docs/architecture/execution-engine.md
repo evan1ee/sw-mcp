@@ -1,6 +1,6 @@
 # 8. Execution Engine
 
-> Specification v1.29, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.30, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 8.1 Purpose
 
@@ -13,7 +13,7 @@ A C# execution server: COM interop, controlled STA thread, command dispatcher, d
 **In-process add-in (ADR-028) [Builder's call].** The execution server runs inside SOLIDWORKS as an add-in (`ISwAddin`), not as a separate process driving SOLIDWORKS over COM. Python talks to it over local IPC (named pipes). Reasons:
 - Every out-of-process COM call is marshalled between processes and costs roughly a millisecond. Drawing checks read display data for hundreds of annotations and polylines for every view, which would take far longer than the targets in section 16.
 - The add-in's calls run on SOLIDWORKS's own STA thread, so 8.3 rules 2–4 are met by design.
-- The add-in receives document events (`RegenNotify`, `FileSaveNotify`, `DestroyNotify`, …), which external-edit detection (9.3) and disconnection handling (8.3 rule 5) need.
+- The add-in receives document events (`RegenNotify`, `FileSavePostNotify`, `DestroyNotify2`, …), which external-edit detection (9.3) and disconnection handling (8.3 rule 5) need.
 
 A small launcher starts SOLIDWORKS with the add-in loaded, or connects to an already-running SOLIDWORKS whose add-in is loaded. Out-of-process COM stays available as a fallback for diagnostics only.
 
@@ -41,13 +41,13 @@ The C# command set is designed for this system, including annotation geometry re
 10. **Visible, interactive session.** Some drawing APIs, including display-data read-back, view polylines and annotation positioning, return incomplete data when SOLIDWORKS is invisible or runs without an interactive desktop. The execution server attaches to or starts a visible SOLIDWORKS in a logged-in user session. It cannot run as a Windows service.
 11. **Deterministic creation.** Interactive helpers make API-created geometry depend on screen state:
     - Sketch entities are added with `ISketchManager.AddToDB = true`, with sketch inference and snapping off, so entities are never snapped to nearby geometry.
-    - Selection never uses `SelectByID2` with display names (5.3.6). Entities are selected through `IEntity.Select4` with explicit `SelectData` and the selection marks each feature API expects.
+    - Selection never uses `SelectByID2` with display names (5.3.6). Features (planes, sketches) are selected through `IFeature.Select2(append, mark)` and entities through `IEntity.Select4` with explicit `SelectData`, each with the selection marks the feature API expects. (The spike found that `IFeature` has no `Select4`.)
     - Graphics updates are turned off while building (`IModelView.EnableGraphicsUpdate`) and back on before any drawing read-back (rule 10).
 12. **No modal dialogs.** A modal dialog blocks the SOLIDWORKS thread and therefore the queue (rule 7). Documents are opened with `swOpenDocOptions_Silent`. Error and warning popups on rebuild, missing-reference prompts and save-as-newer-version prompts are turned off for the session, and their information is read through the API instead. A blocked UI is detected and reported as a backend failure, never retried blindly.
 13. **Sharing the session with the engineer (owner decision, ADR-050).** Rule 10 means the agent usually works in the engineer's own SOLIDWORKS. While a job runs:
-    - The add-in shows a non-modal "AI job running" banner with a Stop button, which cancels the job as `cancel_execution` does (8.4).
+    - The add-in shows a non-modal "AI job running" banner with a Stop button, which cancels the job as `cancel_execution` does (8.4). **Temporary exception for the part chain MVP (owner decision D1, 2026-11-05, ADR-050):** the banner and its Stop button are not built, and `plan` jobs (8.4.1) run without them. `cancel_execution` is the way to stop a job. The event detection in the third bullet is still built.
     - The job's documents are the only ones it touches. Document events from other documents are ignored by the job; they still feed external-edit detection (9.3).
-    - If the engineer edits, closes or saves one of the job's documents, or changes the active document while the job needs it, the add-in detects it through document events, stops the job between commands and fails it with "interrupted by user". It never continues on a document whose state it no longer knows.
+    - If the engineer edits, closes or saves one of the job's documents, or changes the active document while the job needs it (a part operation works on a document that is not active, so an active-document change alone does not interrupt a part job, **[Builder's call]**), the add-in detects it through document events, stops the job between commands and fails it with "interrupted by user". It never continues on a document whose state it no longer knows.
     - The owner chose the shared session (ADR-050). A dedicated second instance remains only as the fallback of assumption A12; it needs a license check, since each instance may consume a seat.
 
 ## 8.4 Lifecycle
@@ -93,7 +93,7 @@ Any other transition is a programming error and raises; it is never written to t
 
 | Job type | Started by | EXECUTING / VERIFYING mean |
 | --- | --- | --- |
-| `plan` | `execute_plan` | Run the compiled plan; API and geometry verification (10.2) |
+| `plan` | `execute_plan`, `apply_part_graph` (8.4.1) | Run the compiled plan; API and geometry verification (10.2) |
 | `produce_drawing` | `produce_drawing`, `relayout_drawing` | Apply layout and read back; drawing checks (11.5). A failed check moves the job back to EXECUTING for the next re-layout step (11.6) until the check passes or the limits in 11.6 are reached; then FAILED with the conflict list |
 | `check_drawing` | `check_drawing` | Read back only; checks. Never saves the drawing. It may switch draft-quality views to high quality in memory for read-back (11.5) and reports that it did. It may rebuild in memory for D10 (11.5.3, A16) |
 
@@ -119,6 +119,39 @@ Any other transition is a programming error and raises; it is never written to t
 - **When the drawing is not closed [Builder's call].** After `BACKEND_LOST`, `BACKEND_UI_BLOCKED`, `EXEC_TIMEOUT` or `EXEC_INTERRUPTED_BY_USER` the job sends no `document.close`: the add-in may not answer, may still be running the timed-out command, or the engineer is working in the document. If the open was sent, the drawing is listed with `state: unknown` in the job's `documents` (and `documents_unknown`, 12.4.5). After any other failure, a cancellation, an unexpected error, or COMMITTED, the job closes the drawing it owns. A close that fails adds the job warning `drawing_close_failed`, lists the drawing as `unknown`, and does not change the job's outcome (register J17).
 - **No job time limit** beyond each command's own (8.6.3).
 - **Job warnings.** A job may report warnings that are not facts about the snapshot: a SOLIDWORKS service pack newer than the tested one (`HelloResult.warnings`, ADR-045), and, once the snapshot can say so, a draft-quality view switched for read-back (register J11). They go in the job record and the `get_execution_status` and `get_drawing_report` outputs (12.4.5), never in the report file, which stays a pure function of its inputs (11.5.4).
+
+## 8.4.1 The `plan` job (part chain MVP) [Builder's call]
+
+`apply_part_graph` starts a job of type `plan` (12.4.5); `execute_plan` starts one in a later phase. The tool itself validates the IR, authorizes the target path and stores the revision (3.4.5), so a bad graph or path fails the call and creates no job. The [MVP design](../superpowers/specs/2026-11-05-part-chain-mvp-design.md) section 8 explains the reasoning.
+
+| State | What happens |
+| --- | --- |
+| PLANNED | Accepted, waiting |
+| VALIDATED | Backend acquired and capabilities checked. The template is resolved: the caller's, otherwise `part.template` (13.3); neither gives `CONFIG_INVALID` and a missing file `FILE_NOT_FOUND`, each with `details.setting: part.template`. Compile, store the plan (6.7.4), and re-check that the target does not exist |
+| EXECUTING | Journal `document` `create`, then send `part.create` on `<name>.<job_id>.building.SLDPRT` beside the target. Then the plan's operations one batch each, journalled before sending (13.2.3), with postconditions checked. Forced rebuild, then `document.save` |
+| VERIFYING | `part.measure` and compare (10.2). Take the fingerprint. Close, and confirm the document is no longer open. Reopen read-only, confirm a new `instance_id`, measure and compare again. Close. Publish |
+| COMMITTED | The target exists and passed every check |
+| FAILED | See below |
+| ABORTED | Cancelled between commands |
+
+**Publishing.** In this order:
+1. Re-run the 12.5 path checks on the target, so a folder swapped since authorization is caught.
+2. Compare the working file's fingerprint with the one taken before reopen. A mismatch fails the job.
+3. Journal `publish_intent` with the path and fingerprint. This is the last cancel point.
+4. Rename the working file to the target with no replace and write-through (`MoveFileExW`). If the target has appeared, the job fails with `AUTH_SOURCE_WRITE_NOT_ALLOWED`.
+5. Journal `published`, store the part record (13.2.1) and enter COMMITTED.
+
+**Cancel boundaries.** A cancel takes effect between operations, between the two measurements, and before `publish_intent`. After `publish_intent` the job finishes as COMMITTED or fails, and a cancel request has no effect.
+
+**Ending without success.** The target is never touched.
+
+| Case | Working file |
+| --- | --- |
+| Operation or verification failed (`PART_VERIFICATION_FAILED` and others) | Best-effort save, close, and renamed `<name>.<job_id>.failed.SLDPRT` beside the target, named in the error |
+| Cancelled | Closed and removed. With `keep_partial`, renamed `<name>.<job_id>.partial.SLDPRT` |
+| `BACKEND_LOST`, `BACKEND_UI_BLOCKED`, `EXEC_TIMEOUT`, `EXEC_INTERRUPTED_BY_USER` | Left alone and listed as `unknown` (8.4). Nothing is resent |
+
+The job reuses `check_drawing`'s handling of notifications, journalling and stop rules (above) through its own code. Part jobs use this working-file rule instead of undo objects (ADR-046). Crash recovery follows 13.2.3.
 
 ## 8.5 Transactions and Recovery (P2)
 
@@ -147,9 +180,11 @@ The `session.hello` result holds `protocol`, `addin_version`, `solidworks` (`ver
 
 **`drawing.snapshot`.** `params`: `document` (path) and optional `sheets` (names; all sheets when absent). `result`: one complete Drawing Geometry Snapshot (11.5.1) holding those sheets. It is one command across sheets, so cancellation can fall between sheets (8.6.2). A requested sheet the drawing does not have fails the command with `IR_REFERENCE_UNRESOLVED`, `details.sheets` naming the missing ones **[Builder's call]**. The document must be open: `check_drawing` sends `ops.apply` with `document.open` (`read_only: true`) first, and `document.close` after, if the open reported `owned: true` (8.4).
 
-**`ops.apply`.** `params.groups` is an ordered list of `{document, operations}`. This is the batch header of 6.5.1, and it lets a batch span documents in order. Each operation is `{operation_id, op, params}`. `result.outcomes` lists the attempted operations in order, each `{operation_id, result}` or `{operation_id, error}`. Operations after the first error are not attempted and not listed (6.5.1). A repeated ID stops the batch like any other error: its outcome has `error` with code `DUPLICATE_OPERATION` and also `result`, the original result. If cancellation stops a batch, the next operation's outcome has `error` with code `EXEC_CANCELLED`. An unexpected exception ends the batch with a `-32603` error; operations already completed stay in the ledger, so the core can ask for them.
+**`part.measure`** (MVP). `params`: `document` (the full path of an open part). `result`: `path`, `instance_id`, `solid_body_count`, `bbox_m` (`min`, `max`), `volume_m3`, `surface_area_m2`, `center_of_mass_m`, `cylinders_m` (a list of `{point, direction, radius}` for each cylindrical face), `rebuild` (`ok`, `errors`), `features` (a list of `{feature_id, native_id, type, status}`), `dirty` and `read_only`. Like `drawing.snapshot` it is a read-back command, not an operation. It returns raw SI values (metres, with `IMassProperty.UseSystemUnits = true`), and the core converts them, so a conversion error cannot both build and measure a part and still agree with itself. A document opened read-only is measured without a rebuild, so `dirty` stays false. A cylinder's `point` is any point on its axis, so a comparison uses only the components perpendicular to `direction` and gives the radius a tolerance (10.2). The document must be open, and the command fails with `FILE_NOT_FOUND` when no open document has that path. `instance_id` is issued by the add-in whenever it creates or opens a document (`part.create`, `document.open`), is not persisted, and tells a document the job holds from one reopened under the same path **[Builder's call]**.
 
-**Operation ledger.** The add-in records each completed operation's ID, result and document, in completion order, and forgets a document's entries when the add-in sees that document destroyed (`DestroyNotify`). A `document.close` operation records its own ID after that event, so its entry stays and earlier ones go. A failed operation is not recorded. The ledger outlives a pipe connection, so a reconnecting core can ask for it. `session.completed_operations` returns `operation_ids` in completion order. A command still running when the pipe closes finishes and records its result (8.6.3).
+**`ops.apply`.** `params.groups` is an ordered list of `{document, operations}`. This is the batch header of 6.5.1, and it lets a batch span documents in order. Each operation is `{operation_id, op, params}`. `result.outcomes` lists the attempted operations in order, each `{operation_id, result}` or `{operation_id, error}`. Operations after the first error are not attempted and not listed (6.5.1). An operation the add-in does not know fails the batch with `BACKEND_CAPABILITY_MISSING`, is never recorded in the ledger, and never answers `applied` **[Builder's call]**. A repeated ID stops the batch like any other error: its outcome has `error` with code `DUPLICATE_OPERATION` and also `result`, the original result. If cancellation stops a batch, the next operation's outcome has `error` with code `EXEC_CANCELLED`. An unexpected exception ends the batch with a `-32603` error; operations already completed stay in the ledger, so the core can ask for them.
+
+**Operation ledger.** The add-in records each completed operation's ID, result and document, in completion order, and forgets a document's entries when the add-in sees that document destroyed (`DestroyNotify2`, subscribed per tracked document; `FileCloseNotify` never fires for an API close, so it is not relied on). Before it trusts an entry for a part, it also checks `GetOpenDocumentByName(fullPath)` and drops the entry if the document is gone **[Builder's call]**. A `document.close` operation records its own ID after that event, so its entry stays and earlier ones go. A failed operation is not recorded. The ledger outlives a pipe connection, so a reconnecting core can ask for it. `session.completed_operations` returns `operation_ids` in completion order. A command still running when the pipe closes finishes and records its result (8.6.3).
 
 **`job.cancel`.** The add-in sets the cancel flag and removes queued commands, answering each with `EXEC_CANCELLED`. If a command is running, the cancel response waits until that command has answered. The result is `{cancelled}`: true if a command was running or queued when the request arrived. A running command may still finish normally, so its own response says what happened. The client's wait for this response therefore uses the command time limit, not the read limit. The running command checks the flag between operations or sheets (8.6.2) and, if it stops early, answers `EXEC_CANCELLED`.
 

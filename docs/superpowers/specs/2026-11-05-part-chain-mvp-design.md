@@ -153,26 +153,31 @@ The defaults table is `packages/cad-compiler/defaults/0.1.0.json`. Lowering send
 
 | New contract | Params | Result |
 | --- | --- | --- |
-| `part.create` op | `template` (optional). The batch's `document` is the working file path. Fails if the file exists | `native_id`, `path`, `instance_id`, `previous_active`, `template` (path and SHA-256) |
+| `part.create` op | `template` (path of a `.prtdot`; see below). The batch's `document` is the working file path. Fails if the file exists | `native_id`, `path`, `instance_id`, `previous_active`, `template` (path and SHA-256) |
 | `sketch.create` op | `node_id`, `plane`, `entities` (lengths in mm) | `native_id`, `feature_id`, `entity_count` |
 | `feature.create` op | `node_id`, `type`, `profile` (bound `feature_id`), `end_condition` | `native_id`, `feature_id`, `status` |
 | `part.measure` command | `document` | `path`, `instance_id`, `solid_body_count`, `bbox_m` `{min, max}`, `volume_m3`, `surface_area_m2`, `center_of_mass_m`, `cylinders_m` `[{point, direction, radius}]`, `rebuild` `{ok, errors}`, `features` `[{feature_id, native_id, type, status}]`, `dirty`, `read_only` |
 
 `part.measure` is a read-back command like `drawing.snapshot`, not an operation. It returns raw SI values, and the core converts them, so one conversion cannot both build and measure a part wrongly and still agree with itself. The `Backend` port gains `measure_part`.
 
-**`feature_id`** is `f<IFeature.GetID()>`, the form 5.3.6 defines. It is not persistent identity for later editing; K9 stays open and frozen. The Features check matches by `feature_id`, in-session and after reopen, with type checked as well. The spike tests this on the plate (A2). If `GetID` does not survive reopen, the fallback is the one 5.3.6 specifies, `GetPersistReference3`, never tree position.
+**`feature_id`** is `f<IFeature.GetID()>`, the form 5.3.6 defines. It is not persistent identity for later editing; K9 stays open and frozen. The Features check matches by `feature_id`, in-session and after reopen, with type checked as well. The spike confirmed on the plate that `GetID` is identical across close and reopen (A2 holds), so the `GetPersistReference3` fallback of 5.3.6 is not needed. It stays documented there, and tree position is never used.
+
+**Template (owner decision, 2026-11-05).** The spike found that the install's default part template preference is `~BLANK_PART_TEMPLATE.prtdot`, which is not a file, and `NewDocument` returns null for it. So the system never relies on SOLIDWORKS's template preference. A new configuration key `part.template` (13.3) holds the full path of a `.prtdot`. The job gives `part.create` the caller's `template` if there is one, otherwise `part.template`. With neither set, or with the file missing, the job fails with a catalogued error that names the setting (`CONFIG_INVALID` when unset, `FILE_NOT_FOUND` when missing, with `details.setting: part.template`). There is no silent fallback to an installed template. The owner's own template is `D:\01_Data\ZZ_EPG Drawing templates\ISO-mm.prtdot`; live tests run with it and with the installed `gb_part.prtdot`. The template is only read, never written. **[Builder's call]** The plan stays static: it omits `template`, and the job fills it in when it sends the operation.
 
 **`instance_id`** is issued by the add-in each time it creates or opens a document, and returned by `part.create` and `document.open`. It is not persisted. It lets the job tell a document it holds from one reopened under the same path (F39 of the architecture review).
 
 **Rules for new adapters** in `ExecutionServer.Adapters/Parts/`:
 
-- Find the document by the batch's path (`GetOpenDocumentByName`), never `ActiveDoc` (F5).
+- Find the document by the batch's full path (`GetOpenDocumentByName`), never `ActiveDoc` (F5). The spike showed this call returns null for a title, a name without a path, and an unsaved document, so the full path is the only key.
 - A failure is a catalogued error, never a false result (F6). A feature the API returns null for fails with `BACKEND_REBUILD_ERROR`.
 - Results are read back from SOLIDWORKS, not echoed from input.
 - Convert mm to metres in one place. Follow G1 (COM release in `finally`).
-- Follow 8.3 rule 11 in full: `AddToDB`, inference and snapping off, `EnableGraphicsUpdate` off while building, and selection through `Select4` with explicit marks, never `SelectByID2`. Each change is restored in `finally` within the operation, because `Execute` restores settings after every operation.
+- Follow 8.3 rule 11 in full: `AddToDB`, inference and snapping off, `EnableGraphicsUpdate` off while building, and selection through `IFeature.Select2(append, mark)` for planes and sketches and `Select4` for entities, with explicit marks, never `SelectByID2`. Each change is restored in `finally` within the operation, because `Execute` restores settings after every operation.
 - Standard planes are found by their order among the document's `RefPlane` features, as 5.3.6 specifies, because their names are localized. The adapter then checks the plane's normal against its role and fails clearly on a mismatch, so a template with reordered or rotated planes is caught at once.
-- If the spike shows feature calls need the document active, each part operation checks it and fails with `EXEC_INTERRUPTED_BY_USER` when it isn't. It never switches the active document back without saying so (8.3 rule 13).
+- Feature calls need no active document (spike: sketch, extrude, cut, measure, rebuild and save all worked on a document that was not active). So part operations neither check nor change the active document. The engineer-change detection of 8.3 rule 13 stays.
+- A blind `cut_extrude` passes the cut direction argument `Dir=true`, so it goes into the body; `Flip` does not work. The plate's `through_all_both` cut is unaffected (5.7.4).
+- `part.create` and the save rule refuse an existing path themselves, since `SaveAs4` with the silent option overwrites without warning.
+- `IMassProperty` is used with `UseSystemUnits = true`, because `false` follows neither the document's linear unit nor metres.
 - `solid` features are followed by a forced rebuild before the save. A read-only reopen is measured without a rebuild, so `dirty` must stay false.
 
 **Why `part.create` saves at once.** An unsaved document has no path, so it cannot be addressed by path. Saving immediately to a uniquely named working file gives every later operation a path. It also means the target path is never touched during a build.
@@ -184,9 +189,9 @@ The defaults table is `packages/cad-compiler/defaults/0.1.0.json`. Lowering send
 - **On a `.SLDPRT`:** `document.save` and `document.close` are refused with `AUTH_SOURCE_WRITE_NOT_ALLOWED` unless this job owns the document (D5). A `target_path` differing from the document's path is refused too, so a save can never overwrite another file.
 - **On a drawing:** the frozen flow does not change. The live tests address unsaved drawings by title and use `target_path`, so that lookup stays. A drawing the requesting job recorded as borrowed still can't be closed.
 - Closing an owned document restores `previous_active`.
-- `DestroyNotify` is not subscribed today, and `ForgetDocument` has no caller. The add-in forgets table and ledger entries on `FileCloseNotify`, after the spike confirms its name format.
+- `DestroyNotify` is not subscribed today, and `ForgetDocument` has no caller. The spike showed that `FileCloseNotify` never fires for an API close, so the add-in does not rely on it. It subscribes `DestroyNotify2` on each part document it tracks and forgets the table and ledger entries there. Before trusting a table entry, it also checks `GetOpenDocumentByName(fullPath)` lazily and drops the entry if the document is gone (for example, closed by the engineer).
 
-**Detecting the engineer (8.3 rule 13).** The add-in listens only for active-document changes and file close today. For the working part it also subscribes to regen, save and destroy events, so an edit, save or close the job did not cause fails the job with `EXEC_INTERRUPTED_BY_USER`. Rule 13's "AI job running" banner doesn't exist, and by decision D1 the MVP has a temporary exception for it.
+**Detecting the engineer (8.3 rule 13).** The add-in listens only for active-document changes and file close today. For the working part it also subscribes to regen (`RegenNotify`, `RegenPostNotify`), save (`FileSavePostNotify`; `FileSaveNotify` does not fire for an API save) and destroy (`DestroyNotify2`) events, so an edit, save or close the job did not cause fails the job with `EXEC_INTERRUPTED_BY_USER`. Rule 13's "AI job running" banner doesn't exist, and by decision D1 the MVP has a temporary exception for it.
 
 ADR-032's "stateless apart from completed operation IDs" gains this exception, which ADR-046 already implied.
 
@@ -294,12 +299,12 @@ These go through the spec first (AGENTS.md section 3), in the plan's first task,
 
 | Where | Change |
 | --- | --- |
-| 5.7.4 | Sketch axis directions per standard plane, from the first spike |
+| 5.7.4 | Sketch axes, normal, and extrude and cut direction per standard plane, from the first spike; the blind-cut `Dir=true` rule |
 | 6.5.2, `schemas/ipc/ops/` | `part.create`, the MVP subset of `sketch.create` and `feature.create`. `document.save` also covers a part the job created. Standard planes are role references, a stated exception to 6.5.1's pinned IDs |
 | 6.5.3, 6.7.4 | Symbols in a plan (`$working`, node IDs), bound by the job at send time. One plan key, and reuse of an existing plan |
-| ADR-032 | The add-in's ownership table and `instance_id` are stated exceptions to "stateless" |
+| ADR-032 | The add-in's ownership table and `instance_id` are stated exceptions to "stateless"; close tracking by `DestroyNotify2` and a lazy path check |
 | 8.3 rule 13, ADR-050 | The banner's temporary exception for the MVP (D1) |
-| 13.3, 12.3 | `mcp.toolsets` defaults to `["core"]` while drawings are frozen, and a disabled tool is refused over the pipe |
+| 13.3, 12.3 | `mcp.toolsets` defaults to `["core"]` while drawings are frozen, and a disabled tool is refused over the pipe. New key `part.template` (owner decision, after the spike) |
 | 3.4.5, 12.4.2 | The revision rules for `apply_part_graph` |
 | 13.2.3 | `document` `create`, `publish_intent`, `published`, and the `published_unconfirmed` warning |
 | 8.4 | The `plan` job's lifecycle, also started by `apply_part_graph`, with the table in section 8 |
@@ -349,12 +354,14 @@ These go through the spec first (AGENTS.md section 3), in the plan's first task,
 | --- | --- |
 | SOLIDWORKS API signatures and behaviour here are unverified | The first task is a spike on scratch files that records them before anything depends on them |
 | A14 (threading) fails under real load | Its register fallback. Run it in the spike |
-| A2 fails: `GetID` changes on reopen | `GetPersistReference3`, per 5.3.6, recorded in 10.2 |
-| Feature calls need the document active, and the engineer can change it | Section 7's check. The spike answers whether it applies |
-| `SaveAs4` with the silent option overwrites existing files | Assumed so. `part.create` and the save rule refuse first; the spike confirms |
-| `CloseDoc` behaviour with unsaved changes is unknown (F4) | Answered in the spike. The job saves before closing wherever it can |
+| A2 fails: `GetID` changes on reopen | Held in the spike. `GetPersistReference3`, per 5.3.6, stays documented as the fallback |
+| Feature calls need the document active, and the engineer can change it | Did not apply: calls work on a document that is not active (spike) |
+| `SaveAs4` with the silent option overwrites existing files | Confirmed by the spike. `part.create` and the save rule refuse an existing path first |
+| `CloseDoc` behaviour with unsaved changes is unknown (F4) | Answered: it discards without a prompt. The job saves before closing wherever it can |
+| The default part template is unusable (`~BLANK_PART_TEMPLATE.prtdot`, not a file) | The `part.template` setting, with no fallback (section 7) |
+| `FileCloseNotify` never fires for an API close | `DestroyNotify2` and a lazy `GetOpenDocumentByName` check (section 7) |
 | The file stays locked briefly after close, so the rename fails | A bounded wait, then FAILED with the working file kept and named |
-| `GetBodyBox` is looser than the true box | The spike measures it. If so, use a tight method or widen only the box tolerance, recorded in 10.2 |
+| `GetBodyBox` is looser than the true box | Equal to the true box on the plate (prismatic, planar). Still open for curved bodies; if it is looser there, use a tight method or widen only the box tolerance, recorded in 10.2 |
 | A running SOLIDWORKS locks add-in DLLs, blocking `dotnet build` | Builds need SOLIDWORKS closed. Agents ask you before that, and never close it themselves |
 | Scope grows into general feature work | Section 2 is the limit. New features come after sign-off |
 
@@ -383,6 +390,7 @@ These were made while writing. The owner confirmed the plate, fixed-coordinate s
 | D3 | Confirm the plate, fixed-coordinate sketches, the tolerances, and drawing tools hidden and refused by default | Confirmed |
 | D4 | Keep working and failed files beside the target, or in `.cad` | Beside the target, so failures stay visible |
 | D5 | Refuse to close any `.SLDPRT` the job doesn't own, though a part job then can't tidy up in an unknown state | Refused |
+| D6 (after the spike) | Which part template `part.create` uses | The owner's `D:\01_Data\ZZ_EPG Drawing templates\ISO-mm.prtdot`, through the new setting `part.template`. No reliance on SOLIDWORKS's preference and no silent fallback |
 
 ## 15. Left to the builder
 

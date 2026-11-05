@@ -30,6 +30,7 @@ Still open with the owner: the holdout parts (11.8). The owner will supply the c
 
 - The tool contracts that run the drawing pipeline gain an optional input that enables part writes (custom properties, `MarkedForDrawing`). Without it, the pipeline fills gaps only in the drawing.
 - The "AI job running" banner and the interruption rules of 8.3 rule 13 are the normal path, not a fallback.
+- **Amendment, owner decision D1 (2026-11-05): temporary exception for the part chain MVP.** The banner and its Stop button are not built for the MVP, and `plan` jobs run without them; `cancel_execution` is the way to stop a job. The interruption rules of 8.3 rule 13 (detecting the engineer's edit, save or close of the job's part through document events) are still built. The exception ends when the banner is built, and it does not change the shared-session decision above.
 - Shops that read `ISO 2768-mK` can still override `general_tolerance` per part (11.10).
 
 ## Where it applies

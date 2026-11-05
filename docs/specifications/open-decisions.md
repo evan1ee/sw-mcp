@@ -15,7 +15,7 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-Five open items: K3, J11, K8, K9 and K10. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+Seven open items: K3, J11, K8, K9, K10, K11 and K12. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
 
 ### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
 
@@ -56,6 +56,20 @@ Five open items: K3, J11, K8, K9 and K10. Every decision found in the v1.11 revi
 - **Recommendation.** Settle it through ADR-056's decision (owner decision O1 in the [architecture roadmap](../superpowers/review/2026-11-05-architecture-roadmap.md)), after real read-back exists. 6.5.3 and 8.4 stay as written until then. Any new journal record also needs a change to `schemas/store/v0.json` (ADR-035).
 - **Document:** ADR-056 (accept or reject), then Spec (6.5.3, 8.4).
 - **Blocks:** `1b`.
+
+### K11: Events and close behaviour for an engineer's actions in the SOLIDWORKS UI
+
+- **Why it matters.** The part chain relies on `RegenNotify`/`RegenPostNotify`, `FileSavePostNotify` and `DestroyNotify2` to notice that an engineer edited, saved or closed the working part (8.3 rule 13), and on a lazy `GetOpenDocumentByName` check to drop stale ownership entries. The 2026-11-05 spike drove only the API, so it did not show whether the same events fire for the same actions in the UI, whether `FileCloseNotify` fires for a UI close (it never fired for an API close) or what name it passes, or how `CloseDoc` behaves on a never-saved dirty document (the MVP saves at once, so it should not arise). `QuitDoc` was not called against the live session.
+- **Recommendation.** Test the UI actions by hand in the Task 7b live test (`tests/live/test_live_part_events.py` plus a manual step) and record the result in the spike record. If `DestroyNotify2` is silent for a UI close, the lazy path check is the only protection, so tighten it (check before every part operation).
+- **Document:** Spec (8.3 rule 13, addin-runtime events).
+- **Blocks:** `1c` (the MVP's live test 12a).
+
+### K12: Measurement on curved bodies
+
+- **Why it matters.** The spike compared `GetBodyBox`, `IMassProperty` and the cylinder list with exact values on a prismatic plate only (flat faces and four cylinders). `GetBodyBox` may be looser than the true box on curved bodies, which would make the 10.2.1 bounding-box check fail a correct part or hide an error.
+- **Recommendation.** Before curved features (revolve, fillet) are added, measure a body with curved outer faces and, if `GetBodyBox` is looser, use a tight box method or widen only the box tolerance, recorded in 10.2.1.
+- **Document:** Spec (10.2.1).
+- **Blocks:** `later` (any curved feature; not the MVP plate).
 
 ---
 

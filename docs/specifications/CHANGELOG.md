@@ -2,6 +2,22 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.30
+
+Specifies the part chain MVP ([design](../superpowers/specs/2026-11-05-part-chain-mvp-design.md), [plan](../superpowers/plans/2026-11-05-part-chain-mvp.md)), using the answers recorded by the [live API spike](../superpowers/review/2026-11-05-part-chain-spike.md). No schema or code yet; those come with the MVP's later tasks. New rules are **[Builder's call]** except where marked as the owner's decision.
+
+- **Part template** (13.3, 6.5.2, 8.4.1; owner decision): new key `part.template`, the full path of a `.prtdot`, user file only, default unset. `part.create` uses the caller's template, otherwise this key. Unset or missing fails with `CONFIG_INVALID` or `FILE_NOT_FOUND` naming the setting. SOLIDWORKS's own default-template preference (`~BLANK_PART_TEMPLATE.prtdot` on the owner's install, which is not a file) is never used, and there is no fallback to an installed template.
+- **Sketch axes and directions** (5.7.4): the table of axes, normals and blind extrude and cut directions for the three standard planes. A blind `cut_extrude` passes `Dir=true`; `Flip` does not work. Standard planes are found by `RefPlane` order and their normal is checked. `IMassProperty` uses `UseSystemUnits = true`. The `GetPersistReference3` fallback of 5.3.6 is not needed (A2 held).
+- **Part operations** (6.5.2, 6.5.3): `part.create`, `sketch.create` and `feature.create` for the MVP, standard planes as role references (an exception to 6.5.1), documents addressed by full path only, existing paths refused because silent `SaveAs4` overwrites. A plan holds symbols (`$working`, node IDs) that the job binds at send time, one operation per batch. Selection uses `IFeature.Select2` and `Select4`; `SelectByID2` stays banned (8.3 rule 11).
+- **Plan key** (6.7.4, 13.2.1): one key, the plan's content hash; an existing plan is reused and the reuse journalled.
+- **`plan` job** (8.4.1, 8.7, 13.2.3, 13.2.1): lifecycle, publishing by no-replace rename, cancel boundaries, working files, `part.measure`, journal records `publish_intent` and `published` and the `document` action `create`, the `published_unconfirmed` warning, the `parts/` record and `part_result`.
+- **Rule 13 and events** (8.3 rule 13, ADR-050; owner decision D1): the "AI job running" banner is not built for the MVP; `cancel_execution` stops a job; event detection is built. The add-in uses `RegenNotify`/`RegenPostNotify`, `FileSavePostNotify` and `DestroyNotify2`, not `FileSaveNotify` or `FileCloseNotify`, and checks a document with `GetOpenDocumentByName(fullPath)` before trusting an ownership entry. Part operations need no active document.
+- **ADRs** (owner decisions for the MVP): ADR-032 gains the ownership table and close-tracking exceptions to "stateless"; ADR-046 gains the working-file rule instead of undo for part jobs and add-in ownership enforcement; ADR-050 records the D1 exception; ADR-037 adds `PART_VERIFICATION_FAILED` and the `PART_` prefix.
+- **Verification** (10.2.1): the MVP checks and tolerances (±0.01 mm, ±0.01%), with the plate measured in the spike.
+- **Revisions** (3.4.5, 12.4.2): `apply_part_graph` takes an optional `expected_revision`; identical content reuses a revision, different content without a match is `REV_CONFLICT`.
+- **Tools and toolsets** (12.3, 12.4.4, 12.4.5, 12.5, 13.3): `mcp.toolsets` defaults to `["core"]` while drawings are frozen, and a disabled tool is refused over the core pipe. Four tools (`apply_part_graph`, `validate_part_graph`, `list_feature_types`, `get_feature_schema`) ship before Phase 1c under ADR-057. 12.5 allows new parts the system produced, never overwriting.
+- **Open Decisions** ([register](open-decisions.md)): logged **K11** (events for an engineer's UI actions are not yet observed) and **K12** (measurement on curved bodies); 7 open decisions now (K3, J11, K8, K9, K10, K11, K12).
+
 ## What changed in 1.29
 
 Adds the part chain MVP to the current focus of the roadmap (section 18): its stages, finish line and exclusions, linking its [design](../superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](../superpowers/plans/2026-11-05-part-chain-mvp.md), both awaiting the owner's approval. No contract changes; those come with the MVP's first specification task.

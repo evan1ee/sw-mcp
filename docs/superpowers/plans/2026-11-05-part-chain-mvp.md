@@ -111,7 +111,7 @@ Everything later relies on these answers, and none has been verified.
 - [ ] **Step 1: Check the spike against the design.** If an answer changes the design, update the design and this plan first.
 - [ ] **Step 2: Write each change from design 11**, using the spike's values for 5.7.4 and the tables of design 8 for 8.4 and 13.2.3. Say in 12.4.4 that the four MVP tools ship before Phase 1c under ADR-057.
 - [ ] **Step 3: Bump to v1.30** in `README.md` and every topic header. Add the changelog entry. Mark new rules **[Builder's call]**, except what the owner decided.
-- [ ] **Step 4: Verify:** `git grep -c "Specification v1.29" -- docs` returns nothing, and `uv run ruff format --check` passes.
+- [ ] **Step 4: Verify:** a `git grep -c` for the old v1.29 header string in `docs` returns nothing, and `uv run ruff format --check` passes.
 - [ ] **Step 5: Commit:** `docs: specify the part chain MVP (spec v1.30)`.
 
 ### Task 3: Part Feature Graph schemas and model
@@ -276,14 +276,14 @@ Runs before the compiler, so plans are checked against real operation schemas.
 - Test: `ExecutionServer.Tests/Events/`, `tests/live/test_live_part_events.py`
 
 **Interfaces:**
-- Consumes: `DocumentOwnershipTable.Forget`, `OperationLedger.ForgetDocument`, spike answers 11 and 13.
+- Consumes: `DocumentOwnershipTable.Forget`, `OperationLedger.ForgetDocument`, spike answers 11 and 13 (`FileCloseNotify` never fires for an API close; use `DestroyNotify2`).
 - Produces:
-  - `document.event` with `regen`, `save` and `close` for a part document the table lists, tagged with `_meta` when the job caused it.
-  - `Forget` and `ForgetDocument` on close.
+  - `document.event` with `regen` (`RegenNotify`, `RegenPostNotify`), `save` (`FileSavePostNotify`, not `FileSaveNotify`) and `close` (`DestroyNotify2`) for a part document the table lists, tagged with `_meta` when the job caused it.
+  - `Forget` and `ForgetDocument` on `DestroyNotify2`, and a lazy `GetOpenDocumentByName(fullPath)` check before a table entry is trusted (a close the engineer did in the UI).
 
-- [ ] **Step 1: Write failing tests:** `UntaggedSaveOnOwnedPart_RaisesEvent`; `EventDuringCommand_IsTagged`; `Close_ForgetsTableAndLedger`; `FileCloseName_NormalizesToPath`, following spike answer 11. Live: saving, editing or closing an open scratch part by hand through a separate COM call produces an untagged event.
+- [ ] **Step 1: Write failing tests:** `UntaggedSaveOnOwnedPart_RaisesEvent`; `EventDuringCommand_IsTagged`; `Close_ForgetsTableAndLedger` (on `DestroyNotify2`); `StaleEntry_DroppedWhenDocumentGone` (the lazy path check); `PathNormalizes_ForTableLookup`. `FileCloseNotify` is not relied on (spike answer 11). Live: saving, editing or closing an open scratch part by hand through a separate COM call produces an untagged event.
 - [ ] **Step 2: Run** and confirm FAIL.
-- [ ] **Step 3: Implement.** Subscribe per document when a part enters the table and release on close, following G1.
+- [ ] **Step 3: Implement.** Subscribe per document when a part enters the table and release on `DestroyNotify2`, following G1. Mark the job's own calls with a flag, since every API call raises regen events (spike answer 13).
 - [ ] **Step 4: C# check, build (SOLIDWORKS closed by the owner), then the live test and Task 0 suite.** Expected: PASS, same as the baseline.
 - [ ] **Step 5: Commit:** `feat(addin): report engineer activity on working parts`.
 
@@ -302,15 +302,18 @@ Runs before the compiler, so plans are checked against real operation schemas.
 - [ ] **Step 1: Write failing tests:**
   - `PartUnits` conversions against literal values.
   - Live, on scratch: `test_build_plate_by_ops`: the five operations by hand on a new file give the expected raw values within tolerance, with `f<id>` IDs and four cylinders.
-  - `test_missing_template_is_clear` (Review Focus 2): a `template` param pointing at a missing file gives a catalogued error naming it. Never change the owner's preference.
+  - `test_missing_template_is_clear` (Review Focus 2): a `template` param pointing at a missing file gives `FILE_NOT_FOUND` naming `part.template`. Never change the owner's preference.
+  - `test_unset_template_is_clear`: with no `template` param and `part.template` unset (or its file missing), the job-level resolution fails with `CONFIG_INVALID` or `FILE_NOT_FOUND`, `details.setting: part.template`, and SOLIDWORKS's own default template is never used.
+  - `test_build_plate_with_owner_and_installed_templates`: the plate builds and measures the same with the owner's `D:\01_Data\ZZ_EPG Drawing templates\ISO-mm.prtdot` and the installed `gb_part.prtdot`.
+  - `test_blind_cut_goes_into_body`: a blind cut on each of the three planes changes the volume by the expected amount (`Dir=true`, spike answer 4).
   - `test_inch_template_builds_mm` (Review Focus 2), with an inch template created in the scratch folder.
   - `test_part_create_refuses_existing_file`.
   - `test_null_feature_fails`: a cut with an empty profile fails with `BACKEND_REBUILD_ERROR`, not a false result.
   - `test_wrong_plane_normal_fails`, if the spike found a way to make such a template; otherwise a unit test around the normal check.
-  - `test_inactive_document_fails`, if spike answer 9 says feature calls need it.
+  - `test_ops_work_on_inactive_document`: spike answer 9 showed feature calls need no active document, so the adapters do no active-document check; the test builds on a document that is not active and leaves the active document unchanged.
   - `test_settings_restored`: inference and graphics updates are back to their earlier values after each operation, including a failing one.
 - [ ] **Step 2: Run** and confirm FAIL.
-- [ ] **Step 3: Implement per design 7's rules,** using the spike's calls. Results are read back from SOLIDWORKS. `part.create` records ownership and returns `instance_id`, `previous_active` and `template`. Each adapter handles `CancellationToken` between steps and releases COM in `finally`.
+- [ ] **Step 3: Implement per design 7's rules,** using the spike's calls: find documents by full path only (R2); `IFeature.Select2` and `Select4` for selection, never `SelectByID2`; `Dir=true` for a blind cut; `UseSystemUnits=true` for `IMassProperty`; `part.create` refuses an existing path itself, since silent `SaveAs4` overwrites. Results are read back from SOLIDWORKS. `part.create` records ownership and returns `instance_id`, `previous_active` and `template`. Each adapter handles `CancellationToken` between steps and releases COM in `finally`.
 - [ ] **Step 4: Build (SOLIDWORKS closed by the owner), register, reopen, and run** `uv run pytest tests/live/test_live_part_ops.py -m live -v`, then the Task 0 suite. Expected: PASS, same as the baseline.
 - [ ] **Step 5: Commit:** `feat(addin): build and measure parts`.
 
@@ -419,7 +422,7 @@ Runs before the compiler, so plans are checked against real operation schemas.
 - Modify: both `pyproject.toml` files (`[project.scripts]`: `sw-mcp-core`, `sw-mcp-mcp`)
 - Rewrite: `apps/mcp-server/src/mcp_server/server/app.py` on the SDK's low-level server; `server/__init__.py`
 - Rewrite: `apps/mcp-server/tests/test_mcp_front_end.py`, which uses `McpServer` and `handle_message`
-- Modify: `apps/core-service/src/core_service/server/pipe_host.py` (user-only pipe ACL, `hmac.compare_digest`, toolset filter on `list_tools` and calls), `cad_application/config/merge.py:198`, `settings.py:39` (`mcp.toolsets` default `["core"]`), and config tests expecting the old default
+- Modify: `apps/core-service/src/core_service/server/pipe_host.py` (user-only pipe ACL, `hmac.compare_digest`, toolset filter on `list_tools` and calls), `cad_application/config/merge.py:198`, `settings.py:39` (`mcp.toolsets` default `["core"]`), `schemas/config/v1.json` and the settings model (`part.template`), and config tests expecting the old default
 - Create: `docs/development/setup.md`
 - Test: `tests/contract/test_mcp_list.py`, `tests/e2e/test_core_process.py`
 
@@ -438,6 +441,7 @@ Runs before the compiler, so plans are checked against real operation schemas.
   - `test_second_core_refused`.
   - `test_front_end_starts_core`.
   - `test_bad_token_closed`.
+  - `test_part_template_setting`: `part.template` defaults to empty; it is read from the user file and from the environment (`SWMCP_PART__TEMPLATE`), ignored with a warning in a project file; a relative path or one not ending in `.prtdot` is `CONFIG_INVALID` naming the key; a path that does not exist is accepted at load.
 - [ ] **Step 2: Run** and confirm FAIL.
 - [ ] **Step 3: Implement.** The SDK negotiates the protocol revision (ADR-044). The core's job thread and pipe host start together. Write `setup.md`: build and register the add-in, `access.allowed_roots`, and the `mcpServers` entry for Claude.
 - [ ] **Step 4: Full check.** Expected: PASS.

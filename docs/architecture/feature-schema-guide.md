@@ -1,6 +1,6 @@
 # 5.7 Part Feature Graph Schema Guide
 
-> Specification v1.29, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.30, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
 
 Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3.2) read as one language and the compiler's defaults are explicit. Each type has one schema file, `schemas/part-feature-graph/features/<type>.json`, with one minimal example of at most 400 tokens (12.3).
 
@@ -60,7 +60,18 @@ Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3
 | `dimensions` | Keyed by dimension ID: `type` (`distance`, `horizontal`, `vertical`, `diameter`, `radius`, `angle`), `entities` and `value`. Each is a driving parameter (`<sketch_id>.<dimension_id>`) |
 
 - The IR states final geometry, never editing steps (5.3.1).
-- Sketch axes on each standard plane follow SOLIDWORKS's own sketch transform. Phase 0 records the exact axis directions per plane from the live API, and this guide is updated with them before Phase 1c.
+- Sketch axes on each standard plane follow SOLIDWORKS's own sketch transform. The first live spike (2026-11-05, SOLIDWORKS 2025 revision 33.0.0, [record](../superpowers/review/2026-11-05-part-chain-spike.md)) recorded them, found with `ISketch.ModelToSketchTransform.Inverse()` applied to unit points:
+
+  | Plane (role) | Sketch +x | Sketch +y | Normal (x cross y) | Blind extrude goes | Default blind cut goes | Blind cut with `Dir=true` goes |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | `plane:front` | model +X | model +Y | +Z | +Z | -Z | +Z |
+  | `plane:top` | model +X | model -Z | +Y | +Y | -Y | +Y |
+  | `plane:right` | model -Z | model +Y | +X | +X | -X | +X |
+
+- **Standard planes [Builder's call].** The document's first three `RefPlane` features are Front, Top and Right, in that order (5.3.6). Their names are localized, so the order is the only key. A plane's normal is read by applying `IRefPlane.Transform` to the point (0, 0, 1) and subtracting the image of (0, 0, 0). It gives Front (0, 0, 1), Top (0, 1, 0) and Right (1, 0, 0). The adapter checks the normal against the role and fails clearly on a mismatch, so a template with reordered or rotated planes is caught at once.
+- **Blind cut direction [Builder's call].** A blind `cut_extrude` goes the opposite way to a blind `extrude` by default: against the normal, so on a plate's own plane it finds nothing to cut and `FeatureCut4` returns null. The flip argument (`Flip=true`) selects which side of the profile is removed and does not help. The compiler's plan and the adapter must therefore pass the cut's direction argument `Dir=true`, which sends the blind cut along the normal, into the body. `through_all_both` is unaffected and works whichever way the normal points.
+- **Selection [Builder's call].** A plane or sketch is selected with `IFeature.Select2(false, 0)`; entities (faces, edges, sketch segments) with `IEntity.Select4`. `SelectByID2` stays banned (8.3 rule 11).
+- **Units [Builder's call].** The API takes metres whatever the document units are. The spike built the same plate in a millimetre and in an inch document with identical geometry. Mass properties are read with `IMassProperty.UseSystemUnits = true`; with `false` the values follow neither metres nor the document's linear unit.
 
 ## 5.7.5 Roles
 

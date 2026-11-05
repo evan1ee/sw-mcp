@@ -1,6 +1,6 @@
 # 18. Roadmap
 
-> Specification v1.29, section 18. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.30, section 18. Index and section map: [specifications/README.md](../specifications/README.md).
 
 This section says what each phase delivers, how it is accepted and, for Phase 1, in what order the work runs. Current status is in [`HANDOFF.md`](../../HANDOFF.md).
 

@@ -1,6 +1,6 @@
 # 8.6 Add-in Runtime
 
-> Specification v1.29, section 8.6. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.30, section 8.6. Index and section map: [specifications/README.md](../specifications/README.md).
 
 How the C# add-in (ADR-028) starts, is found by the core service (ADR-041), runs commands on SOLIDWORKS's thread, bounds their time, and leaves the engineer's SOLIDWORKS as it found it. The wire protocol is ADR-036; version handling is ADR-045.
 
@@ -68,5 +68,5 @@ Rules 11 and 12 of 8.3 change SOLIDWORKS user preferences: sketch inference and 
 ## 8.6.5 Documents and events
 
 - **Ownership.** At the start of each job, the add-in records which documents are open and which is active. Documents opened during the job are owned by it; the rest are borrowed. Closing and saving follow ADR-046.
-- **Document events** (`RegenNotify`, `FileSaveNotify`, `DestroyNotify`, active-document changes) are raised as `document.event` notifications (ADR-036). For a document the running job holds, an event the job did not cause interrupts the job between commands (8.3 rule 13). The core records events for other documents for external-edit detection (9.3).
+- **Document events** (`RegenNotify` and `RegenPostNotify`, `FileSavePostNotify`, `DestroyNotify2`, active-document changes; the spike showed `FileSaveNotify` does not fire for an API save, nor `FileCloseNotify` for an API close) are raised as `document.event` notifications (ADR-036). For a document the running job holds, an event the job did not cause interrupts the job between commands (8.3 rule 13). The core records events for other documents for external-edit detection (9.3).
 - **The "AI job running" banner** (8.3 rule 13) is a non-modal window owned by the add-in. Its Stop button sends the same cancellation as `cancel_execution`.
