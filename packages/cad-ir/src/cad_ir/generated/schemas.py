@@ -2616,6 +2616,139 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                 'title': 'IPC messages between the core and the '
                                                          'add-in (spec 8.7)',
                                                 'x-protocol-version': '0.1'},
+ 'https://sw-mcp.invalid/schemas/mcp/apply_part_graph.json': {'$id': 'https://sw-mcp.invalid/schemas/mcp/apply_part_graph.json',
+                                                              '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                                                              'description': 'Validate a Part '
+                                                                             'Feature Graph, store '
+                                                                             'its revision and '
+                                                                             'queue a plan job to '
+                                                                             'build and verify the '
+                                                                             '.SLDPRT part. Poll '
+                                                                             'get_execution_status '
+                                                                             'with wait_ms to '
+                                                                             'follow the build and '
+                                                                             'read part_result.',
+                                                              'errors': ['IR_SCHEMA_INVALID',
+                                                                         'IR_RULE_VIOLATED',
+                                                                         'IR_REFERENCE_UNRESOLVED',
+                                                                         'IR_CYCLE',
+                                                                         'REV_CONFLICT',
+                                                                         'AUTH_PATH_DENIED',
+                                                                         'AUTH_SOURCE_WRITE_NOT_ALLOWED',
+                                                                         'FILE_NOT_FOUND',
+                                                                         'CONFIG_INVALID',
+                                                                         'STORE_LOCKED',
+                                                                         'STORE_CORRUPT',
+                                                                         'STORE_UNAVAILABLE'],
+                                                              'examples': [{'arguments': {'graph': {'id': 'plate_4h',
+                                                                                                    'module': 'part',
+                                                                                                    'nodes': {'extrude_base': {'dependencies': ['sketch_base'],
+                                                                                                                               'end_condition': {'depth': 10,
+                                                                                                                                                 'type': 'blind'},
+                                                                                                                               'profile': 'sketch_base',
+                                                                                                                               'type': 'extrude'},
+                                                                                                              'sketch_base': {'entities': {'l1': {'end': [50,
+                                                                                                                                                          -30],
+                                                                                                                                                  'start': [-50,
+                                                                                                                                                            -30],
+                                                                                                                                                  'type': 'line'},
+                                                                                                                                           'l2': {'end': [50,
+                                                                                                                                                          30],
+                                                                                                                                                  'start': [50,
+                                                                                                                                                            -30],
+                                                                                                                                                  'type': 'line'},
+                                                                                                                                           'l3': {'end': [-50,
+                                                                                                                                                          30],
+                                                                                                                                                  'start': [50,
+                                                                                                                                                            30],
+                                                                                                                                                  'type': 'line'},
+                                                                                                                                           'l4': {'end': [-50,
+                                                                                                                                                          -30],
+                                                                                                                                                  'start': [-50,
+                                                                                                                                                            30],
+                                                                                                                                                  'type': 'line'}},
+                                                                                                                              'plane': 'plane:front',
+                                                                                                                              'type': 'sketch'}},
+                                                                                                    'origin': 'built',
+                                                                                                    'schema_version': '0.1',
+                                                                                                    'units': 'mm'},
+                                                                                          'target_path': 'C:\\Work\\plate.SLDPRT'},
+                                                                            'response': {'data': {'document': 'part:plate_4h@1',
+                                                                                                  'execution_id': 'job_00000000000000000000000001',
+                                                                                                  'queued_position': 0},
+                                                                                         'error': None,
+                                                                                         'ids': {'execution_id': 'job_00000000000000000000000001',
+                                                                                                 'request_id': 'req_00000000000000000000000001'},
+                                                                                         'ok': True}},
+                                                                           {'arguments': {'graph': {'id': 'plate_4h',
+                                                                                                    'module': 'part',
+                                                                                                    'nodes': {'extrude_base': {'dependencies': ['sketch_base'],
+                                                                                                                               'end_condition': {'depth': 10,
+                                                                                                                                                 'type': 'blind'},
+                                                                                                                               'profile': 'sketch_base',
+                                                                                                                               'type': 'extrude'},
+                                                                                                              'sketch_base': {'entities': {'l1': {'end': [50,
+                                                                                                                                                          -30],
+                                                                                                                                                  'start': [-50,
+                                                                                                                                                            -30],
+                                                                                                                                                  'type': 'line'},
+                                                                                                                                           'l2': {'end': [50,
+                                                                                                                                                          30],
+                                                                                                                                                  'start': [50,
+                                                                                                                                                            -30],
+                                                                                                                                                  'type': 'line'},
+                                                                                                                                           'l3': {'end': [-50,
+                                                                                                                                                          30],
+                                                                                                                                                  'start': [50,
+                                                                                                                                                            30],
+                                                                                                                                                  'type': 'line'},
+                                                                                                                                           'l4': {'end': [-50,
+                                                                                                                                                          -30],
+                                                                                                                                                  'start': [-50,
+                                                                                                                                                            30],
+                                                                                                                                                  'type': 'line'}},
+                                                                                                                              'plane': 'plane:front',
+                                                                                                                              'type': 'sketch'}},
+                                                                                                    'origin': 'built',
+                                                                                                    'schema_version': '0.1',
+                                                                                                    'units': 'mm'},
+                                                                                          'target_path': 'D:\\Other\\plate.SLDPRT'},
+                                                                            'response': {'data': None,
+                                                                                         'error': {'code': 'AUTH_PATH_DENIED',
+                                                                                                   'details': {'reason': 'outside_roots'},
+                                                                                                   'message': 'The '
+                                                                                                              'path '
+                                                                                                              'is '
+                                                                                                              'outside '
+                                                                                                              'every '
+                                                                                                              'folder '
+                                                                                                              'in '
+                                                                                                              'access.allowed_roots.',
+                                                                                                   'retryable': 'never'},
+                                                                                         'ids': {'request_id': 'req_00000000000000000000000002'},
+                                                                                         'ok': False}}],
+                                                              'input': {'additionalProperties': False,
+                                                                        'properties': {'expected_revision': {'$ref': '../common/v0.json#/$defs/Revision'},
+                                                                                       'graph': {'$ref': '../part-feature-graph/v0.json'},
+                                                                                       'target_path': {'maxLength': 32767,
+                                                                                                       'minLength': 1,
+                                                                                                       'type': 'string'}},
+                                                                        'required': ['graph',
+                                                                                     'target_path'],
+                                                                        'type': 'object'},
+                                                              'kind': 'job',
+                                                              'mutates': True,
+                                                              'name': 'apply_part_graph',
+                                                              'output': {'additionalProperties': False,
+                                                                         'properties': {'document': {'$ref': '../common/v0.json#/$defs/DocumentRef'},
+                                                                                        'execution_id': {'$ref': '../store/v0.json#/$defs/JobId'},
+                                                                                        'queued_position': {'$ref': '../common/v0.json#/$defs/Count'}},
+                                                                         'required': ['execution_id',
+                                                                                      'queued_position',
+                                                                                      'document'],
+                                                                         'type': 'object'},
+                                                              'phase': '1c',
+                                                              'toolset': 'core'},
  'https://sw-mcp.invalid/schemas/mcp/cancel_execution.json': {'$id': 'https://sw-mcp.invalid/schemas/mcp/cancel_execution.json',
                                                               '$schema': 'https://json-schema.org/draft/2020-12/schema',
                                                               'description': 'Cancel a job. A '
@@ -3081,6 +3214,19 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                             'job_type': {'enum': ['plan',
                                                                                                                   'produce_drawing',
                                                                                                                   'check_drawing']},
+                                                                                            'part_result': {'properties': {'checks': {'items': {'type': 'object'},
+                                                                                                                                      'type': 'array'},
+                                                                                                                           'feature_ids': {'additionalProperties': {'type': 'string'},
+                                                                                                                                           'type': 'object'},
+                                                                                                                           'fingerprint': {'$ref': '../common/v0.json#/$defs/ContentHash'},
+                                                                                                                           'measured': {'type': 'object'},
+                                                                                                                           'path': {'type': 'string'},
+                                                                                                                           'template': {'type': 'string'}},
+                                                                                                            'required': ['path',
+                                                                                                                         'fingerprint',
+                                                                                                                         'checks',
+                                                                                                                         'measured'],
+                                                                                                            'type': 'object'},
                                                                                             'progress': {'additionalProperties': False,
                                                                                                          'properties': {'message': {'type': 'string'},
                                                                                                                         'of': {'$ref': '../common/v0.json#/$defs/Count'},
@@ -3106,6 +3252,344 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                              'type': 'object'},
                                                                   'phase': '1a',
                                                                   'toolset': 'core'},
+ 'https://sw-mcp.invalid/schemas/mcp/get_feature_schema.json': {'$id': 'https://sw-mcp.invalid/schemas/mcp/get_feature_schema.json',
+                                                                '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                                                                'description': 'Return the compact '
+                                                                               'JSON Schema and '
+                                                                               'minimal example '
+                                                                               'for one or more '
+                                                                               'Part Feature Graph '
+                                                                               'node types. Call '
+                                                                               'list_feature_types '
+                                                                               'first to see '
+                                                                               'available types.',
+                                                                'errors': ['IR_SCHEMA_INVALID'],
+                                                                'examples': [{'arguments': {'types': ['extrude']},
+                                                                              'response': {'data': {'schemas': {'extrude': {'example': {'dependencies': ['sketch_base'],
+                                                                                                                                        'end_condition': {'depth': 10,
+                                                                                                                                                          'type': 'blind'},
+                                                                                                                                        'profile': 'sketch_base',
+                                                                                                                                        'type': 'extrude'},
+                                                                                                                            'schema': {'properties': {'end_condition': {'type': 'object'},
+                                                                                                                                                      'profile': {'type': 'string'},
+                                                                                                                                                      'type': {'const': 'extrude'}},
+                                                                                                                                       'required': ['type',
+                                                                                                                                                    'profile',
+                                                                                                                                                    'end_condition'],
+                                                                                                                                       'type': 'object'}}}},
+                                                                                           'error': None,
+                                                                                           'ids': {'request_id': 'req_00000000000000000000000001'},
+                                                                                           'ok': True}},
+                                                                             {'arguments': {'types': ['fillet']},
+                                                                              'response': {'data': None,
+                                                                                           'error': {'code': 'IR_SCHEMA_INVALID',
+                                                                                                     'details': {'supported_types': ['sketch',
+                                                                                                                                     'extrude',
+                                                                                                                                     'cut_extrude'],
+                                                                                                                 'unknown_types': ['fillet']},
+                                                                                                     'message': 'Unknown '
+                                                                                                                'feature '
+                                                                                                                'type: '
+                                                                                                                "'fillet'.",
+                                                                                                     'retryable': 'after_fix'},
+                                                                                           'ids': {'request_id': 'req_00000000000000000000000002'},
+                                                                                           'ok': False}}],
+                                                                'input': {'additionalProperties': False,
+                                                                          'properties': {'types': {'items': {'minLength': 1,
+                                                                                                             'type': 'string'},
+                                                                                                   'maxItems': 16,
+                                                                                                   'minItems': 1,
+                                                                                                   'type': 'array',
+                                                                                                   'uniqueItems': True}},
+                                                                          'required': ['types'],
+                                                                          'type': 'object'},
+                                                                'kind': 'store',
+                                                                'mutates': False,
+                                                                'name': 'get_feature_schema',
+                                                                'output': {'additionalProperties': False,
+                                                                           'properties': {'schemas': {'additionalProperties': {'additionalProperties': False,
+                                                                                                                               'properties': {'example': {'type': 'object'},
+                                                                                                                                              'schema': {'type': 'object'}},
+                                                                                                                               'required': ['schema',
+                                                                                                                                            'example'],
+                                                                                                                               'type': 'object'},
+                                                                                                      'propertyNames': {'enum': ['sketch',
+                                                                                                                                 'extrude',
+                                                                                                                                 'cut_extrude']},
+                                                                                                      'type': 'object'}},
+                                                                           'required': ['schemas'],
+                                                                           'type': 'object'},
+                                                                'phase': '1c',
+                                                                'toolset': 'core'},
+ 'https://sw-mcp.invalid/schemas/mcp/list_feature_types.json': {'$id': 'https://sw-mcp.invalid/schemas/mcp/list_feature_types.json',
+                                                                '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                                                                'description': 'List the supported '
+                                                                               'Part Feature Graph '
+                                                                               'node types with a '
+                                                                               'one-line '
+                                                                               'description and '
+                                                                               'support level. '
+                                                                               'Call '
+                                                                               'get_feature_schema '
+                                                                               'to inspect the '
+                                                                               'schema and example '
+                                                                               'for any listed '
+                                                                               'type.',
+                                                                'errors': ['IR_SCHEMA_INVALID'],
+                                                                'examples': [{'arguments': {},
+                                                                              'response': {'data': {'types': [{'description': '2D '
+                                                                                                                              'sketch '
+                                                                                                                              'on '
+                                                                                                                              'a '
+                                                                                                                              'standard '
+                                                                                                                              'plane '
+                                                                                                                              'with '
+                                                                                                                              'line '
+                                                                                                                              'and '
+                                                                                                                              'circle '
+                                                                                                                              'entities.',
+                                                                                                               'support': ['create',
+                                                                                                                           'read'],
+                                                                                                               'type': 'sketch'},
+                                                                                                              {'description': 'Blind '
+                                                                                                                              'boss '
+                                                                                                                              'extrude '
+                                                                                                                              'from '
+                                                                                                                              'a '
+                                                                                                                              'closed '
+                                                                                                                              'sketch '
+                                                                                                                              'profile.',
+                                                                                                               'support': ['create',
+                                                                                                                           'read'],
+                                                                                                               'type': 'extrude'},
+                                                                                                              {'description': 'Blind '
+                                                                                                                              'or '
+                                                                                                                              'through-all-both '
+                                                                                                                              'cut '
+                                                                                                                              'extrude '
+                                                                                                                              'from '
+                                                                                                                              'a '
+                                                                                                                              'sketch '
+                                                                                                                              'profile.',
+                                                                                                               'support': ['create',
+                                                                                                                           'read'],
+                                                                                                               'type': 'cut_extrude'}]},
+                                                                                           'error': None,
+                                                                                           'ids': {'request_id': 'req_00000000000000000000000001'},
+                                                                                           'ok': True}},
+                                                                             {'arguments': {'extra': 1},
+                                                                              'response': {'data': None,
+                                                                                           'error': {'code': 'IR_SCHEMA_INVALID',
+                                                                                                     'details': {'issues': [{'code': 'IR_SCHEMA_INVALID',
+                                                                                                                             'message': 'Additional '
+                                                                                                                                        'properties '
+                                                                                                                                        'are '
+                                                                                                                                        'not '
+                                                                                                                                        'allowed',
+                                                                                                                             'pointer': '/extra'}]},
+                                                                                                     'message': 'The '
+                                                                                                                'arguments '
+                                                                                                                'do '
+                                                                                                                'not '
+                                                                                                                'satisfy '
+                                                                                                                'the '
+                                                                                                                "tool's "
+                                                                                                                'input '
+                                                                                                                'schema.',
+                                                                                                     'retryable': 'after_fix'},
+                                                                                           'ids': {'request_id': 'req_00000000000000000000000002'},
+                                                                                           'ok': False}}],
+                                                                'input': {'additionalProperties': False,
+                                                                          'properties': {},
+                                                                          'type': 'object'},
+                                                                'kind': 'store',
+                                                                'mutates': False,
+                                                                'name': 'list_feature_types',
+                                                                'output': {'additionalProperties': False,
+                                                                           'properties': {'types': {'items': {'additionalProperties': False,
+                                                                                                              'properties': {'description': {'type': 'string'},
+                                                                                                                             'support': {'items': {'enum': ['create',
+                                                                                                                                                            'read']},
+                                                                                                                                         'type': 'array'},
+                                                                                                                             'type': {'type': 'string'}},
+                                                                                                              'required': ['type',
+                                                                                                                           'description',
+                                                                                                                           'support'],
+                                                                                                              'type': 'object'},
+                                                                                                    'type': 'array'}},
+                                                                           'required': ['types'],
+                                                                           'type': 'object'},
+                                                                'phase': '1c',
+                                                                'toolset': 'core'},
+ 'https://sw-mcp.invalid/schemas/mcp/validate_part_graph.json': {'$id': 'https://sw-mcp.invalid/schemas/mcp/validate_part_graph.json',
+                                                                 '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                                                                 'description': 'Validate a Part '
+                                                                                'Feature Graph '
+                                                                                'against schema '
+                                                                                'and semantic '
+                                                                                'rules without '
+                                                                                'SOLIDWORKS. '
+                                                                                'Returns validity, '
+                                                                                'issues, '
+                                                                                'topological '
+                                                                                'build_order and '
+                                                                                'expected geometry '
+                                                                                'computed from the '
+                                                                                'IR.',
+                                                                 'errors': ['IR_SCHEMA_INVALID'],
+                                                                 'examples': [{'arguments': {'graph': {'id': 'plate_4h',
+                                                                                                       'module': 'part',
+                                                                                                       'nodes': {'extrude_base': {'dependencies': ['sketch_base'],
+                                                                                                                                  'end_condition': {'depth': 10,
+                                                                                                                                                    'type': 'blind'},
+                                                                                                                                  'profile': 'sketch_base',
+                                                                                                                                  'type': 'extrude'},
+                                                                                                                 'sketch_base': {'entities': {'l1': {'end': [50,
+                                                                                                                                                             -30],
+                                                                                                                                                     'start': [-50,
+                                                                                                                                                               -30],
+                                                                                                                                                     'type': 'line'},
+                                                                                                                                              'l2': {'end': [50,
+                                                                                                                                                             30],
+                                                                                                                                                     'start': [50,
+                                                                                                                                                               -30],
+                                                                                                                                                     'type': 'line'},
+                                                                                                                                              'l3': {'end': [-50,
+                                                                                                                                                             30],
+                                                                                                                                                     'start': [50,
+                                                                                                                                                               30],
+                                                                                                                                                     'type': 'line'},
+                                                                                                                                              'l4': {'end': [-50,
+                                                                                                                                                             -30],
+                                                                                                                                                     'start': [-50,
+                                                                                                                                                               30],
+                                                                                                                                                     'type': 'line'}},
+                                                                                                                                 'plane': 'plane:front',
+                                                                                                                                 'type': 'sketch'}},
+                                                                                                       'origin': 'built',
+                                                                                                       'schema_version': '0.1',
+                                                                                                       'units': 'mm'}},
+                                                                               'response': {'data': {'build_order': ['sketch_base',
+                                                                                                                     'extrude_base'],
+                                                                                                     'expected': {'bbox_mm': {'max': [50.0,
+                                                                                                                                      30.0,
+                                                                                                                                      10.0],
+                                                                                                                              'min': [-50.0,
+                                                                                                                                      -30.0,
+                                                                                                                                      0.0]},
+                                                                                                                  'center_of_mass_mm': [0.0,
+                                                                                                                                        0.0,
+                                                                                                                                        5.0],
+                                                                                                                  'cylinders': [],
+                                                                                                                  'features': [{'node_id': 'sketch_base',
+                                                                                                                                'type': 'sketch'},
+                                                                                                                               {'node_id': 'extrude_base',
+                                                                                                                                'type': 'extrude'}],
+                                                                                                                  'solid_body_count': 1,
+                                                                                                                  'surface_area_mm2': 15200.0,
+                                                                                                                  'volume_mm3': 60000.0},
+                                                                                                     'issues': [],
+                                                                                                     'valid': True},
+                                                                                            'error': None,
+                                                                                            'ids': {'request_id': 'req_00000000000000000000000001'},
+                                                                                            'ok': True}},
+                                                                              {'arguments': {'graph': {'id': 'bad',
+                                                                                                       'module': 'part',
+                                                                                                       'nodes': {},
+                                                                                                       'origin': 'built',
+                                                                                                       'schema_version': '0.1',
+                                                                                                       'units': 'in'}},
+                                                                               'response': {'data': None,
+                                                                                            'error': {'code': 'IR_SCHEMA_INVALID',
+                                                                                                      'details': {'issues': [{'code': 'IR_SCHEMA_INVALID',
+                                                                                                                              'message': "'mm' "
+                                                                                                                                         'was '
+                                                                                                                                         'expected',
+                                                                                                                              'pointer': '/graph/units'}]},
+                                                                                                      'message': 'The '
+                                                                                                                 'arguments '
+                                                                                                                 'do '
+                                                                                                                 'not '
+                                                                                                                 'satisfy '
+                                                                                                                 'the '
+                                                                                                                 "tool's "
+                                                                                                                 'input '
+                                                                                                                 'schema.',
+                                                                                                      'retryable': 'after_fix'},
+                                                                                            'ids': {'request_id': 'req_00000000000000000000000002'},
+                                                                                            'ok': False}}],
+                                                                 'input': {'additionalProperties': False,
+                                                                           'properties': {'graph': {'$ref': '../part-feature-graph/v0.json'}},
+                                                                           'required': ['graph'],
+                                                                           'type': 'object'},
+                                                                 'kind': 'store',
+                                                                 'mutates': False,
+                                                                 'name': 'validate_part_graph',
+                                                                 'output': {'additionalProperties': False,
+                                                                            'properties': {'build_order': {'anyOf': [{'items': {'$ref': '../common/v0.json#/$defs/ItemId'},
+                                                                                                                      'type': 'array'},
+                                                                                                                     {'type': 'null'}]},
+                                                                                           'expected': {'anyOf': [{'additionalProperties': False,
+                                                                                                                   'properties': {'bbox_mm': {'additionalProperties': False,
+                                                                                                                                              'properties': {'max': {'items': {'type': 'number'},
+                                                                                                                                                                     'maxItems': 3,
+                                                                                                                                                                     'minItems': 3,
+                                                                                                                                                                     'type': 'array'},
+                                                                                                                                                             'min': {'items': {'type': 'number'},
+                                                                                                                                                                     'maxItems': 3,
+                                                                                                                                                                     'minItems': 3,
+                                                                                                                                                                     'type': 'array'}},
+                                                                                                                                              'required': ['min',
+                                                                                                                                                           'max'],
+                                                                                                                                              'type': 'object'},
+                                                                                                                                  'center_of_mass_mm': {'items': {'type': 'number'},
+                                                                                                                                                        'maxItems': 3,
+                                                                                                                                                        'minItems': 3,
+                                                                                                                                                        'type': 'array'},
+                                                                                                                                  'cylinders': {'items': {'additionalProperties': False,
+                                                                                                                                                          'properties': {'direction': {'items': {'type': 'number'},
+                                                                                                                                                                                       'maxItems': 3,
+                                                                                                                                                                                       'minItems': 3,
+                                                                                                                                                                                       'type': 'array'},
+                                                                                                                                                                         'point': {'items': {'type': 'number'},
+                                                                                                                                                                                   'maxItems': 3,
+                                                                                                                                                                                   'minItems': 3,
+                                                                                                                                                                                   'type': 'array'},
+                                                                                                                                                                         'radius': {'type': 'number'}},
+                                                                                                                                                          'required': ['point',
+                                                                                                                                                                       'direction',
+                                                                                                                                                                       'radius'],
+                                                                                                                                                          'type': 'object'},
+                                                                                                                                                'type': 'array'},
+                                                                                                                                  'features': {'items': {'additionalProperties': False,
+                                                                                                                                                         'properties': {'node_id': {'$ref': '../common/v0.json#/$defs/ItemId'},
+                                                                                                                                                                        'type': {'type': 'string'}},
+                                                                                                                                                         'required': ['node_id',
+                                                                                                                                                                      'type'],
+                                                                                                                                                         'type': 'object'},
+                                                                                                                                               'type': 'array'},
+                                                                                                                                  'solid_body_count': {'$ref': '../common/v0.json#/$defs/Count'},
+                                                                                                                                  'surface_area_mm2': {'type': 'number'},
+                                                                                                                                  'volume_mm3': {'type': 'number'}},
+                                                                                                                   'required': ['solid_body_count',
+                                                                                                                                'bbox_mm',
+                                                                                                                                'volume_mm3',
+                                                                                                                                'surface_area_mm2',
+                                                                                                                                'center_of_mass_mm',
+                                                                                                                                'cylinders',
+                                                                                                                                'features'],
+                                                                                                                   'type': 'object'},
+                                                                                                                  {'type': 'null'}]},
+                                                                                           'issues': {'items': {'$ref': '../common/v0.json#/$defs/ValidationIssue'},
+                                                                                                      'type': 'array'},
+                                                                                           'valid': {'type': 'boolean'}},
+                                                                            'required': ['valid',
+                                                                                         'issues',
+                                                                                         'build_order',
+                                                                                         'expected'],
+                                                                            'type': 'object'},
+                                                                 'phase': '1c',
+                                                                 'toolset': 'core'},
  'https://sw-mcp.invalid/schemas/part-feature-graph/features/cut_extrude.json': {'$id': 'https://sw-mcp.invalid/schemas/part-feature-graph/features/cut_extrude.json',
                                                                                  '$schema': 'https://json-schema.org/draft/2020-12/schema',
                                                                                  'additionalProperties': False,

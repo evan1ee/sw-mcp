@@ -39,6 +39,21 @@
       "elapsed_ms": { "$ref": "../common/v0.json#/$defs/Count" },
       "retry_after_ms": { "$ref": "../common/v0.json#/$defs/Count" },
       "report_id": { "$ref": "../store/v0.json#/$defs/ReportId" },
+      "part_result": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "fingerprint": { "$ref": "../common/v0.json#/$defs/ContentHash" },
+          "checks": { "type": "array", "items": { "type": "object" } },
+          "measured": { "type": "object" },
+          "feature_ids": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "template": { "type": "string" }
+        },
+        "required": ["path", "fingerprint", "checks", "measured"]
+      },
       "error": { "$ref": "../common/v0.json#/$defs/Error" },
       "warnings": { "type": "array", "items": { "$ref": "../store/v0.json#/$defs/JobWarning" } },
       "documents_unknown": { "type": "array", "items": { "type": "string" } }

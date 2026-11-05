@@ -63,6 +63,8 @@ def status_data(view: JobView, *, changed: bool, clock: Clock) -> Obj:
         data["retry_after_ms"] = 0 if changed else POLL_HINT_MS
     if record.state == "COMMITTED" and record.report_id is not None:
         data["report_id"] = record.report_id
+    if record.state == "COMMITTED" and record.part_result is not None:
+        data["part_result"] = record.part_result
     if record.state in _ERROR_STATES and record.error is not None:
         data["error"] = record.error
     return data

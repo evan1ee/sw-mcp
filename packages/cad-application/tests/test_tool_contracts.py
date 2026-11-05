@@ -17,6 +17,13 @@ MCP_PREFIX = "https://sw-mcp.invalid/schemas/mcp/"
 META_SCHEMA = MCP_PREFIX + "contract/v0.json"
 ENVELOPE = "https://sw-mcp.invalid/schemas/common/v0.json#/$defs/Envelope"
 PHASE_1A = {"check_drawing", "get_drawing_report", "get_execution_status", "cancel_execution"}
+PART_MVP = {
+    "apply_part_graph",
+    "validate_part_graph",
+    "list_feature_types",
+    "get_feature_schema",
+}
+SHIPPED = PHASE_1A | PART_MVP
 FIRST_SENTENCE_MAX = 120
 SUMMARY_MAX = 200
 
@@ -38,7 +45,7 @@ def _first_sentence(text: str) -> str:
 
 def test_contract_files_valid_against_meta_schema() -> None:
     docs = _contract_docs()
-    assert {str(d["name"]) for d in docs.values()} == PHASE_1A
+    assert {str(d["name"]) for d in docs.values()} == SHIPPED
     for schema_id, doc in docs.items():
         assert validate_against_schema(doc, META_SCHEMA) == ()
         assert schema_id == f"{MCP_PREFIX}{doc['name']}.json"
@@ -46,20 +53,21 @@ def test_contract_files_valid_against_meta_schema() -> None:
 
 def test_load_contracts_reads_the_four_phase_1a_tools() -> None:
     contracts = load_contracts()
-    assert set(contracts) == PHASE_1A
-    assert all(c.phase == "1a" for c in contracts.values())
+    assert set(contracts) == SHIPPED
+    assert all(contracts[n].phase == "1a" for n in PHASE_1A)
+    assert all(contracts[n].phase == "1c" for n in PART_MVP)
     assert all(c.input_ref.endswith("#/input") for c in contracts.values())
     assert all(c.output_ref.endswith("#/output") for c in contracts.values())
 
 
-@pytest.mark.parametrize("name", sorted(PHASE_1A))
+@pytest.mark.parametrize("name", sorted(SHIPPED))
 def test_description_first_sentence_within_120(name: str) -> None:
     contract = load_contracts()[name]
     assert len(_first_sentence(contract.description)) <= FIRST_SENTENCE_MAX
     assert len(contract.description) <= 400  # noqa: PLR2004
 
 
-@pytest.mark.parametrize("name", sorted(PHASE_1A))
+@pytest.mark.parametrize("name", sorted(SHIPPED))
 def test_input_schemas_forbid_unknown_properties(name: str) -> None:
     doc = next(d for d in _contract_docs().values() if d["name"] == name)
     assert isinstance(doc["input"], dict)
@@ -92,6 +100,10 @@ def test_annotations_derivation() -> None:
         "get_drawing_report": (True, False, True),
         "get_execution_status": (True, False, True),
         "cancel_execution": (False, False, True),
+        "apply_part_graph": (False, False, False),
+        "validate_part_graph": (True, False, True),
+        "list_feature_types": (True, False, True),
+        "get_feature_schema": (True, False, True),
     }
     for name, (read_only, destructive, idempotent) in expected.items():
         assert contracts[name].annotations() == {
@@ -114,23 +126,25 @@ def test_annotations_for_destructive_tools() -> None:
     assert not _synthetic("run_things", "cad-session", mutates=True).annotations()["readOnlyHint"]
 
 
-@pytest.mark.parametrize("name", sorted(PHASE_1A))
+@pytest.mark.parametrize("name", sorted(SHIPPED))
 def test_examples_validate(name: str) -> None:
     contract = load_contracts()[name]
     assert len(contract.examples) >= 2  # noqa: PLR2004
     outcomes: set[bool] = set()
     for example in contract.examples:
-        assert validate_against_schema(example.arguments, contract.input_ref) == ()
         assert validate_against_schema(example.response, ENVELOPE) == ()
         response = example.response
         assert isinstance(response, dict)
         outcomes.add(response["ok"] is True)
         if response["ok"]:
+            assert validate_against_schema(example.arguments, contract.input_ref) == ()
             assert validate_against_schema(response["data"], contract.output_ref) == ()
         else:
             error = response["error"]
             assert isinstance(error, dict)
             assert error["code"] in contract.errors
+            if error["code"] != "IR_SCHEMA_INVALID":
+                assert validate_against_schema(example.arguments, contract.input_ref) == ()
     assert outcomes == {True, False}
 
 

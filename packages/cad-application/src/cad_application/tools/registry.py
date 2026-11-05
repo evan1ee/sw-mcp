@@ -16,10 +16,14 @@ from cad_ir.core.schema_validation import validate_against_schema
 from cad_ir.generated.error_codes import ErrorCode
 
 from cad_application.tools import (
+    apply_part_graph,
     cancel_execution,
     check_drawing,
     get_drawing_report,
     get_execution_status,
+    get_feature_schema,
+    list_feature_types,
+    validate_part_graph,
 )
 from cad_application.tools.context import Call, Handler, ToolContext
 from cad_application.tools.contracts import ToolContract, load_contracts
@@ -122,9 +126,13 @@ def _verify(contract: ToolContract, result: ToolResult) -> None:
 def build_registry(context: ToolContext, *, verify: bool = __debug__) -> ToolRegistry:
     """The registry of the shipped tools, bound to one set of services."""
     handlers: dict[str, Handler] = {
+        "apply_part_graph": partial(apply_part_graph.handle, context),
+        "cancel_execution": partial(cancel_execution.handle, context),
         "check_drawing": partial(check_drawing.handle, context),
         "get_drawing_report": partial(get_drawing_report.handle, context),
         "get_execution_status": partial(get_execution_status.handle, context),
-        "cancel_execution": partial(cancel_execution.handle, context),
+        "get_feature_schema": partial(get_feature_schema.handle, context),
+        "list_feature_types": partial(list_feature_types.handle, context),
+        "validate_part_graph": partial(validate_part_graph.handle, context),
     }
     return ToolRegistry(load_contracts(), handlers, verify=verify)
