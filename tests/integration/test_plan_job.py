@@ -35,6 +35,8 @@ from cad_application.testing.fakes import (
 )
 from cad_application.testing.job_rig import make_rig
 from cad_application.testing.memory_fs import MemoryFileSystem
+from cad_application.tools.context import ToolContext
+from cad_application.tools.registry import build_registry
 from cad_ir.core.json_types import JsonValue
 from cad_ir.generated import ErrorCode
 from cad_ir.generated.ipc import (
@@ -49,6 +51,9 @@ from cad_ir.generated.ipc import (
 from cad_protocol.backend import IpcBackend
 from cad_protocol.client.ipc_client import IpcClient, NotificationHandler
 from cad_protocol.replay import ReplayTransport, load_transcript
+from core_service.service import CoreService
+
+from tests.live.test_live_part_chain import DepthAlteringBackendProvider
 
 ROOT = Path(__file__).resolve().parents[2]
 PLATE_FIXTURE = (
@@ -1132,3 +1137,148 @@ def test_transcript_replay_backend_lost() -> None:
     assert rec.documents[0].state == "unknown"
     assert transport.exhausted
     assert transport.closed
+
+
+def test_transcript_replay_recorded() -> None:
+    text = (ROOT / "tests" / "fixtures" / "ipc" / "plan_plate_recorded.jsonl").read_text(
+        encoding="utf-8"
+    )
+    transcript = load_transcript(text)
+    assert transcript.header.source == "recorded"
+
+    fs = MemoryFileSystem()
+    clock = FakeClock()
+    ids = SequentialIdSource()
+    log = ListEventLog()
+    fs.make_dirs(PROJECT_ROOT)
+    fs.make_dirs("C:\\Templates")
+    fs.write_new(TEMPLATE_PATH, b"TEMPLATE_CONTENT")
+
+    stores = StoreSet(fs, clock, KNOWN_STORES)
+    transport = _HookReplayTransport(transcript)
+
+    class _ReplayProvider:
+        def acquire(self, on_notification: NotificationHandler) -> IpcBackend:
+            client = IpcClient(
+                transport,
+                token=transcript.header.config["token"],
+                on_notification=on_notification,
+                monotonic=lambda: 0.0,
+            )
+            return IpcBackend(client)
+
+    user_settings = Settings(allowed_roots=(PROJECT_ROOT,), part_template=TEMPLATE_PATH)
+    engine = JobEngine(
+        stores,
+        _ReplayProvider(),
+        clock,
+        ids,
+        log,
+        lambda _root: user_settings,
+        lambda _s: {},
+    )
+    ctx = ToolContext(
+        engine=engine,
+        stores=stores,
+        fs=fs,
+        clock=clock,
+        settings_user=user_settings,
+        project_settings=lambda _root: user_settings,
+        log=log,
+    )
+    service = CoreService(
+        engine,
+        build_registry(ctx),
+        stores,
+        ids,
+        log,
+        settings=user_settings,
+    )
+
+    plate_raw = json.loads(PLATE_FIXTURE.read_text(encoding="utf-8"))
+    apply_res = service.call_tool(
+        "apply_part_graph",
+        {"graph": plate_raw, "target_path": TARGET_PATH},
+    )
+    apply_env = cast(dict[str, Any], apply_res.envelope)
+    assert apply_env["ok"] is True
+    job_id = str(cast(dict[str, Any], apply_env["data"])["execution_id"])
+
+    fs.write_new(working_path(TARGET_PATH, job_id), b"SLDPRT_RECORDED_BYTES")
+    assert engine.run_next()
+
+    status_res = service.call_tool("get_execution_status", {"execution_id": job_id})
+    status_env = cast(dict[str, Any], status_res.envelope)
+    assert status_env["ok"] is True
+    status_data = cast(dict[str, Any], status_env["data"])
+    assert status_data["state"] == "COMMITTED"
+    assert fs.stat(TARGET_PATH) is not None
+    part_result = cast(dict[str, Any], status_data["part_result"])
+    assert part_result["path"] == TARGET_PATH
+    assert part_result["feature_ids"] == {
+        "sketch_base": "f73",
+        "extrude_base": "f79",
+        "sketch_holes": "f80",
+        "cut_holes": "f86",
+    }
+    assert transport.exhausted
+    assert transport.closed
+
+
+def test_depth_altering_provider_fails_plan() -> None:
+    observed_depths: list[float] = []
+
+    def _measure_from_depth(_doc_path: str) -> Any:
+        depth_mm = observed_depths[-1] if observed_depths else 10.0
+        scale = depth_mm / 10.0
+        meas = _make_plate_measurement()
+        meas["volume_m3"] = meas["volume_m3"] * scale
+        meas["bbox_m"] = {
+            "min": [-0.05, -0.03, 0.0],
+            "max": [0.05, 0.03, 0.01 * scale],
+        }
+        return meas
+
+    rig = PartRig(measurement=_measure_from_depth)
+    orig_apply = rig.backend.apply_ops
+
+    def _capture_depth(groups: Sequence[OperationGroup], *, meta: Meta | None = None) -> Any:
+        for g in groups:
+            for op in g.operations:
+                if (
+                    op.op == "feature.create"
+                    and isinstance(op.params, dict)
+                    and op.params.get("node_id") == "extrude_base"
+                ):
+                    ec = op.params.get("end_condition")
+                    if isinstance(ec, dict):
+                        depth_val = ec.get("depth")
+                        if isinstance(depth_val, int | float) and not isinstance(depth_val, bool):
+                            observed_depths.append(float(depth_val))
+        return orig_apply(groups, meta=meta)
+
+    rig.backend.apply_ops = _capture_depth
+    rig.engine = JobEngine(
+        rig.stores,
+        DepthAlteringBackendProvider(rig.provider, target_node="extrude_base", new_depth=9.0),
+        rig.clock,
+        rig.ids,
+        rig.log,
+        lambda _root: rig.user_settings,
+        lambda _s: {},
+    )
+
+    job_id = rig.submit()
+    assert rig.engine.run_next()
+    assert observed_depths == [9.0]
+
+    rec = rig.job(job_id)
+    assert rec.state == "FAILED"
+    assert rec.error is not None
+    assert rec.error["code"] == ErrorCode.PART_VERIFICATION_FAILED.value
+    assert rig.fs.stat(TARGET_PATH) is None
+    fail_p = failed_path(TARGET_PATH, job_id)
+    assert rig.fs.stat(fail_p) is not None
+    details = rec.error["details"]
+    assert isinstance(details, dict)
+    assert details["failed_path"] == fail_p

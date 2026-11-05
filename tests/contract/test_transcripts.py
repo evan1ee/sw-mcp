@@ -47,6 +47,7 @@ SCENARIOS = {
     "check_drawing_lost",
     "check_drawing_sp_warning",
     "plan_plate_committed",
+    "plan_plate_recorded",
     "plan_op_failed",
     "plan_wrong_volume",
     "plan_cancelled",
@@ -157,7 +158,7 @@ def test_all_scenarios_present() -> None:
 def test_every_transcript_header_valid(name: str) -> None:
     header = _load(name).header
     assert header.scenario == name
-    assert header.source == "synthetic"
+    assert header.source == ("recorded" if name.endswith("_recorded") else "synthetic")
     assert header.sides
     assert isinstance(header.config["token"], str)
     assert header.config["backend"]["protocol"] == "0.1"
@@ -427,6 +428,7 @@ DRIVERS: dict[str, Callable[[Transcript, ReplayTransport], None]] = {
     "check_drawing_lost": _check_lost,
     "check_drawing_sp_warning": _check_sp_warning,
     "plan_plate_committed": _drive_plan,
+    "plan_plate_recorded": _drive_plan,
     "plan_op_failed": _drive_plan,
     "plan_wrong_volume": _drive_plan,
     "plan_cancelled": _drive_plan,
