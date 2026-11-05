@@ -1,0 +1,196 @@
+{
+  "plan_schema_version": "0.1",
+  "bundle": {
+    "bundle_schema_version": "1.0",
+    "modules": [
+      "part:plate_4h@1"
+    ]
+  },
+  "provenance": {
+    "compiler_version": "0.1.0",
+    "profile_hash": "sha256:cd069d6336aeab8d84cd057a3a55923567a277d3e1d9cbc40d816eb7cbd67a11",
+    "stage_versions": {
+      "feature_lowering": "0.1.0",
+      "geometry_resolver": "0.1.0",
+      "graph_analyzer": "0.1.0",
+      "parser": "0.1.0",
+      "execution_planner": "0.1.0",
+      "schema_validator": "0.1.0",
+      "semantic_validator": "0.1.0"
+    }
+  },
+  "defaults": {},
+  "operations": {
+    "op_1": {
+      "sequence": 1,
+      "document": "$working",
+      "op": "part.create",
+      "params": {},
+      "source": null,
+      "depends_on": [],
+      "postconditions": []
+    },
+    "op_2": {
+      "sequence": 2,
+      "document": "$working",
+      "op": "sketch.create",
+      "params": {
+        "node_id": "sketch_base",
+        "plane": "plane:front",
+        "entities": [
+          {
+            "type": "line",
+            "start": [
+              -50.0,
+              -30.0
+            ],
+            "end": [
+              50.0,
+              -30.0
+            ]
+          },
+          {
+            "type": "line",
+            "start": [
+              50.0,
+              -30.0
+            ],
+            "end": [
+              50.0,
+              30.0
+            ]
+          },
+          {
+            "type": "line",
+            "start": [
+              50.0,
+              30.0
+            ],
+            "end": [
+              -50.0,
+              30.0
+            ]
+          },
+          {
+            "type": "line",
+            "start": [
+              -50.0,
+              30.0
+            ],
+            "end": [
+              -50.0,
+              -30.0
+            ]
+          }
+        ]
+      },
+      "source": "sketch_base",
+      "depends_on": [
+        "op_1"
+      ],
+      "postconditions": [
+        "entity_count"
+      ]
+    },
+    "op_3": {
+      "sequence": 3,
+      "document": "$working",
+      "op": "feature.create",
+      "params": {
+        "node_id": "extrude_base",
+        "type": "extrude",
+        "profile": "sketch_base",
+        "end_condition": {
+          "type": "blind",
+          "depth": 10.0
+        }
+      },
+      "source": "extrude_base",
+      "depends_on": [
+        "op_2"
+      ],
+      "postconditions": [
+        "feature_exists",
+        "feature_status_ok",
+        "rebuild_ok"
+      ]
+    },
+    "op_4": {
+      "sequence": 4,
+      "document": "$working",
+      "op": "sketch.create",
+      "params": {
+        "node_id": "sketch_holes",
+        "plane": "plane:front",
+        "entities": [
+          {
+            "type": "circle",
+            "center": [
+              -40.0,
+              -20.0
+            ],
+            "diameter": 8.0
+          },
+          {
+            "type": "circle",
+            "center": [
+              40.0,
+              -20.0
+            ],
+            "diameter": 8.0
+          },
+          {
+            "type": "circle",
+            "center": [
+              40.0,
+              20.0
+            ],
+            "diameter": 8.0
+          },
+          {
+            "type": "circle",
+            "center": [
+              -40.0,
+              20.0
+            ],
+            "diameter": 8.0
+          }
+        ]
+      },
+      "source": "sketch_holes",
+      "depends_on": [
+        "op_1"
+      ],
+      "postconditions": [
+        "entity_count"
+      ]
+    },
+    "op_5": {
+      "sequence": 5,
+      "document": "$working",
+      "op": "feature.create",
+      "params": {
+        "node_id": "cut_holes",
+        "type": "cut_extrude",
+        "profile": "sketch_holes",
+        "end_condition": {
+          "type": "through_all_both"
+        }
+      },
+      "source": "cut_holes",
+      "depends_on": [
+        "op_3",
+        "op_4"
+      ],
+      "postconditions": [
+        "feature_exists",
+        "feature_status_ok",
+        "rebuild_ok"
+      ]
+    }
+  },
+  "verification_points": [
+    "op_3",
+    "op_5"
+  ]
+}

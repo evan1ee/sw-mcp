@@ -1,0 +1,221 @@
+"""Tests for compilation to Execution Plan (spec 6.5.3, 6.7)."""
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any, Final, cast
+
+from cad_compiler.api import WORKING, CompileContext, CompileInput, compile_bundle
+from cad_compiler.profile import CapabilityProfile
+from cad_ir.bundle.manifest import BundleManifest
+from cad_ir.core.refs import parse_document_ref
+from cad_ir.core.schema_validation import validate_against_schema
+from cad_ir.generated import ErrorCode
+from cad_ir.generated.ipc import HelloResult, OperationInfo, SolidWorksInfo
+
+ROOT = Path(__file__).resolve().parents[3]
+FIXTURE_DIR = ROOT / "tests" / "fixtures" / "schemas" / "part-feature-graph" / "valid"
+PLATE_FIXTURE = FIXTURE_DIR / "plate_4h.json"
+GOLDEN_PLAN = ROOT / "tests" / "fixtures" / "plans" / "plate_4h.json"
+PLAN_SCHEMA_ID = "https://sw-mcp.invalid/schemas/execution-plan/v0.json"
+SKETCH_CREATE_ID = "https://sw-mcp.invalid/schemas/ipc/ops/sketch.create.json"
+FEATURE_CREATE_ID = "https://sw-mcp.invalid/schemas/ipc/ops/feature.create.json"
+DIM_2D: Final[int] = 2
+
+
+def _make_session(
+    operations: tuple[str, ...] = ("part.create", "sketch.create", "feature.create"),
+) -> HelloResult:
+    return HelloResult(
+        protocol="0.1",
+        addin_version="0.1.0",
+        solidworks=SolidWorksInfo(
+            version="2025",
+            service_pack="sp1",
+            ui_language="en-US",
+        ),
+        capabilities=(),
+        operations=tuple(OperationInfo(op=op, schema_version="0.1") for op in operations),
+        licensed_modules=(),
+        warnings=(),
+    )
+
+
+def _plate_input(revision: int = 1) -> tuple[CompileInput, CompileContext]:
+    raw: dict[str, Any] = json.loads(PLATE_FIXTURE.read_text(encoding="utf-8"))
+    ref_str = f"part:plate_4h@{revision}"
+    manifest = BundleManifest(
+        bundle_schema_version="1.0",
+        modules=(parse_document_ref(ref_str),),
+    )
+    source = CompileInput(
+        manifest=manifest,
+        documents={ref_str: raw},
+    )
+    profile = CapabilityProfile.from_session(_make_session())
+    ctx = CompileContext(
+        compiler_version="0.1.0",
+        profile=profile,
+        defaults={},
+    )
+    return source, ctx
+
+
+def test_plan_matches_golden() -> None:
+    source, ctx = _plate_input(revision=1)
+    result = compile_bundle(source, ctx)
+    assert result.diagnostics == ()
+    assert result.plan is not None
+    plan = cast(dict[str, Any], result.plan)
+
+    ops_dict = cast(dict[str, Any], plan["operations"])
+    sorted_ops: list[dict[str, Any]] = sorted(
+        [cast(dict[str, Any], o) for o in ops_dict.values()],
+        key=lambda o: int(cast(int, o["sequence"])),
+    )
+    op_names = [o["op"] for o in sorted_ops]
+    assert op_names == [
+        "part.create",
+        "sketch.create",
+        "feature.create",
+        "sketch.create",
+        "feature.create",
+    ]
+
+    for op in sorted_ops:
+        assert op["document"] == WORKING
+
+    extrude_op = sorted_ops[2]
+    extrude_params = cast(dict[str, Any], extrude_op["params"])
+    assert extrude_params["profile"] == "sketch_base"
+    cut_op = sorted_ops[4]
+    cut_params = cast(dict[str, Any], cut_op["params"])
+    assert cut_params["profile"] == "sketch_holes"
+
+    sketch1_op = sorted_ops[1]
+    sketch1_params = cast(dict[str, Any], sketch1_op["params"])
+    sketch1_entities = cast(list[dict[str, Any]], sketch1_params["entities"])
+    for ent in sketch1_entities:
+        assert len(cast(list[float], ent["start"])) == DIM_2D
+        assert len(cast(list[float], ent["end"])) == DIM_2D
+    sketch2_op = sorted_ops[3]
+    sketch2_params = cast(dict[str, Any], sketch2_op["params"])
+    sketch2_entities = cast(list[dict[str, Any]], sketch2_params["entities"])
+    for ent in sketch2_entities:
+        assert len(cast(list[float], ent["center"])) == DIM_2D
+
+    sk1_issues = list(
+        validate_against_schema(sketch1_op["params"], f"{SKETCH_CREATE_ID}#/$defs/Params")
+    )
+    assert sk1_issues == []
+    ext_issues = list(
+        validate_against_schema(extrude_op["params"], f"{FEATURE_CREATE_ID}#/$defs/Params")
+    )
+    assert ext_issues == []
+    sk2_issues = list(
+        validate_against_schema(sketch2_op["params"], f"{SKETCH_CREATE_ID}#/$defs/Params")
+    )
+    assert sk2_issues == []
+    cut_issues = list(
+        validate_against_schema(cut_op["params"], f"{FEATURE_CREATE_ID}#/$defs/Params")
+    )
+    assert cut_issues == []
+
+    assert plan["verification_points"] == ["op_3", "op_5"]
+
+    golden = json.loads(GOLDEN_PLAN.read_text(encoding="utf-8"))
+    assert plan == golden
+
+
+def test_plan_validates_against_schema() -> None:
+    source, ctx = _plate_input(revision=1)
+    result = compile_bundle(source, ctx)
+    assert result.plan is not None
+    issues = list(validate_against_schema(result.plan, PLAN_SCHEMA_ID))
+    assert issues == []
+
+
+def test_revision_does_not_change_body() -> None:
+    source1, ctx1 = _plate_input(revision=1)
+    source2, ctx2 = _plate_input(revision=2)
+    res1 = compile_bundle(source1, ctx1)
+    res2 = compile_bundle(source2, ctx2)
+    assert res1.plan is not None
+    assert res2.plan is not None
+    plan1 = cast(dict[str, Any], res1.plan)
+    plan2 = cast(dict[str, Any], res2.plan)
+    assert plan1["operations"] == plan2["operations"]
+    assert plan1["bundle"] != plan2["bundle"]
+
+
+def test_determinism() -> None:
+    source, ctx = _plate_input(revision=1)
+    res1 = compile_bundle(source, ctx)
+    res2 = compile_bundle(source, ctx)
+    assert res1.plan_hash == res2.plan_hash
+
+    script = f"""
+import json
+from pathlib import Path
+from cad_compiler.api import CompileInput, CompileContext, compile_bundle
+from cad_compiler.profile import CapabilityProfile
+from cad_ir.bundle.manifest import BundleManifest
+from cad_ir.core.refs import parse_document_ref
+from cad_ir.generated.ipc import HelloResult, OperationInfo, SolidWorksInfo
+
+plate_fixture = Path(r"{PLATE_FIXTURE}")
+raw = json.loads(plate_fixture.read_text(encoding="utf-8"))
+ref_str = "part:plate_4h@1"
+manifest = BundleManifest("1.0", (parse_document_ref(ref_str),))
+source = CompileInput(manifest=manifest, documents={{ref_str: raw}})
+session = HelloResult(
+    protocol="0.1",
+    addin_version="0.1.0",
+    solidworks=SolidWorksInfo(version="2025", service_pack="sp1", ui_language="en-US"),
+    capabilities=(),
+    operations=(
+        OperationInfo(op="part.create", schema_version="0.1"),
+        OperationInfo(op="sketch.create", schema_version="0.1"),
+        OperationInfo(op="feature.create", schema_version="0.1"),
+    ),
+    licensed_modules=(),
+    warnings=(),
+)
+ctx = CompileContext("0.1.0", CapabilityProfile.from_session(session), {{}})
+res = compile_bundle(source, ctx)
+print(res.plan_hash)
+"""
+    proc = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=str(ROOT),
+    )
+    sub_hash = proc.stdout.strip()
+    assert sub_hash == res1.plan_hash
+
+
+def test_unsupported_plane() -> None:
+    raw: dict[str, Any] = json.loads(PLATE_FIXTURE.read_text(encoding="utf-8"))
+    raw["nodes"]["sketch_base"]["plane"] = "datum:A"
+    raw["nodes"]["sketch_holes"]["plane"] = "datum:A"
+    ref_str = "part:plate_4h@1"
+    manifest = BundleManifest("1.0", (parse_document_ref(ref_str),))
+    source = CompileInput(manifest=manifest, documents={ref_str: raw})
+    profile = CapabilityProfile.from_session(_make_session())
+    ctx = CompileContext("0.1.0", profile, {})
+    result = compile_bundle(source, ctx)
+    assert result.plan is None
+    assert any(d.code == ErrorCode.COMPILE_UNSUPPORTED_FEATURE for d in result.diagnostics)
+
+
+def test_missing_operation() -> None:
+    session = _make_session(operations=("part.create", "sketch.create"))
+    profile = CapabilityProfile.from_session(session)
+    source, _ = _plate_input(revision=1)
+    ctx = CompileContext("0.1.0", profile, {})
+    result = compile_bundle(source, ctx)
+    assert result.plan is None
+    assert any(d.code == ErrorCode.BACKEND_CAPABILITY_MISSING for d in result.diagnostics)

@@ -14,11 +14,7 @@
       "const": "sketch"
     },
     "plane": {
-      "enum": [
-        "plane:front",
-        "plane:top",
-        "plane:right"
-      ]
+      "$ref": "../../common/v0.json#/$defs/GeometryRef"
     },
     "entities": {
       "type": "object",

@@ -1540,6 +1540,7 @@ class FeatureCreateParams:
     type: FeatureCreateParamsType
     profile: str
     end_condition: FeatureCreateEndCondition
+    dir: bool | None = None
     meta: Meta | None = None
 
     @classmethod
@@ -1554,6 +1555,7 @@ class FeatureCreateParams:
             type=_str(_req(obj, "type", where), f"{where}.type"),
             profile=_str(_req(obj, "profile", where), f"{where}.profile"),
             end_condition=FeatureCreateEndCondition._at(_req(obj, "end_condition", where), f"{where}.end_condition"),
+            dir=_opt(obj, "dir", where, _bool),
             meta=_opt(obj, "_meta", where, Meta._at),
         )
 
@@ -1563,6 +1565,8 @@ class FeatureCreateParams:
         out["type"] = _dump(self.type)
         out["profile"] = _dump(self.profile)
         out["end_condition"] = _dump(self.end_condition)
+        if self.dir is not None:
+            out["dir"] = _dump(self.dir)
         if self.meta is not None:
             out["_meta"] = _dump(self.meta)
         return out

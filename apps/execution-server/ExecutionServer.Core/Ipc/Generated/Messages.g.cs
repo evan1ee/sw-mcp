@@ -767,6 +767,9 @@ public sealed class FeatureCreateParams
     [JsonProperty("end_condition", Required = Required.Always)]
     public FeatureCreateEndCondition EndCondition { get; set; } = null!;
 
+    [JsonProperty("dir", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Dir { get; set; }
+
     [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
     public Meta? Meta { get; set; }
 }

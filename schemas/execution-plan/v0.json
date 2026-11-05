@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/execution-plan/v0.json",
+  "title": "Execution Plan (spec 6.5.3)",
+  "type": "object",
+  "required": [
+    "plan_schema_version",
+    "bundle",
+    "provenance",
+    "defaults",
+    "operations",
+    "verification_points"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "plan_schema_version": {
+      "$ref": "../common/v0.json#/$defs/SchemaVersion"
+    },
+    "bundle": {
+      "$ref": "../bundle/v1.json"
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "compiler_version",
+        "profile_hash",
+        "stage_versions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "compiler_version": {
+          "type": "string"
+        },
+        "profile_hash": {
+          "$ref": "../common/v0.json#/$defs/ContentHash"
+        },
+        "stage_versions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "part_fingerprints": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "geometry_candidates": {
+          "type": "object"
+        }
+      }
+    },
+    "defaults": {
+      "type": "object"
+    },
+    "operations": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "../common/v0.json#/$defs/ItemId"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Operation"
+      }
+    },
+    "verification_points": {
+      "type": "array",
+      "items": {
+        "$ref": "../common/v0.json#/$defs/ItemId"
+      }
+    }
+  },
+  "$defs": {
+    "Operation": {
+      "type": "object",
+      "required": [
+        "sequence",
+        "document",
+        "op",
+        "params",
+        "source",
+        "depends_on",
+        "postconditions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "document": {
+          "type": "string"
+        },
+        "op": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "../common/v0.json#/$defs/ItemId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/v0.json#/$defs/ItemId"
+          }
+        },
+        "postconditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

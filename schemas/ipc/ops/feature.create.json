@@ -55,6 +55,9 @@
         "end_condition": {
           "$ref": "#/$defs/EndCondition"
         },
+        "dir": {
+          "type": "boolean"
+        },
         "_meta": {
           "$ref": "../v0.json#/$defs/Meta"
         }
