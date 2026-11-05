@@ -4,7 +4,7 @@ Last updated: 2026-11-06. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Current State
 
-- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. The owner approved the MVP [design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md). Progress on `feat/part-chain-mvp`, as of 2026-11-06: Tasks 0 to 12 are committed (Task 9b `ec81e20`/`d0fecef`, Task 10 `c547b65`, Task 11 `91e408f`, Task 12 `2150635`). **Only Task 13 (the owner's run from Claude and sign-off) remains.** The `stash@{0}` WIP from the earlier 9b attempt is obsolete.
+- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. The owner approved the MVP [design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md). **The part chain MVP is done and signed off by the owner on 2026-11-06** (details in [section 18](docs/specifications/roadmap.md#current-focus-the-part-chain-adr-057)). Tasks 0 to 13 are complete on `feat/part-chain-mvp`. The sign-off run found and fixed three defects (`cd70b87`, `32f4905`).
 - **Frozen drawing state:** Annotation and dimension placement increment implemented and exercised by a live test script (Spec §11.4, §11.5, §11.10, §11.10.1, §6.5.2). This work was called "Phase 1c" here, but roadmap §18 defines Phase 1c as IR-built parts; by §18 it is partial Phase 1b, and Phase 1a acceptance is not yet met. The live test passes against local SOLIDWORKS 2025 SP0.1 with 0 violations, **but that is not evidence of drawing correctness for D1, D2, D3 or D7**: the add-in reads no line or text geometry and reports a fixed border and title block ([architecture review](docs/superpowers/review/2026-11-05-architecture-review.md) F1 to F3).
 - **Architecture review:** completed 2026-11-05: [review](docs/superpowers/review/2026-11-05-architecture-review.md), [roadmap](docs/superpowers/review/2026-11-05-architecture-roadmap.md). The design and foundations are sound; the SOLIDWORKS adapters are prototype quality.
 - **SOLIDWORKS adapter design (Accepted by the owner, 2026-11-05; committed as `360005f`):** [8.8 architecture](docs/architecture/solidworks-adapter.md), [8.9 interface specification](docs/specifications/solidworks-adapter.md), ADR-058 to ADR-063, [roadmap](docs/plans/solidworks-adapter-roadmap.md).
@@ -100,9 +100,8 @@ Last updated: 2026-11-06. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 **Part chain MVP (current work, ADR-057):** the MVP runs from Claude over MCP to a verified `.SLDPRT`; first part: a 100 × 60 × 10 mm plate with four Ø8 mm through holes.
 
 Current order:
-- Tasks 0 to 12: complete and committed.
-- Next: **Task 13**, which needs the owner: set up per `docs/development/setup.md`, ask Claude for the plate, open it in SOLIDWORKS, ask for a 60 × 40 × 5 mm plate with one Ø20 mm hole, ask for a fillet (expect a clear refusal), then record sign-off here and in section 18.
-- Live results from Task 12 were not re-run this session; only the non-live suite was.
+- Tasks 0 to 13: complete. Next: the owner decides what follows (merge the branch, lift the freeze, more feature types).
+- The MVP covers only `sketch`, `extrude` and `cut_extrude`; other features are refused by validation.
 
 Do not continue drawing work, including the ADR-056 list below, until the owner lifts the freeze.
 
@@ -140,6 +139,8 @@ Do not continue drawing work, including the ADR-056 list below, until the owner 
 
 ## Known Issues
 
+- **Part chain, found in the sign-off run (fixed):** tool schemas carried unresolved `$ref`s (clients sent `graph` as a string); plan files were named `sha256:<hex>`, and the colon fails on Windows from the second job in a store; the `features` check counted the template's default tree. Not covered by earlier tests: the in-memory filesystem accepts colons, and live tests used a fresh store per job.
+- **Part chain, open:** the recorded transcript `plan_plate_recorded.jsonl` is synthetic (`C:\Work` paths), not a recording of real SOLIDWORKS. If the core is restarted, the `sw-mcp-mcp` front-end keeps a dead connection and must be restarted too. The owner opened only the first plate in SOLIDWORKS. `known-stores.json` and `D:\CAD\scratch` hold test leftovers.
 - **Use `check_drawing` on scratch copies only:** the frozen code can close an engineer's open drawing (F4, F5). The fix is not scheduled while drawings are frozen, unless the part chain needs the shared part of it.
 - **K3 remains open:** Reading title-block fields back from owner's templates requires inspecting `standards/iso/templates/` in SOLIDWORKS to define locators in §13.3.4.
 - **J11 remains open:** Snapshot does not yet report whether a draft-quality view was switched to high quality; awaiting interactive inspection.

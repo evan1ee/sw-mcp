@@ -77,6 +77,7 @@ toolsets = ["core"]
 ```
 
 Notes:
+- Write Windows paths as TOML literal strings (`'D:\path'`) to avoid escaping mistakes. The sign-off run used the owner's `ISO-mm.prtdot`; a template must hold only the default tree (folders, three planes, origin), because any other feature in it fails the `features` check.
 - If `access.allowed_roots` is empty or omitted, any file path argument is rejected with `AUTH_PATH_DENIED`.
 - `part.template` must be an absolute Windows path ending in `.prtdot`. If `part.template` is empty or points to a missing file when `apply_part_graph` creates a new part, the tool returns `CONFIG_INVALID`.
 
@@ -128,3 +129,5 @@ uv run sw-mcp-core
 # Stop a running per-user core service instance
 uv run sw-mcp-core stop
 ```
+
+After restarting the core, also restart the `sw-mcp` MCP server in your client; a front-end started earlier keeps a dead connection and answers "Internal server error".

@@ -27,6 +27,8 @@ Part Feature Graph IR → compiler → Execution Plan → executor → verified 
 | 7. Live acceptance | The chain on real SOLIDWORKS | The plate commits, and a deliberately wrong plan fails with no target |
 | 8. Run from Claude | The finish line | You ask Claude for two different parts, open them, and sign off |
 
+**Status: done, signed off by the owner on 2026-11-06.** The owner confirmed the 100 × 60 × 10 plate in SOLIDWORKS. Claude then built both plates over MCP (the 60 × 40 × 5 mm plate with one Ø20 mm hole as well) and every check passed, in the session and after reopening. A fillet request was refused by validation with no file written. The owner did not open the second plate in SOLIDWORKS; its volume (10,429.20 mm³) matches the expected value.
+
 The MVP leaves out other feature types, sketch relations and dimensions, editing a built part, reading existing parts, and overwriting files. Drawing tools stay out of Claude's default tool list while the freeze lasts.
 
 ## Phases at a glance
