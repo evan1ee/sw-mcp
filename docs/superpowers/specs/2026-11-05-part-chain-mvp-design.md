@@ -113,6 +113,7 @@ flowchart TD
 - An extrude's profile is one closed loop of lines or exactly one circle. A cut's profile is either of those, or several circles. Loops may not self-intersect, and circles may not overlap.
 - The first solid feature is exactly one `extrude`; every other solid feature is a `cut_extrude` that depends on it directly or through other features.
 - A cut's profile lies strictly inside the extrude's profile, on the same plane, so that the expected values below stay exact and the part stays one body.
+- Separate cuts remove separate material: their profiles may not overlap, and two cuts may not share a sketch. Otherwise the expected values would count the same material twice. A profile may not mix lines and circles. A bundle holds one part and no assembly until assemblies compile; anything else fails with `COMPILE_UNSUPPORTED_FEATURE`, so nothing is dropped silently.
 - `depth` and `diameter` are positive, and a blind cut's depth is below the extrude's depth.
 
 These rules are deliberately narrow. Each exists because the expected geometry can be computed exactly under it.

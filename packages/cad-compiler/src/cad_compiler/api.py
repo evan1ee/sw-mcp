@@ -130,6 +130,15 @@ class ParserStage:
     @staticmethod
     def run(input_data: CompileInput, ctx: CompileContext) -> StageResult[PartGraph]:
         part_refs = [m for m in input_data.manifest.modules if m.module == "part"]
+        has_assembly = any(m.module == "assembly" for m in input_data.manifest.modules)
+        if len(part_refs) > 1 or has_assembly:
+            diag = Diagnostic(
+                stage="parser",
+                code=ErrorCode.COMPILE_UNSUPPORTED_FEATURE,
+                pointer="/modules",
+                message="The compiler supports one part and no assembly in a bundle",
+            )
+            return StageResult(output=None, diagnostics=(diag,))
         if not part_refs:
             diag = Diagnostic(
                 stage="parser",

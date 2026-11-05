@@ -1,9 +1,9 @@
 """CAD part verification core: expected geometry computation and measurement comparison."""
 
 import math
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import NamedTuple, cast
+from typing import Literal, NamedTuple, cast
 
 from cad_ir.core.json_types import JsonValue
 from cad_ir.part_feature_graph.model import (
@@ -19,6 +19,12 @@ PARALLEL_DOT_TOLERANCE = 1e-4
 LINEAR_TOLERANCE_MM = 0.01
 RELATIVE_TOLERANCE_RATIO = 0.0001
 DIM_3D = 3
+MM_PER_M = 1000.0
+MM2_PER_M2 = 1e6
+MM3_PER_M3 = 1e9
+
+type CheckStatus = Literal["passed", "failed", "not_evaluated"]
+type CheckReason = Literal["missing_data", "malformed_data"]
 
 
 class Point3(NamedTuple):
@@ -126,8 +132,14 @@ class CheckResult:
     measured: JsonValue
     expected: JsonValue
     tolerance: float | None
-    passed: bool
+    status: CheckStatus
     method: str
+    reason: CheckReason | None = None
+
+    @property
+    def passed(self) -> bool:
+        """True only for ``passed``; ``not_evaluated`` never counts as passed (ADR-063)."""
+        return self.status == "passed"
 
 
 def _order_polygon_vertices(lines: list[Line]) -> tuple[list[tuple[float, float]], float]:
@@ -256,6 +268,23 @@ def _compute_base_profile(
     raise ValueError("Base sketch has no Line or Circle entities")
 
 
+def _cut_regions(sketch: SketchNode) -> list[tuple[float, float, float, float]]:
+    """Area, perimeter and centroid of each region a cut removes: one loop, or each circle."""
+    circles = [e for e in sketch.entities.values() if isinstance(e, Circle)]
+    if circles:
+        return [
+            (
+                math.pi * (c.diameter * 0.5) ** 2,
+                math.pi * c.diameter,
+                c.center[0],
+                c.center[1],
+            )
+            for c in circles
+        ]
+    area, perimeter, center_x, center_y, _, _ = _compute_base_profile(sketch)
+    return [(area, perimeter, center_x, center_y)]
+
+
 def _compute_base_bbox(
     base_plane: PlaneAxes,
     x_bounds: tuple[float, float],
@@ -334,27 +363,25 @@ def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
         cut_depth = base_depth if is_through else float(cut_node.end_condition.depth or 0.0)
         depth_center = cut_depth * 0.5
 
+        for area, perimeter, center_x, center_y in _cut_regions(cut_sketch_raw):
+            region_vol = area * cut_depth
+            region_com = cut_plane.to_model(center_x, center_y, depth_center)
+
+            total_volume -= region_vol
+            total_moment[0] -= region_vol * region_com[0]
+            total_moment[1] -= region_vol * region_com[1]
+            total_moment[2] -= region_vol * region_com[2]
+
+            # A through cut opens both end faces. A blind cut's floor replaces the area it removes.
+            total_area += perimeter * cut_depth - (2.0 * area if is_through else 0.0)
+
         for entity in cut_sketch_raw.entities.values():
             if isinstance(entity, Circle):
-                r = entity.diameter * 0.5
-                hole_vol = math.pi * r * r * cut_depth
-                hole_com = cut_plane.to_model(entity.center[0], entity.center[1], depth_center)
-
-                total_volume -= hole_vol
-                total_moment[0] -= hole_vol * hole_com[0]
-                total_moment[1] -= hole_vol * hole_com[1]
-                total_moment[2] -= hole_vol * hole_com[2]
-
-                if is_through:
-                    total_area += 2.0 * math.pi * r * cut_depth - 2.0 * math.pi * r * r
-                else:
-                    total_area += 2.0 * math.pi * r * cut_depth
-
                 cylinders.append(
                     ExpectedCylinder(
                         point=cut_plane.to_model(entity.center[0], entity.center[1], 0.0),
                         direction=cut_plane.normal,
-                        radius=r,
+                        radius=entity.diameter * 0.5,
                     )
                 )
 
@@ -446,50 +473,72 @@ def _match_cylinders(
     return matches_count == n
 
 
-def _check_rebuild(m_dict: Mapping[str, JsonValue]) -> CheckResult:
-    rebuild_raw = m_dict.get("rebuild")
-    rebuild_ok = False
-    rebuild_errors: list[str] = []
-    if isinstance(rebuild_raw, Mapping):
-        rebuild_dict = cast(Mapping[str, JsonValue], rebuild_raw)
-        ok_val = rebuild_dict.get("ok")
-        if isinstance(ok_val, bool):
-            rebuild_ok = ok_val
-        errs = rebuild_dict.get("errors")
-        if isinstance(errs, list):
-            rebuild_errors = [str(e) for e in errs]
+class _UnreadableError(Exception):
+    """A measured value is absent or malformed, so its check cannot be judged."""
 
-    passed = rebuild_ok and len(rebuild_errors) == 0
-    measured_json: JsonValue = {
-        "ok": rebuild_ok,
-        "errors": [cast(JsonValue, e) for e in rebuild_errors],
-    }
-    expected_json: JsonValue = {
-        "ok": True,
-        "errors": [],
-    }
-    return CheckResult(
-        requirement="rebuild",
-        measured=measured_json,
-        expected=expected_json,
-        tolerance=None,
-        passed=passed,
-        method="part.measure.rebuild",
-    )
+    def __init__(self, reason: CheckReason) -> None:
+        super().__init__(reason)
+        self.reason: CheckReason = reason
 
 
-def _check_bodies(m_dict: Mapping[str, JsonValue], expected: ExpectedGeometry) -> CheckResult:
-    count_raw = m_dict.get("solid_body_count", 0)
-    solid_body_count = int(count_raw) if isinstance(count_raw, int | float) else 0
-    passed = solid_body_count == expected.solid_body_count
-    return CheckResult(
-        requirement="bodies",
-        measured=solid_body_count,
-        expected=expected.solid_body_count,
-        tolerance=None,
-        passed=passed,
-        method="part.measure.solid_body_count",
-    )
+type _Measured = Mapping[str, JsonValue]
+type _Judgement = tuple[JsonValue, bool]
+type _MeasuredCylinder = tuple[tuple[float, float, float], tuple[float, float, float], float]
+
+
+def _field(m_dict: _Measured, key: str) -> JsonValue:
+    if key not in m_dict:
+        raise _UnreadableError("missing_data")
+    return m_dict[key]
+
+
+def _member(entry: _Measured, key: str) -> JsonValue:
+    """A key inside a field that is present; its absence makes that field malformed."""
+    if key not in entry:
+        raise _UnreadableError("malformed_data")
+    return entry[key]
+
+
+def _as_mapping(value: JsonValue) -> _Measured:
+    if not isinstance(value, Mapping):
+        raise _UnreadableError("malformed_data")
+    return cast(_Measured, value)
+
+
+def _as_list(value: JsonValue) -> list[JsonValue]:
+    if not isinstance(value, list):
+        raise _UnreadableError("malformed_data")
+    return value
+
+
+def _as_number(value: JsonValue) -> float:
+    if isinstance(value, bool) or not isinstance(value, int | float) or not math.isfinite(value):
+        raise _UnreadableError("malformed_data")
+    return float(value)
+
+
+def _as_vector(value: JsonValue) -> tuple[float, float, float]:
+    items = _as_list(value)
+    if len(items) != DIM_3D:
+        raise _UnreadableError("malformed_data")
+    return (_as_number(items[0]), _as_number(items[1]), _as_number(items[2]))
+
+
+def _judge_rebuild(m_dict: _Measured) -> _Judgement:
+    rebuild = _as_mapping(_field(m_dict, "rebuild"))
+    ok = _member(rebuild, "ok")
+    if not isinstance(ok, bool):
+        raise _UnreadableError("malformed_data")
+    errors = [str(e) for e in _as_list(_member(rebuild, "errors"))]
+    measured: JsonValue = {"ok": ok, "errors": [cast(JsonValue, e) for e in errors]}
+    return measured, ok and not errors
+
+
+def _judge_bodies(m_dict: _Measured, expected: ExpectedGeometry) -> _Judgement:
+    count = _field(m_dict, "solid_body_count")
+    if isinstance(count, bool) or not isinstance(count, int):
+        raise _UnreadableError("malformed_data")
+    return count, count == expected.solid_body_count
 
 
 def _is_acceptable_feature_type(exp_feat: ExpectedFeature, meas_type: str) -> bool:
@@ -504,194 +553,122 @@ def _is_acceptable_feature_type(exp_feat: ExpectedFeature, meas_type: str) -> bo
     return meas_type in acceptable
 
 
-def _check_features(
-    m_dict: Mapping[str, JsonValue],
-    expected: ExpectedGeometry,
-    feature_ids: Mapping[str, str],
-) -> CheckResult:
-    features_raw = m_dict.get("features")
-    measured_features: list[Mapping[str, JsonValue]] = []
-    if isinstance(features_raw, list):
-        for f in features_raw:
-            if isinstance(f, Mapping):
-                measured_features.append(cast(Mapping[str, JsonValue], f))
+def _read_feature(value: JsonValue) -> tuple[str, str, str]:
+    entry = _as_mapping(value)
+    feature_id, feature_type, status = (
+        entry.get("feature_id"),
+        entry.get("type"),
+        entry.get("status"),
+    )
+    if (
+        not isinstance(feature_id, str)
+        or not isinstance(feature_type, str)
+        or not isinstance(status, str)
+    ):
+        raise _UnreadableError("malformed_data")
+    return feature_id, feature_type, status
 
-    measured_by_id: dict[str, Mapping[str, JsonValue]] = {
-        str(f.get("feature_id")): f for f in measured_features if "feature_id" in f
-    }
-    features_passed = len(measured_features) == len(expected.features)
+
+def _judge_features(
+    m_dict: _Measured, expected: ExpectedGeometry, feature_ids: Mapping[str, str]
+) -> _Judgement:
+    measured = [_read_feature(f) for f in _as_list(_field(m_dict, "features"))]
+    by_id = {feature_id: (kind, status) for feature_id, kind, status in measured}
+    passed = len(measured) == len(expected.features)
 
     for exp_feat in expected.features:
-        mapped_id = feature_ids.get(exp_feat.node_id)
-        if not mapped_id or mapped_id not in measured_by_id:
-            features_passed = False
-            break
-        meas_feat = measured_by_id[mapped_id]
-        if meas_feat.get("status") != "ok":
-            features_passed = False
-            break
+        found = by_id.get(feature_ids.get(exp_feat.node_id, ""))
+        if found is None or found[1] != "ok" or not _is_acceptable_feature_type(exp_feat, found[0]):
+            passed = False
 
-        meas_type = str(meas_feat.get("type", ""))
-        if not _is_acceptable_feature_type(exp_feat, meas_type):
-            features_passed = False
-            break
+    bound = {feature_ids[ef.node_id] for ef in expected.features if ef.node_id in feature_ids}
+    if any(feature_id not in bound for feature_id in by_id):
+        passed = False
+    return len(measured), passed
 
-    expected_fids = {
-        feature_ids[ef.node_id] for ef in expected.features if ef.node_id in feature_ids
+
+def _within_linear(measured: Sequence[float], expected: Sequence[float]) -> bool:
+    return all(
+        abs(m - e) <= LINEAR_TOLERANCE_MM + 1e-9 for m, e in zip(measured, expected, strict=True)
+    )
+
+
+def _judge_bbox(m_dict: _Measured, expected: ExpectedGeometry) -> _Judgement:
+    bbox = _as_mapping(_field(m_dict, "bbox_m"))
+    meas_min = [x * MM_PER_M for x in _as_vector(_member(bbox, "min"))]
+    meas_max = [x * MM_PER_M for x in _as_vector(_member(bbox, "max"))]
+    passed = _within_linear(meas_min, expected.bbox_mm.min) and _within_linear(
+        meas_max, expected.bbox_mm.max
+    )
+    measured: JsonValue = {
+        "min": [cast(JsonValue, x) for x in meas_min],
+        "max": [cast(JsonValue, x) for x in meas_max],
     }
-    for f in measured_features:
-        fid = str(f.get("feature_id", ""))
-        if fid not in expected_fids:
-            features_passed = False
-            break
+    return measured, passed
 
-    return CheckResult(
-        requirement="features",
-        measured=len(measured_features),
-        expected=len(expected.features),
-        tolerance=None,
-        passed=features_passed,
-        method="part.measure.features",
+
+def _within_relative(measured: float, expected: float) -> bool:
+    return abs(measured - expected) <= RELATIVE_TOLERANCE_RATIO * expected + 1e-9
+
+
+def _judge_volume(m_dict: _Measured, expected: ExpectedGeometry) -> _Judgement:
+    measured = _as_number(_field(m_dict, "volume_m3")) * MM3_PER_M3
+    return measured, _within_relative(measured, expected.volume_mm3)
+
+
+def _judge_surface_area(m_dict: _Measured, expected: ExpectedGeometry) -> _Judgement:
+    measured = _as_number(_field(m_dict, "surface_area_m2")) * MM2_PER_M2
+    return measured, _within_relative(measured, expected.surface_area_mm2)
+
+
+def _judge_center_of_mass(m_dict: _Measured, expected: ExpectedGeometry) -> _Judgement:
+    measured = [x * MM_PER_M for x in _as_vector(_field(m_dict, "center_of_mass_m"))]
+    passed = _within_linear(measured, expected.center_of_mass_mm)
+    return [cast(JsonValue, x) for x in measured], passed
+
+
+def _read_cylinder(value: JsonValue) -> _MeasuredCylinder:
+    entry = _as_mapping(value)
+    point = _as_vector(_member(entry, "point"))
+    direction = _as_vector(_member(entry, "direction"))
+    radius = _as_number(_member(entry, "radius"))
+    return (
+        (point[0] * MM_PER_M, point[1] * MM_PER_M, point[2] * MM_PER_M),
+        direction,
+        radius * MM_PER_M,
     )
 
 
-def _check_bbox(m_dict: Mapping[str, JsonValue], expected: ExpectedGeometry) -> CheckResult:
-    bbox_m_raw = m_dict.get("bbox_m")
-    min_m: list[float] = [0.0, 0.0, 0.0]
-    max_m: list[float] = [0.0, 0.0, 0.0]
-    if isinstance(bbox_m_raw, Mapping):
-        bbox_dict = cast(Mapping[str, JsonValue], bbox_m_raw)
-        min_val = bbox_dict.get("min")
-        if isinstance(min_val, list):
-            min_m = [float(x) for x in min_val if isinstance(x, int | float)]
-        max_val = bbox_dict.get("max")
-        if isinstance(max_val, list):
-            max_m = [float(x) for x in max_val if isinstance(x, int | float)]
-
-    meas_min_mm = [x * 1000.0 for x in min_m]
-    meas_max_mm = [x * 1000.0 for x in max_m]
-    exp_min_mm = [expected.bbox_mm.min.x, expected.bbox_mm.min.y, expected.bbox_mm.min.z]
-    exp_max_mm = [expected.bbox_mm.max.x, expected.bbox_mm.max.y, expected.bbox_mm.max.z]
-
-    min_ok = all(
-        abs(meas_min_mm[i] - exp_min_mm[i]) <= LINEAR_TOLERANCE_MM + 1e-9 for i in range(3)
-    )
-    max_ok = all(
-        abs(meas_max_mm[i] - exp_max_mm[i]) <= LINEAR_TOLERANCE_MM + 1e-9 for i in range(3)
-    )
-    passed = min_ok and max_ok
-
-    measured_json: JsonValue = {
-        "min": [cast(JsonValue, x) for x in meas_min_mm],
-        "max": [cast(JsonValue, x) for x in meas_max_mm],
-    }
-    expected_json: JsonValue = {
-        "min": [cast(JsonValue, x) for x in exp_min_mm],
-        "max": [cast(JsonValue, x) for x in exp_max_mm],
-    }
-
-    return CheckResult(
-        requirement="bounding_box",
-        measured=measured_json,
-        expected=expected_json,
-        tolerance=LINEAR_TOLERANCE_MM,
-        passed=passed,
-        method="part.measure.bbox",
-    )
+def _judge_cylinders(m_dict: _Measured, expected: ExpectedGeometry) -> _Judgement:
+    measured = [_read_cylinder(c) for c in _as_list(_field(m_dict, "cylinders_m"))]
+    return len(measured), _match_cylinders(expected.cylinders, measured)
 
 
-def _check_volume(m_dict: Mapping[str, JsonValue], expected: ExpectedGeometry) -> CheckResult:
-    vol_raw = m_dict.get("volume_m3", 0.0)
-    vol_m3 = float(vol_raw) if isinstance(vol_raw, int | float) else 0.0
-    meas_vol_mm3 = vol_m3 * 1e9
-    exp_vol_mm3 = expected.volume_mm3
-    vol_diff = abs(meas_vol_mm3 - exp_vol_mm3)
-    passed = vol_diff <= (RELATIVE_TOLERANCE_RATIO * exp_vol_mm3 + 1e-9)
-
-    return CheckResult(
-        requirement="volume",
-        measured=meas_vol_mm3,
-        expected=exp_vol_mm3,
-        tolerance=RELATIVE_TOLERANCE_RATIO,
-        passed=passed,
-        method="part.measure.volume",
-    )
-
-
-def _check_surface_area(m_dict: Mapping[str, JsonValue], expected: ExpectedGeometry) -> CheckResult:
-    area_raw = m_dict.get("surface_area_m2", 0.0)
-    area_m2 = float(area_raw) if isinstance(area_raw, int | float) else 0.0
-    meas_area_mm2 = area_m2 * 1e6
-    exp_area_mm2 = expected.surface_area_mm2
-    area_diff = abs(meas_area_mm2 - exp_area_mm2)
-    passed = area_diff <= (RELATIVE_TOLERANCE_RATIO * exp_area_mm2 + 1e-9)
-
-    return CheckResult(
-        requirement="surface_area",
-        measured=meas_area_mm2,
-        expected=exp_area_mm2,
-        tolerance=RELATIVE_TOLERANCE_RATIO,
-        passed=passed,
-        method="part.measure.surface_area",
-    )
-
-
-def _check_center_of_mass(
-    m_dict: Mapping[str, JsonValue], expected: ExpectedGeometry
+def _result(
+    spec: tuple[str, str, float | None],
+    expected: JsonValue,
+    judge: Callable[[], _Judgement],
 ) -> CheckResult:
-    com_raw = m_dict.get("center_of_mass_m")
-    meas_com_mm: list[float] = [0.0, 0.0, 0.0]
-    if isinstance(com_raw, list):
-        meas_com_mm = [float(x) * 1000.0 for x in com_raw if isinstance(x, int | float)]
-    exp_com_mm = [
-        expected.center_of_mass_mm.x,
-        expected.center_of_mass_mm.y,
-        expected.center_of_mass_mm.z,
-    ]
-    passed = all(
-        abs(meas_com_mm[i] - exp_com_mm[i]) <= LINEAR_TOLERANCE_MM + 1e-9 for i in range(3)
-    )
-
+    requirement, method, tolerance = spec
+    try:
+        measured, passed = judge()
+    except _UnreadableError as unreadable:
+        return CheckResult(
+            requirement=requirement,
+            measured=None,
+            expected=expected,
+            tolerance=tolerance,
+            status="not_evaluated",
+            method=method,
+            reason=unreadable.reason,
+        )
     return CheckResult(
-        requirement="center_of_mass",
-        measured=[cast(JsonValue, x) for x in meas_com_mm],
-        expected=[cast(JsonValue, x) for x in exp_com_mm],
-        tolerance=LINEAR_TOLERANCE_MM,
-        passed=passed,
-        method="part.measure.center_of_mass",
-    )
-
-
-def _check_cylinders(m_dict: Mapping[str, JsonValue], expected: ExpectedGeometry) -> CheckResult:
-    cyl_raw = m_dict.get("cylinders_m")
-    meas_cyls: list[tuple[tuple[float, float, float], tuple[float, float, float], float]] = []
-    if isinstance(cyl_raw, list):
-        for c in cyl_raw:
-            if isinstance(c, Mapping):
-                c_map = cast(Mapping[str, JsonValue], c)
-                pt_val = c_map.get("point")
-                dir_val = c_map.get("direction")
-                rad_val = c_map.get("radius")
-                if (
-                    isinstance(pt_val, list)
-                    and isinstance(dir_val, list)
-                    and isinstance(rad_val, int | float)
-                ):
-                    pt_coords = tuple(
-                        float(x) * 1000.0 for x in pt_val if isinstance(x, int | float)
-                    )
-                    dir_coords = tuple(float(x) for x in dir_val if isinstance(x, int | float))
-                    if len(pt_coords) == DIM_3D and len(dir_coords) == DIM_3D:
-                        meas_cyls.append((pt_coords, dir_coords, float(rad_val) * 1000.0))
-
-    passed = _match_cylinders(expected.cylinders, meas_cyls)
-    return CheckResult(
-        requirement="cylinders",
-        measured=len(meas_cyls),
-        expected=len(expected.cylinders),
-        tolerance=LINEAR_TOLERANCE_MM,
-        passed=passed,
-        method="part.measure.cylinders",
+        requirement=requirement,
+        measured=measured,
+        expected=expected,
+        tolerance=tolerance,
+        status="passed" if passed else "failed",
+        method=method,
     )
 
 
@@ -702,20 +679,55 @@ def compare(
 ) -> tuple[CheckResult, ...]:
     """Compare expected geometry against raw SI measurements from SOLIDWORKS (spec 10.2).
 
-    Converts raw SI values (m, m2, m3) to mm, mm2, mm3 before checking.
-    Never short-circuits: runs every comparison and returns all results.
+    Converts raw SI values (m, m2, m3) to mm, mm2, mm3 before checking. Never short-circuits:
+    runs every comparison and returns all results. A value that is absent or malformed gives
+    ``not_evaluated`` with a reason, never ``passed`` (ADR-063, spec 8.9.6).
     """
-    m_dict: Mapping[str, JsonValue] = (
-        cast(Mapping[str, JsonValue], measured) if isinstance(measured, Mapping) else {}
-    )
-
+    m_dict: _Measured = cast(_Measured, measured) if isinstance(measured, Mapping) else {}
+    box = expected.bbox_mm
+    expected_box: JsonValue = {
+        "min": [cast(JsonValue, x) for x in box.min],
+        "max": [cast(JsonValue, x) for x in box.max],
+    }
     return (
-        _check_rebuild(m_dict),
-        _check_bodies(m_dict, expected),
-        _check_features(m_dict, expected, feature_ids),
-        _check_bbox(m_dict, expected),
-        _check_volume(m_dict, expected),
-        _check_surface_area(m_dict, expected),
-        _check_center_of_mass(m_dict, expected),
-        _check_cylinders(m_dict, expected),
+        _result(
+            ("rebuild", "part.measure.rebuild", None),
+            {"ok": True, "errors": []},
+            lambda: _judge_rebuild(m_dict),
+        ),
+        _result(
+            ("bodies", "part.measure.solid_body_count", None),
+            expected.solid_body_count,
+            lambda: _judge_bodies(m_dict, expected),
+        ),
+        _result(
+            ("features", "part.measure.features", None),
+            len(expected.features),
+            lambda: _judge_features(m_dict, expected, feature_ids),
+        ),
+        _result(
+            ("bounding_box", "part.measure.bbox", LINEAR_TOLERANCE_MM),
+            expected_box,
+            lambda: _judge_bbox(m_dict, expected),
+        ),
+        _result(
+            ("volume", "part.measure.volume", RELATIVE_TOLERANCE_RATIO),
+            expected.volume_mm3,
+            lambda: _judge_volume(m_dict, expected),
+        ),
+        _result(
+            ("surface_area", "part.measure.surface_area", RELATIVE_TOLERANCE_RATIO),
+            expected.surface_area_mm2,
+            lambda: _judge_surface_area(m_dict, expected),
+        ),
+        _result(
+            ("center_of_mass", "part.measure.center_of_mass", LINEAR_TOLERANCE_MM),
+            [cast(JsonValue, x) for x in expected.center_of_mass_mm],
+            lambda: _judge_center_of_mass(m_dict, expected),
+        ),
+        _result(
+            ("cylinders", "part.measure.cylinders", LINEAR_TOLERANCE_MM),
+            len(expected.cylinders),
+            lambda: _judge_cylinders(m_dict, expected),
+        ),
     )

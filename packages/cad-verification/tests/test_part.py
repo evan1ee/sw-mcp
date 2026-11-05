@@ -13,6 +13,8 @@ from cad_ir.part_feature_graph.model import (
     SolidNode,
 )
 from cad_verification.part import (
+    CheckResult,
+    ExpectedGeometry,
     compare,
     expected_geometry,
 )
@@ -432,3 +434,204 @@ def test_every_comparison_runs() -> None:
     assert len(failed) == THREE_FAILURES_COUNT
     failed_reqs = {r.requirement for r in failed}
     assert failed_reqs == {"volume", "bodies", "rebuild"}
+
+
+# --- absent or malformed data is not_evaluated, never passed or failed (ADR-063, 8.9.6) ---
+
+
+def _rectangle(x0: float, y0: float, x1: float, y1: float) -> dict[str, Line]:
+    return {
+        "a": Line(start=(x0, y0), end=(x1, y0)),
+        "b": Line(start=(x1, y0), end=(x1, y1)),
+        "c": Line(start=(x1, y1), end=(x0, y1)),
+        "d": Line(start=(x0, y1), end=(x0, y0)),
+    }
+
+
+def _plate_with_cut(cut_entities: dict[str, Any], end_condition: EndCondition) -> PartGraph:
+    return PartGraph(
+        id="plate_cut",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(
+                plane="plane:front", entities=_rectangle(-50.0, -30.0, 50.0, 30.0)
+            ),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+            "sketch_cut": SketchNode(plane="plane:front", entities=cut_entities),
+            "cut": SolidNode(
+                type="cut_extrude",
+                profile="sketch_cut",
+                end_condition=end_condition,
+                dependencies=("sketch_cut", "extrude_base"),
+            ),
+        },
+    )
+
+
+def _plain_plate_geometry() -> ExpectedGeometry:
+    """A plate with no holes, so no cylinders are expected."""
+    return expected_geometry(
+        PartGraph(
+            id="plain",
+            schema_version="0.1",
+            units="mm",
+            origin="built",
+            nodes={
+                "sketch_base": SketchNode(
+                    plane="plane:front", entities=_rectangle(-50.0, -30.0, 50.0, 30.0)
+                ),
+                "extrude_base": SolidNode(
+                    type="extrude",
+                    profile="sketch_base",
+                    end_condition=EndCondition(type="blind", depth=10.0),
+                    dependencies=("sketch_base",),
+                ),
+            },
+        )
+    )
+
+
+def _check(results: tuple[CheckResult, ...], requirement: str) -> CheckResult:
+    return next(r for r in results if r.requirement == requirement)
+
+
+def test_clean_measurement_is_status_passed() -> None:
+    results = compare(
+        expected_geometry(make_plate_graph()), make_clean_measurement(), make_feature_ids()
+    )
+    assert {r.status for r in results} == {"passed"}
+    assert all(r.reason is None for r in results)
+
+
+def test_real_mismatch_is_status_failed() -> None:
+    m = make_clean_measurement()
+    m["volume_m3"] *= 1.2
+    result = _check(compare(expected_geometry(make_plate_graph()), m, make_feature_ids()), "volume")
+    assert result.status == "failed"
+    assert result.reason is None
+
+
+def test_empty_measurement_passes_nothing() -> None:
+    """No data at all gives not_evaluated everywhere, including the no-cylinder case."""
+    results = compare(_plain_plate_geometry(), {}, {})
+    assert len(results) == EXPECTED_CHECKS_COUNT
+    assert {r.status for r in results} == {"not_evaluated"}
+    assert all(r.reason for r in results)
+    assert not any(r.passed for r in results)
+
+
+def test_non_object_measurement_passes_nothing() -> None:
+    results = compare(_plain_plate_geometry(), None, {})
+    assert {r.status for r in results} == {"not_evaluated"}
+
+
+@pytest.mark.parametrize(
+    ("key", "requirement"),
+    [
+        ("rebuild", "rebuild"),
+        ("solid_body_count", "bodies"),
+        ("features", "features"),
+        ("bbox_m", "bounding_box"),
+        ("volume_m3", "volume"),
+        ("surface_area_m2", "surface_area"),
+        ("center_of_mass_m", "center_of_mass"),
+        ("cylinders_m", "cylinders"),
+    ],
+)
+def test_missing_field_is_not_evaluated_alone(key: str, requirement: str) -> None:
+    m = make_clean_measurement()
+    del m[key]
+    results = compare(expected_geometry(make_plate_graph()), m, make_feature_ids())
+    assert _check(results, requirement).status == "not_evaluated"
+    assert all(r.status == "passed" for r in results if r.requirement != requirement)
+
+
+@pytest.mark.parametrize(
+    ("key", "bad", "requirement"),
+    [
+        ("rebuild", {"ok": True}, "rebuild"),
+        ("rebuild", {"ok": "yes", "errors": []}, "rebuild"),
+        ("solid_body_count", True, "bodies"),
+        ("solid_body_count", 1.5, "bodies"),
+        ("features", "none", "features"),
+        ("features", [{"feature_id": "f73"}], "features"),
+        ("bbox_m", {"min": [-0.05], "max": [0.05]}, "bounding_box"),
+        ("bbox_m", {"min": [-0.05, -0.03, 0.0]}, "bounding_box"),
+        ("volume_m3", True, "volume"),
+        ("volume_m3", float("nan"), "volume"),
+        ("surface_area_m2", float("inf"), "surface_area"),
+        ("center_of_mass_m", [0.0, 0.0], "center_of_mass"),
+        ("cylinders_m", "none", "cylinders"),
+        ("cylinders_m", [{"point": [0.0, 0.0, 0.0]}], "cylinders"),
+    ],
+)
+def test_malformed_field_is_not_evaluated(key: str, bad: Any, requirement: str) -> None:
+    m = make_clean_measurement()
+    m[key] = bad
+    result = _check(
+        compare(expected_geometry(make_plate_graph()), m, make_feature_ids()), requirement
+    )
+    assert result.status == "not_evaluated"
+    assert result.reason == "malformed_data"
+
+
+def test_one_malformed_cylinder_among_good_ones_is_not_evaluated() -> None:
+    m = make_clean_measurement()
+    del m["cylinders_m"][0]["radius"]
+    result = _check(
+        compare(expected_geometry(make_plate_graph()), m, make_feature_ids()), "cylinders"
+    )
+    assert result.status == "not_evaluated"
+
+
+def test_present_empty_cylinders_match_a_part_with_none() -> None:
+    m = make_clean_measurement()
+    m["cylinders_m"] = []
+    result = _check(compare(_plain_plate_geometry(), m, {}), "cylinders")
+    assert result.status == "passed"
+
+
+# --- line-loop cuts, which the design allows (design section 5) ---
+
+
+def test_rectangular_through_cut_expected() -> None:
+    graph = _plate_with_cut(
+        _rectangle(10.0, 0.0, 30.0, 20.0), EndCondition(type="through_all_both")
+    )
+    geom = expected_geometry(graph)
+    assert geom.volume_mm3 == pytest.approx(56000.0)
+    # Top and bottom each lose 400 mm2; the walls add 80 mm x 10 mm.
+    assert geom.surface_area_mm2 == pytest.approx(15200.0)
+    assert geom.center_of_mass_mm.x == pytest.approx(-80000.0 / 56000.0)
+    assert geom.center_of_mass_mm.y == pytest.approx(-40000.0 / 56000.0)
+    assert geom.center_of_mass_mm.z == pytest.approx(5.0)
+    assert geom.cylinders == ()
+
+
+def test_rectangular_blind_cut_expected() -> None:
+    graph = _plate_with_cut(
+        _rectangle(10.0, 0.0, 30.0, 20.0), EndCondition(type="blind", depth=4.0)
+    )
+    geom = expected_geometry(graph)
+    assert geom.volume_mm3 == pytest.approx(58400.0)
+    # The floor replaces the removed top, so only the walls add area.
+    assert geom.surface_area_mm2 == pytest.approx(15520.0)
+    assert geom.center_of_mass_mm.x == pytest.approx(-32000.0 / 58400.0)
+    assert geom.center_of_mass_mm.z == pytest.approx((300000.0 - 3200.0) / 58400.0)
+
+
+def test_uncut_measurement_fails_a_rectangular_cut() -> None:
+    """A cut feature that removed nothing no longer passes the geometry checks."""
+    graph = _plate_with_cut(
+        _rectangle(10.0, 0.0, 30.0, 20.0), EndCondition(type="through_all_both")
+    )
+    m = make_clean_measurement()
+    m["volume_m3"] = 6.0e-05
+    assert _check(compare(expected_geometry(graph), m, {}), "volume").status == "failed"

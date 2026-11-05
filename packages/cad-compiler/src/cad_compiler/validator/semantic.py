@@ -331,22 +331,85 @@ def _chain_lines_into_loop(lines: list[Line]) -> list[tuple[float, float]]:
     return loop
 
 
-def _check_cut_circles_inside(
+def _sketch_lines(sketch: SketchNode) -> list[Line]:
+    return [e for e in sketch.entities.values() if isinstance(e, Line)]
+
+
+def _sketch_circles(sketch: SketchNode) -> list[tuple[str, Circle]]:
+    return [(eid, e) for eid, e in sketch.entities.items() if isinstance(e, Circle)]
+
+
+def _clear_of_edges(point: tuple[float, float], lines: list[Line], margin: float) -> bool:
+    return all(_dist_point_to_segment(point, ln.start, ln.end) > margin for ln in lines)
+
+
+def _strictly_inside_loop(point: tuple[float, float], lines: list[Line]) -> bool:
+    loop = _chain_lines_into_loop(lines)
+    return _point_in_polygon(point[0], point[1], loop) and _clear_of_edges(point, lines, _QUANTUM)
+
+
+def _loop_sample_points(lines: list[Line]) -> list[tuple[float, float]]:
+    """Vertices and edge midpoints of a loop, plus one point inside it.
+
+    The inside point comes from a horizontal line between two vertex heights: the first two
+    crossings of a simple loop bound a stretch of its interior.
+    """
+    points = [ln.start for ln in lines]
+    points += [((ln.start[0] + ln.end[0]) / 2.0, (ln.start[1] + ln.end[1]) / 2.0) for ln in lines]
+    heights = sorted({p[1] for ln in lines for p in (ln.start, ln.end)})
+    if len(heights) > 1:
+        y = (heights[0] + heights[1]) / 2.0
+        xs = sorted(
+            ln.start[0] + (y - ln.start[1]) * (ln.end[0] - ln.start[0]) / (ln.end[1] - ln.start[1])
+            for ln in lines
+            if (ln.start[1] <= y < ln.end[1]) or (ln.end[1] <= y < ln.start[1])
+        )
+        if len(xs) > 1:
+            points.append(((xs[0] + xs[1]) / 2.0, y))
+    return points
+
+
+def _edges_cross(first: list[Line], second: list[Line]) -> bool:
+    return any(_segments_intersect(a.start, a.end, b.start, b.end) for a in first for b in second)
+
+
+def _circle_inside_base(circle: Circle, base: SketchNode) -> bool:
+    radius = circle.diameter / 2.0
+    lines = _sketch_lines(base)
+    if lines:
+        return _strictly_inside_loop(circle.center, lines) and _clear_of_edges(
+            circle.center, lines, radius + _QUANTUM
+        )
+    return all(
+        math.hypot(circle.center[0] - outer.center[0], circle.center[1] - outer.center[1]) + radius
+        < outer.diameter / 2.0 - _QUANTUM
+        for _, outer in _sketch_circles(base)
+    )
+
+
+def _loop_inside_base(loop: list[Line], base: SketchNode) -> bool:
+    lines = _sketch_lines(base)
+    samples = _loop_sample_points(loop)
+    if lines:
+        return not _edges_cross(loop, lines) and all(
+            _strictly_inside_loop(p, lines) for p in samples
+        )
+    return all(
+        math.hypot(p[0] - outer.center[0], p[1] - outer.center[1]) < outer.diameter / 2.0 - _QUANTUM
+        for p in samples
+        for _, outer in _sketch_circles(base)
+    )
+
+
+def _check_cut_inside_base(
     cut_prof_id: str,
-    cut_circles: list[tuple[str, Circle]],
-    extrude_sketch: SketchNode,
+    cut_sketch: SketchNode,
+    base: SketchNode,
     issues: list[ValidationIssue],
 ) -> None:
-    ext_lines = [e for e in extrude_sketch.entities.values() if isinstance(e, Line)]
-    if not ext_lines:
-        return
-    poly_pts = _chain_lines_into_loop(ext_lines)
-    for eid, circ in cut_circles:
-        r = circ.diameter / 2.0
-        cx, cy = circ.center
-        inside = _point_in_polygon(cx, cy, poly_pts)
-        min_dist = min(_dist_point_to_segment((cx, cy), line.start, line.end) for line in ext_lines)
-        if not inside or min_dist <= r + _QUANTUM:
+    """A cut lies strictly inside the base profile, so the part stays one exact body."""
+    for eid, circle in _sketch_circles(cut_sketch):
+        if not _circle_inside_base(circle, base):
             issues.append(
                 ValidationIssue(
                     code=ErrorCode.IR_RULE_VIOLATED,
@@ -354,6 +417,70 @@ def _check_cut_circles_inside(
                     message=f"Hole '{eid}' is tangent to or outside the extrude profile",
                 )
             )
+    loop = _sketch_lines(cut_sketch)
+    if loop and not _loop_inside_base(loop, base):
+        issues.append(
+            ValidationIssue(
+                code=ErrorCode.IR_RULE_VIOLATED,
+                pointer=f"/nodes/{cut_prof_id}/entities",
+                message="Cut loop is not strictly inside the extrude profile",
+            )
+        )
+
+
+def _circles_overlap(first: Circle, second: Circle) -> bool:
+    distance = math.hypot(first.center[0] - second.center[0], first.center[1] - second.center[1])
+    return distance < first.diameter / 2.0 + second.diameter / 2.0 - _QUANTUM
+
+
+def _circle_overlaps_loop(circle: Circle, loop: list[Line]) -> bool:
+    radius = circle.diameter / 2.0
+    return _strictly_inside_loop(circle.center, loop) or not _clear_of_edges(
+        circle.center, loop, radius - _QUANTUM
+    )
+
+
+def _loops_overlap(first: list[Line], second: list[Line]) -> bool:
+    if _edges_cross(first, second):
+        return True
+    return any(_strictly_inside_loop(p, second) for p in _loop_sample_points(first)) or any(
+        _strictly_inside_loop(p, first) for p in _loop_sample_points(second)
+    )
+
+
+def _profiles_overlap(first: SketchNode, second: SketchNode) -> bool:
+    first_loop, second_loop = _sketch_lines(first), _sketch_lines(second)
+    first_circles = [c for _, c in _sketch_circles(first)]
+    second_circles = [c for _, c in _sketch_circles(second)]
+    return (
+        bool(first_loop and second_loop and _loops_overlap(first_loop, second_loop))
+        or any(_circles_overlap(a, b) for a in first_circles for b in second_circles)
+        or any(_circle_overlaps_loop(c, second_loop) for c in first_circles if second_loop)
+        or any(_circle_overlaps_loop(c, first_loop) for c in second_circles if first_loop)
+    )
+
+
+def _check_cuts_do_not_overlap(
+    cuts: list[tuple[str, SolidNode]],
+    graph: PartGraph,
+    issues: list[ValidationIssue],
+) -> None:
+    """Separate cuts remove separate material, or expected geometry would count it twice."""
+    profiled = [
+        (cut_id, cut.profile, profile)
+        for cut_id, cut in cuts
+        if isinstance(profile := graph.nodes.get(cut.profile), SketchNode)
+    ]
+    for index, (first_id, first_profile_id, first) in enumerate(profiled):
+        for second_id, second_profile_id, second in profiled[index + 1 :]:
+            if first_profile_id == second_profile_id or _profiles_overlap(first, second):
+                issues.append(
+                    ValidationIssue(
+                        code=ErrorCode.IR_RULE_VIOLATED,
+                        pointer=f"/nodes/{second_id}/profile",
+                        message=f"Cut '{second_id}' overlaps cut '{first_id}'",
+                    )
+                )
 
 
 def _check_cut_profiles(graph: PartGraph, issues: list[ValidationIssue]) -> None:
@@ -406,8 +533,18 @@ def _check_cut_profiles(graph: PartGraph, issues: list[ValidationIssue]) -> None
                         )
                     )
 
-        if extrude_sketch is not None:
-            _check_cut_circles_inside(cut_node.profile, cut_circles, extrude_sketch, issues)
+        if cut_circles and _sketch_lines(cut_prof):
+            issues.append(
+                ValidationIssue(
+                    code=ErrorCode.IR_RULE_VIOLATED,
+                    pointer=f"/nodes/{cut_node.profile}/entities",
+                    message="Cut profile cannot mix lines and circles",
+                )
+            )
+        elif extrude_sketch is not None:
+            _check_cut_inside_base(cut_node.profile, cut_prof, extrude_sketch, issues)
+
+    _check_cuts_do_not_overlap(cuts, graph, issues)
 
 
 def validate_graph(graph: PartGraph) -> tuple[ValidationIssue, ...]:

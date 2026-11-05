@@ -235,6 +235,34 @@ def test_missing_operation() -> None:
     assert any(d.code == ErrorCode.BACKEND_CAPABILITY_MISSING for d in result.diagnostics)
 
 
+def _multi_module_input(refs: tuple[str, ...]) -> CompileInput:
+    raw: dict[str, Any] = json.loads(PLATE_FIXTURE.read_text(encoding="utf-8"))
+    return CompileInput(
+        manifest=BundleManifest(
+            bundle_schema_version="1.0",
+            modules=tuple(parse_document_ref(ref) for ref in refs),
+        ),
+        documents={ref: raw for ref in refs},
+    )
+
+
+@pytest.mark.parametrize(
+    "refs",
+    [
+        pytest.param(("part:plate_4h@1", "part:other@1", "assembly:a@1"), id="two_parts"),
+        pytest.param(("part:plate_4h@1", "assembly:a@1"), id="part_and_assembly"),
+    ],
+)
+def test_bundle_beyond_one_part_is_refused(refs: tuple[str, ...]) -> None:
+    """Nothing in a bundle is dropped silently (5.3.6): assemblies do not compile yet."""
+    _, ctx = _plate_input(revision=1)
+    result = compile_bundle(_multi_module_input(refs), ctx)
+    assert result.plan is None
+    assert result.plan_hash is None
+    assert [d.code for d in result.diagnostics] == [ErrorCode.COMPILE_UNSUPPORTED_FEATURE]
+    assert result.diagnostics[0].pointer == "/modules"
+
+
 def test_compile_preserves_warning_diagnostics(monkeypatch: pytest.MonkeyPatch) -> None:
     source, ctx = _plate_input(revision=1)
     orig_validate = SemanticValidatorStage.run

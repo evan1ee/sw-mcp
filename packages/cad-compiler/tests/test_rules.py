@@ -479,3 +479,167 @@ def test_unordered_sketch_lines_rejects_hole_outside() -> None:
     )
     issues = validate_graph(g)
     assert any(i.code == ErrorCode.IR_RULE_VIOLATED and "outside" in i.message for i in issues)
+
+
+# --- cut profiles stay exactly computable (design section 5) ---
+
+
+def _rect(x0: float, y0: float, x1: float, y1: float) -> dict[str, Line | Circle]:
+    return {
+        "a": Line(start=(x0, y0), end=(x1, y0)),
+        "b": Line(start=(x1, y0), end=(x1, y1)),
+        "c": Line(start=(x1, y1), end=(x0, y1)),
+        "d": Line(start=(x0, y1), end=(x0, y0)),
+    }
+
+
+PLATE_PROFILE: Final[dict[str, Line | Circle]] = _rect(-50.0, -30.0, 50.0, 30.0)
+DISC_PROFILE: Final[dict[str, Line | Circle]] = {"o": Circle(center=(0.0, 0.0), diameter=40.0)}
+
+
+def _with_cuts(
+    base_profile: dict[str, Line | Circle], *cut_profiles: dict[str, Line | Circle]
+) -> PartGraph:
+    """A base extrude plus one through cut per profile."""
+    nodes: dict[str, SketchNode | SolidNode] = {
+        "sketch_base": SketchNode(plane="plane:front", entities=base_profile),
+        "extrude_base": SolidNode(
+            type="extrude",
+            profile="sketch_base",
+            end_condition=EndCondition(type="blind", depth=10.0),
+            dependencies=("sketch_base",),
+        ),
+    }
+    for index, entities in enumerate(cut_profiles):
+        nodes[f"sketch_cut{index}"] = SketchNode(plane="plane:front", entities=entities)
+        nodes[f"cut{index}"] = SolidNode(
+            type="cut_extrude",
+            profile=f"sketch_cut{index}",
+            end_condition=EndCondition(type="through_all_both"),
+            dependencies=(f"sketch_cut{index}", "extrude_base"),
+        )
+    return PartGraph(id="cuts", schema_version="0.1", units="mm", origin="built", nodes=nodes)
+
+
+def _circle(x: float, y: float, diameter: float) -> dict[str, Line | Circle]:
+    return {"h": Circle(center=(x, y), diameter=diameter)}
+
+
+@pytest.mark.parametrize(
+    "graph",
+    [
+        pytest.param(_with_cuts(PLATE_PROFILE, _rect(10.0, 0.0, 30.0, 20.0)), id="loop_in_loop"),
+        pytest.param(_with_cuts(DISC_PROFILE, _circle(5.0, 0.0, 10.0)), id="circle_in_circle"),
+        pytest.param(_with_cuts(DISC_PROFILE, _rect(-5.0, -5.0, 5.0, 5.0)), id="loop_in_circle"),
+        pytest.param(
+            _with_cuts(PLATE_PROFILE, _circle(-20.0, 0.0, 10.0), _circle(20.0, 0.0, 10.0)),
+            id="separate_circles",
+        ),
+        pytest.param(
+            _with_cuts(
+                PLATE_PROFILE, _rect(-40.0, -10.0, -20.0, 10.0), _rect(20.0, -10.0, 40.0, 10.0)
+            ),
+            id="separate_loops",
+        ),
+        pytest.param(
+            _with_cuts(PLATE_PROFILE, _rect(-40.0, -10.0, -20.0, 10.0), _circle(20.0, 0.0, 10.0)),
+            id="separate_loop_and_circle",
+        ),
+    ],
+)
+def test_exactly_computable_cuts_accepted(graph: PartGraph) -> None:
+    assert validate_graph(graph) == ()
+
+
+@pytest.mark.parametrize(
+    "graph",
+    [
+        pytest.param(_with_cuts(DISC_PROFILE, _circle(100.0, 0.0, 4.0)), id="circle_outside_disc"),
+        pytest.param(_with_cuts(DISC_PROFILE, _circle(15.0, 0.0, 12.0)), id="circle_crosses_disc"),
+        pytest.param(_with_cuts(DISC_PROFILE, _circle(0.0, 0.0, 40.0)), id="circle_equals_disc"),
+        pytest.param(_with_cuts(DISC_PROFILE, _rect(0.0, 0.0, 30.0, 5.0)), id="loop_crosses_disc"),
+        pytest.param(_with_cuts(PLATE_PROFILE, _rect(40.0, 0.0, 60.0, 20.0)), id="loop_crosses"),
+        pytest.param(_with_cuts(PLATE_PROFILE, _rect(60.0, 0.0, 80.0, 20.0)), id="loop_outside"),
+        pytest.param(_with_cuts(PLATE_PROFILE, _rect(30.0, 0.0, 50.0, 20.0)), id="loop_touches"),
+        pytest.param(_with_cuts(PLATE_PROFILE, PLATE_PROFILE), id="loop_equals_base"),
+        pytest.param(_with_cuts(PLATE_PROFILE, _rect(-60.0, -40.0, 60.0, 40.0)), id="loop_around"),
+    ],
+)
+def test_cut_not_strictly_inside_base_rejected(graph: PartGraph) -> None:
+    assert any(i.code == ErrorCode.IR_RULE_VIOLATED for i in validate_graph(graph))
+
+
+def test_cut_mixing_lines_and_circles_rejected() -> None:
+    mixed: dict[str, Line | Circle] = {**_rect(10.0, 0.0, 30.0, 20.0), **_circle(-20.0, 0.0, 10.0)}
+    issues = validate_graph(_with_cuts(PLATE_PROFILE, mixed))
+    assert any(i.code == ErrorCode.IR_RULE_VIOLATED and "mix" in i.message for i in issues)
+
+
+@pytest.mark.parametrize(
+    "graph",
+    [
+        pytest.param(
+            _with_cuts(PLATE_PROFILE, _circle(0.0, 0.0, 10.0), _circle(0.0, 0.0, 10.0)),
+            id="same_hole_twice",
+        ),
+        pytest.param(
+            _with_cuts(PLATE_PROFILE, _circle(0.0, 0.0, 10.0), _circle(5.0, 0.0, 10.0)),
+            id="circles_overlap",
+        ),
+        pytest.param(
+            _with_cuts(PLATE_PROFILE, _rect(-10.0, -10.0, 10.0, 10.0), _circle(0.0, 0.0, 4.0)),
+            id="circle_inside_loop",
+        ),
+        pytest.param(
+            _with_cuts(PLATE_PROFILE, _rect(-2.0, -2.0, 2.0, 2.0), _circle(0.0, 0.0, 20.0)),
+            id="loop_inside_circle",
+        ),
+        pytest.param(
+            _with_cuts(PLATE_PROFILE, _rect(-10.0, -10.0, 10.0, 10.0), _circle(10.0, 0.0, 6.0)),
+            id="circle_crosses_loop",
+        ),
+        pytest.param(
+            _with_cuts(
+                PLATE_PROFILE, _rect(-10.0, -10.0, 10.0, 10.0), _rect(-10.0, -10.0, 10.0, 10.0)
+            ),
+            id="identical_loops",
+        ),
+        pytest.param(
+            _with_cuts(
+                PLATE_PROFILE, _rect(-20.0, -10.0, 0.0, 10.0), _rect(-10.0, -10.0, 10.0, 10.0)
+            ),
+            id="loops_share_an_edge_line",
+        ),
+        pytest.param(
+            _with_cuts(PLATE_PROFILE, _rect(-20.0, -20.0, 20.0, 20.0), _rect(-5.0, -5.0, 5.0, 5.0)),
+            id="loop_inside_loop",
+        ),
+        pytest.param(
+            _with_cuts(PLATE_PROFILE, _rect(-10.0, -5.0, 10.0, 5.0), _rect(-5.0, -10.0, 5.0, 10.0)),
+            id="loops_cross",
+        ),
+    ],
+)
+def test_overlapping_cut_features_rejected(graph: PartGraph) -> None:
+    issues = validate_graph(graph)
+    assert any(i.code == ErrorCode.IR_RULE_VIOLATED and "overlap" in i.message for i in issues)
+
+
+def test_two_cuts_sharing_one_sketch_rejected() -> None:
+    base = _with_cuts(PLATE_PROFILE, _circle(0.0, 0.0, 10.0))
+    nodes = dict(base.nodes)
+    nodes["cut_again"] = SolidNode(
+        type="cut_extrude",
+        profile="sketch_cut0",
+        end_condition=EndCondition(type="through_all_both"),
+        dependencies=("sketch_cut0", "extrude_base"),
+    )
+    graph = PartGraph(
+        id=base.id,
+        schema_version=base.schema_version,
+        units=base.units,
+        origin=base.origin,
+        nodes=nodes,
+    )
+    issues = validate_graph(graph)
+    assert any(i.code == ErrorCode.IR_RULE_VIOLATED and "overlap" in i.message for i in issues)
