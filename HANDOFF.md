@@ -4,7 +4,7 @@ Last updated: 2026-11-05. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Current State
 
-- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. The owner approved the MVP [design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md). Progress on `feat/part-chain-mvp`, as of 2026-11-05: Tasks 0 and 1 done ([spike](docs/superpowers/review/2026-11-05-part-chain-spike.md)); Task 2 committed with review fixes (`a71b510`); Tasks 3 (`d8bc5f9`), 6 (`6bc1feb`), 4 (`dfbdd00`), and 5 (`af4ad47`) committed and reviewed clean; Task 7a committed (`995aee6`); Task 7c committed (`a1abcac`). Next is Task 7b (Events and instance IDs), followed by Task 8 (Part adapters).
+- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. The owner approved the MVP [design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md). Progress on `feat/part-chain-mvp`, as of 2026-11-05: Tasks 0 and 1 done ([spike](docs/superpowers/review/2026-11-05-part-chain-spike.md)); Task 2 committed with review fixes (`a71b510`); Tasks 3 (`d8bc5f9`), 6 (`6bc1feb`), 4 (`dfbdd00`), and 5 (`af4ad47`) committed and reviewed clean; Task 7a committed (`995aee6`); Task 7c committed (`a1abcac`); Task 7b committed (`ac05aeb`). Next is Task 8 (Part adapters).
 - **Frozen drawing state:** Annotation and dimension placement increment implemented and exercised by a live test script (Spec §11.4, §11.5, §11.10, §11.10.1, §6.5.2). This work was called "Phase 1c" here, but roadmap §18 defines Phase 1c as IR-built parts; by §18 it is partial Phase 1b, and Phase 1a acceptance is not yet met. The live test passes against local SOLIDWORKS 2025 SP0.1 with 0 violations, **but that is not evidence of drawing correctness for D1, D2, D3 or D7**: the add-in reads no line or text geometry and reports a fixed border and title block ([architecture review](docs/superpowers/review/2026-11-05-architecture-review.md) F1 to F3).
 - **Architecture review:** completed 2026-11-05: [review](docs/superpowers/review/2026-11-05-architecture-review.md), [roadmap](docs/superpowers/review/2026-11-05-architecture-roadmap.md). The design and foundations are sound; the SOLIDWORKS adapters are prototype quality.
 - **SOLIDWORKS adapter design (Accepted by the owner, 2026-11-05; committed as `360005f`):** [8.8 architecture](docs/architecture/solidworks-adapter.md), [8.9 interface specification](docs/specifications/solidworks-adapter.md), ADR-058 to ADR-063, [roadmap](docs/plans/solidworks-adapter-roadmap.md).
@@ -19,7 +19,7 @@ Last updated: 2026-11-05. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
   - `uv run pyright` passes (0 errors, 0 warnings across all packages, apps, tests).
   - `uv run lint-imports` passes (5 contracts kept, 0 broken).
   - `uv run pytest -m "not live"` passes (3,140 passed, 11 deselected in 46.7s).
-  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (314 passed, 0 failed, 0 skipped in 1s).
+  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (319 passed, 0 failed, 0 skipped in 1s).
   - `dotnet build apps/execution-server/ExecutionServer.sln` passes cleanly (0 warnings, 0 errors in 3.2s).
   - `uv run pytest tests/live/ -m live -v` baseline: 5 passed, 1 skipped.
 
@@ -90,9 +90,10 @@ Current order:
 - Tasks 0, 1, 2, 3, 6, 4, 5: complete and reviewed clean.
 - Task 7a: complete (`995aee6`).
 - Task 7c: complete (`a1abcac`).
-- Next: **Task 7b: Events and instance IDs** (`DocumentEventMonitor.cs`, subscribe `RegenNotify`, `RegenPostNotify`, `FileSavePostNotify`, `DestroyNotify2`, handle instance IDs, rule 13 user-action detection).
-- Following: **Task 8: Part adapters** (`PartCreationAdapter`, `SketchAdapter`, `FeatureAdapter`, `PartMeasureAdapter`, `PartUnits`, `ComScope`, `DocumentLocator`).
-- Tasks 9a & 9b: Store, journal, recovery rules, plan job.
+- Task 7b: complete (`ac05aeb`).
+- Next: **Task 8: Part adapters** (`PartCreationAdapter`, `SketchAdapter`, `FeatureAdapter`, `PartMeasureAdapter`, `PartUnits`, `ComScope`, `DocumentLocator`).
+- Following: **Tasks 9a & 9b: Store, journal, recovery rules, plan job** (`cad-application/store`, `cad-application/jobs/plan.py`).
+- Tasks 10 & 11: MCP tools and SDK runtime.
 - Tasks 10 & 11: MCP tools and SDK runtime.
 - Task 12: Live acceptance test.
 - Task 13: Sign-off run from Claude.
