@@ -1,6 +1,6 @@
 # 3. High-Level Architecture
 
-> Specification v1.32, section 3. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.33, section 3. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The layers below follow the core design principles ([1.3](../specifications/product-spec.md#13-core-design-principles)). Chiefly: the IR is the core of the system (12), the core is CAD-neutral and only the backend layer knows SOLIDWORKS (1), and execution is deterministic (3), verified (6) and recoverable (13).
 

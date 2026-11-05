@@ -1,6 +1,6 @@
 # 8.9 SOLIDWORKS Adapter Interface Specification
 
-> Specification v1.32, section 8.9. Index and section map: [README.md](README.md).
+> Specification v1.33, section 8.9. Index and section map: [README.md](README.md).
 
 **Status: Accepted by the owner, 2026-11-05. Not built yet.** Architecture: [8.8](../architecture/solidworks-adapter.md). This section extends 6.5, 6.6 and 8.7 and repeats none of their rules. Until the roadmap delivers each part, the schemas and code stay as they are, and the [ADRs](../adr/README.md) say where they must change. JSON here is illustrative. **`schemas/` is the normative form once written (ADR-035).**
 

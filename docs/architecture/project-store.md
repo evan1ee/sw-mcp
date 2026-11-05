@@ -1,6 +1,6 @@
 # 13.2 Project Store and Job Journal
 
-> Specification v1.32, section 13.2. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.33, section 13.2. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The layout, write rules and retention of the project store (13.1, ADR-033), and the job journal that lets the core service (ADR-041) account for every job after a crash (ADR-032). Where a project and its store are is 12.5.
 

@@ -150,7 +150,8 @@ def test_plan_validates_against_schema() -> None:
     assert issues == []
 
 
-def test_revision_does_not_change_body() -> None:
+def test_revision_changes_plan_hash_but_not_operations() -> None:
+    """A plan records the revision it was built from, so the hash differs (spec 6.7.4)."""
     source1, ctx1 = _plate_input(revision=1)
     source2, ctx2 = _plate_input(revision=2)
     res1 = compile_bundle(source1, ctx1)
@@ -161,6 +162,7 @@ def test_revision_does_not_change_body() -> None:
     plan2 = cast(dict[str, Any], res2.plan)
     assert plan1["operations"] == plan2["operations"]
     assert plan1["bundle"] != plan2["bundle"]
+    assert res1.plan_hash != res2.plan_hash
 
 
 def test_determinism() -> None:

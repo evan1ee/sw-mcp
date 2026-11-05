@@ -124,7 +124,7 @@ These rules are deliberately narrow. Each exists because the expected geometry c
 
 `packages/cad-compiler` implements each 6.7 stage as a pure `run(input, context) → {output, diagnostics, needs}`.
 
-**Input.** As 6.7.2 says, the compiler takes the stored documents of a pinned bundle: a manifest holding `part:<id>@<revision>`, and the documents by reference. The parser produces `PartGraph`, and later stages use only that. `revision` is left out of the content that feeds the plan and recorded as the pinned reference, so a new revision of identical content cannot change the plan's body by accident. The job loads the stored revision; it never carries a second copy of the graph.
+**Input.** As 6.7.2 says, the compiler takes the stored documents of a pinned bundle: a manifest holding `part:<id>@<revision>`, and the documents by reference. The parser produces `PartGraph`, and later stages use only that. `revision` does not affect the plan's `operations`. It is recorded as the pinned reference in the plan's `bundle`, so it is part of the plan hash (6.7.4). The job loads the stored revision; it never carries a second copy of the graph.
 
 | Stage | In the MVP |
 | --- | --- |

@@ -197,7 +197,7 @@ Runs before the compiler, so plans are checked against real operation schemas.
   - `test_rules` is parametrized over: open loop, self-intersecting loop, overlapping circles, a hole outside the profile, a hole on a different plane, two extrudes, several circles as an extrude's profile, a cut before the extrude, `units: in`, a missing profile, a profile that is not a sketch. Each gives the right code and pointer, and two errors in one graph are both reported.
   - `test_degenerate_rejected` (Review Focus 4): zero-length line, diameter below 0.01 mm, a loop whose ends miss by more than the 3.4.3 quantum, and a hole tangent to the edge are all `IR_RULE_VIOLATED`.
   - `test_plan_matches_golden`: operations in order `part.create`, `sketch.create`, `feature.create`, `sketch.create`, `feature.create`. `document` is `$working`, `feature.create.profile` is the sketch's node ID, sketch coordinates are 2D, and each op's params validate against its Task 6 schema.
-  - `test_revision_does_not_change_body`: the same content at revisions 1 and 2 gives identical `operations`, while the pinned bundle differs.
+  - `test_revision_changes_plan_hash_but_not_operations`: the same content at revisions 1 and 2 gives identical `operations`, while the pinned bundle and the plan hash differ (6.7.4).
   - `test_determinism`: same hash twice in one process and from a fresh subprocess (15.6).
   - `test_profile_hash_changes_with_session` and `test_profile_includes_coverage`.
   - `test_unsupported_plane` gives `COMPILE_UNSUPPORTED_FEATURE`.

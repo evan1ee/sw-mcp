@@ -2,7 +2,7 @@
 
 Date: 2026-11-05. Reviewed at `0222b15` on `feat/part-chain-mvp`, against specification v1.31. This is a review only: no production code, schema, specification or ADR was changed. Every proposal below needs the owner's decision.
 
-**Later status (2026-11-05):** the owner accepted ADR-064 and decided K22, and spec v1.32 applies them. V5, V6 and V7 are fixed. V14 is still open. The rest of this review is unchanged, and its proposals read as written at the time.
+**Later status (2026-11-05):** the owner accepted ADR-064 and decided K22, and spec v1.32 applies them. V5, V6 and V7 are fixed. V14 is settled in spec v1.33: the owner kept the code's behaviour, and 6.7.4 was rewritten to match. The rest of this review is unchanged, and its proposals read as written at the time.
 
 ## 1. Conclusion
 

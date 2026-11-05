@@ -2,6 +2,12 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.33
+
+Settles a contradiction between 6.5.3 and 6.7.4, finding V14 of the [verifiable compilation gap analysis](../superpowers/review/2026-11-05-verifiable-compilation-gap-analysis.md). No production code or schema changed: the code already behaved this way.
+
+- **6.7.4 (owner decision, 2026-11-05):** a plan's `bundle` records each document's pinned revision, so two revisions of identical content give the same `operations` but different plan hashes. 6.7.4 used to say they gave an identical plan.
+
 ## What changed in 1.32
 
 Adopts per-operation verification from the [verifiable compilation gap analysis](../superpowers/review/2026-11-05-verifiable-compilation-gap-analysis.md). No schema or production code changed, and the code does not follow this yet (roadmap A0, A2 and MVP Tasks 8 to 9b). No live SOLIDWORKS run was made.
