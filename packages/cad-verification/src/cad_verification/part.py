@@ -557,6 +557,16 @@ def _judge_bodies(m_dict: _Measured, expected: ExpectedGeometry) -> _Judgement:
     return count, count == expected.solid_body_count
 
 
+# Every new part holds these before any feature is built: the tree's folders, the three reference
+# planes and the origin (spike section 3). They are the template's, not the plan's, so they are
+# neither expected nor "extra". Any other type that the plan does not name still fails.
+_TEMPLATE_TREE_TYPES: Final = frozenset({"RefPlane", "OriginProfileFeature", "DetailCabinet"})
+
+
+def _is_template_tree(feature_type: str) -> bool:
+    return feature_type in _TEMPLATE_TREE_TYPES or feature_type.endswith("Folder")
+
+
 def _is_acceptable_feature_type(exp_feat: ExpectedFeature, meas_type: str) -> bool:
     """Check if the measured feature type string is acceptable for the expected feature."""
     acceptable: set[str] = {exp_feat.feature_type, exp_feat.native_type}
@@ -588,7 +598,11 @@ def _read_feature(value: JsonValue) -> tuple[str, str, str]:
 def _judge_features(
     m_dict: _Measured, expected: ExpectedGeometry, feature_ids: Mapping[str, str]
 ) -> _Judgement:
-    measured = [_read_feature(f) for f in _as_list(_field(m_dict, "features"))]
+    measured = [
+        feature
+        for feature in (_read_feature(f) for f in _as_list(_field(m_dict, "features")))
+        if not _is_template_tree(feature[1])
+    ]
     by_id = {feature_id: (kind, status) for feature_id, kind, status in measured}
     passed = len(measured) == len(expected.features)
 

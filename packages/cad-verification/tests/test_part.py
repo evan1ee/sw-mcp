@@ -385,6 +385,22 @@ def test_extra_feature_fails() -> None:
     assert not feat_res.passed
 
 
+def test_template_default_tree_is_not_an_extra_feature() -> None:
+    """A new part always holds folders, three planes and the origin (spike section 3)."""
+    geom = expected_geometry(make_plate_graph())
+    m = make_clean_measurement()
+    baseline = [
+        {"feature_id": "f1", "native_id": 1, "type": "FavoriteFolder", "status": "ok"},
+        {"feature_id": "f2", "native_id": 2, "type": "DetailCabinet", "status": "ok"},
+        {"feature_id": "f3", "native_id": 3, "type": "RefPlane", "status": "ok"},
+        {"feature_id": "f4", "native_id": 4, "type": "OriginProfileFeature", "status": "ok"},
+        {"feature_id": "f5", "native_id": 5, "type": "ConfigTableFolder", "status": "ok"},
+    ]
+    m["features"] = baseline + list(m["features"])
+    results = compare(geom, m, make_feature_ids())
+    assert next(r for r in results if r.requirement == "features").passed
+
+
 def test_sick_feature_fails() -> None:
     """A feature with status != 'ok' fails the features check."""
     geom = expected_geometry(make_plate_graph())

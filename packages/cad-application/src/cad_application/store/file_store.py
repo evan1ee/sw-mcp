@@ -301,7 +301,9 @@ class FileStore:
         with self._guard:
             folder = self.path("derived", "plans")
             self._fs.make_dirs(folder)
-            target = self.path("derived", "plans", f"{plan_hash}.json")
+            # The hash is "sha256:<hex>"; a colon is not allowed in a Windows file name.
+            digest = plan_hash.rpartition(":")[2]
+            target = self.path("derived", "plans", f"{digest}.json")
             if self._fs.stat(target) is not None:
                 return False
             self._fs.write_atomic(target, encode(plan))

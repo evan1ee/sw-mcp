@@ -145,6 +145,18 @@ def test_plan_reuse() -> None:
     assert second is False
 
 
+def test_plan_file_name_is_valid_on_windows() -> None:
+    """A plan hash is ``sha256:<hex>``; a colon in a Windows file name opens an NTFS stream."""
+    store, fs, _, _ = _env()
+    plan_hash = "sha256:" + "ab" * 32
+
+    assert store.put_plan(plan_hash, {"operations": []}) is True
+    assert store.put_plan(plan_hash, {"operations": []}) is False
+
+    names = fs.list_dir(store.path("derived", "plans"))
+    assert list(names) == [f"{'ab' * 32}.json"]
+
+
 def test_revision_rules() -> None:
     store, _, _, _ = _env()
     doc_v1: JsonValue = {"units": "mm", "features": [{"name": "base"}]}

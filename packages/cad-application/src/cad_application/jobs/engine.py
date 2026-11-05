@@ -6,7 +6,9 @@ The lock is never held across a ``Backend`` call.
 """
 
 import hashlib
+import ntpath
 import threading
+import traceback
 from collections import deque
 from collections.abc import Callable, Mapping
 from typing import Any
@@ -257,7 +259,12 @@ class JobEngine:
 
     def _fail_unexpected(self, handle: JobHandle[Any], error: Exception) -> None:
         job_id = handle.record.job_id
-        self._log.emit("job.error", "error", job_id=job_id, reason=type(error).__name__)
+        frames = traceback.extract_tb(error.__traceback__)
+        where = f" at {frames[-1].filename}:{frames[-1].lineno}" if frames else ""
+        if isinstance(error, OSError):
+            where += f" errno={error.errno} winerror={getattr(error, 'winerror', None)}"
+            where += f" file={ntpath.basename(str(error.filename))}"
+        self._log.emit("job.error", "error", job_id=job_id, reason=f"{type(error).__name__}{where}")
         if not handle.record.is_final:
             body = error_object(
                 ErrorCode.EXEC_INTERRUPTED.value, "The job stopped on an unexpected error."
