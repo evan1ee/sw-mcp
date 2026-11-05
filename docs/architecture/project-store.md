@@ -1,6 +1,6 @@
 # 13.2 Project Store and Job Journal
 
-> Specification v1.30, section 13.2. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.31, section 13.2. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The layout, write rules and retention of the project store (13.1, ADR-033), and the job journal that lets the core service (ADR-041) account for every job after a crash (ADR-032). Where a project and its store are is 12.5.
 
@@ -82,7 +82,7 @@ Each job has `jobs/<job_id>/job.json` (current state, replaced atomically) and `
 
 **After a crash** (Phase 1 behavior; recovery proper is P2, 8.5):
 1. The new core reads every `job.json` that is not in a final state (COMMITTED, ABORTED, FAILED).
-2. On reconnecting to the add-in, it asks for the operation IDs the add-in completed (`session.completed_operations`, ADR-036) and records them as `op_result` with `recovered: true`.
+2. On reconnecting to the add-in, it asks for the operation IDs the add-in completed (`session.completed_operations`, ADR-036) and records them as `op_result` with `recovered: true`. Entries in `failed_operations` (8.7) are recorded the same way, with `ok: false` and their `error_code`.
 3. It marks each such job FAILED with `EXEC_INTERRUPTED`, lists the documents it touched as "state unknown" in the job record, and never resumes or resends anything.
 4. Queued jobs that never started are marked ABORTED with `EXEC_INTERRUPTED`.
 

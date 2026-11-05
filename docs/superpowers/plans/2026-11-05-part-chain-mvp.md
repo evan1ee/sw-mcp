@@ -12,7 +12,7 @@
 
 **Gates.** Tasks 0 and 1 can start once the owner approves this plan, since they change no product code. The owner decided D1 to D5 on 2026-11-05 (design 14). The spike's answers must be recorded before Task 3. Crash-point tests in Task 9a must pass before Task 12.
 
-**Order.** Task numbers match the review, so they don't run in numeric order. Run them in the order written here. Tasks 4 and 5 can run alongside Tasks 7a to 8.
+**Order.** Task numbers match the review, so they don't run in numeric order. Run them in the order written here, except that Task 7c, written after 7b, runs before it. Tasks 4 and 5 can run alongside Tasks 7a to 8.
 
 ```text
 T0 Baseline ─► T1 Spike and A14 ─► T2 Spec v1.30 ─► T3 IR ─► T6 IPC contracts
@@ -20,6 +20,8 @@ T0 Baseline ─► T1 Spike and A14 ─► T2 Spec v1.30 ─► T3 IR ─► T6 
                              ┌─────────────────────────────────┤
                              ▼                                 ▼
                     T4 Compiler + T5 Verification       T7a Dispatch, ownership
+                             │                                 ▼
+                             │                          T7c Dispatcher, capabilities
                              │                                 ▼
                              │                          T7b Events, instance IDs
                              │                                 ▼
@@ -242,6 +244,7 @@ Runs before the compiler, so plans are checked against real operation schemas.
 - Create: `apps/execution-server/ExecutionServer.Core/Ownership/DocumentOwnershipTable.cs`, `ExecutionServer.Core/Dispatch/OperationRouter.cs`
 - Modify: `ExecutionServer.AddIn/SwAddin.cs` (register handlers in the router; `document.open`, `document.close`, `document.save`; `:544`)
 - Create: `ExecutionServer.Adapters/Documents/DocumentOps.cs`, which calls `DrawingCreationAdapter.SaveDocument` unchanged for drawings
+- Modify: `schemas/ipc/v0.json` (additive `failed_operations`, then regenerate), `ExecutionServer.Core/Ledger/OperationLedger.cs`, `ExecutionServer.Core/Ipc/OpsBatchRunner.cs`, and the recovery step in `cad_application` that records completed operations (8.7, 13.2.3)
 - Test: `ExecutionServer.Tests/Ownership/DocumentOwnershipTableTests.cs`, `ExecutionServer.Tests/Dispatch/OperationRouterTests.cs`
 
 **Interfaces:**
@@ -263,6 +266,8 @@ Runs before the compiler, so plans are checked against real operation schemas.
   - `UnknownOperation_IsError`, with `BACKEND_CAPABILITY_MISSING`, never recorded in the ledger.
   - `RouterOperations_MatchHello`: all 13 current operations are registered.
   - `NonAsciiPath_Matches` for `D:\零件\板.SLDPRT`.
+  - Ledger (8.7, closes K17): `FailureWithEffectApplied_IsRecorded`; `FailureWithEffectUnknown_IsRecorded`; `FailureWithEffectNone_IsNotRecorded`; `FailureWithoutEffect_IsNotRecorded`, the frozen drawing flow; `UnexpectedException_IsRecordedAsUnknown`; `RepeatOfRecordedFailure_ReturnsDuplicateWithOriginalError_AndDoesNotRun`; `RecordedFailure_NotInOperationIds_ListedInFailedOperations`.
+  - Python: `test_recovery_records_failed_operations` gives `op_result` with `ok: false` and `recovered: true`; a transcript with no `failed_operations` still parses.
 - [ ] **Step 2: Run** the C# check and confirm FAIL.
 - [ ] **Step 3: Implement.** `document.open` checks whether the document is already open, reports true `owned`, returns `instance_id`, and passes the read-only flag. Part saves and closes find the document by path, never `ActiveDoc`. Drawings keep today's lookup. Close follows spike answer 7.
 - [ ] **Step 4: C# check, then the full check.** Expected: PASS. Ask the owner to close SOLIDWORKS, then run `dotnet build apps/execution-server/ExecutionServer.sln`.
@@ -287,11 +292,41 @@ Runs before the compiler, so plans are checked against real operation schemas.
 - [ ] **Step 4: C# check, build (SOLIDWORKS closed by the owner), then the live test and Task 0 suite.** Expected: PASS, same as the baseline.
 - [ ] **Step 5: Commit:** `feat(addin): report engineer activity on working parts`.
 
+### Task 7c: Dispatcher and capability table
+
+Added by owner decision, 2026-11-05, from the [adapter roadmap](../../plans/solidworks-adapter-roadmap.md) A1 ([ADR-059](../../adr/ADR-059-com-sta-execution.md) threading and queue rules, [ADR-062](../../adr/ADR-062-version-isolation.md)). **Run it after Task 7a and before Task 7b,** because a wrong thread would invalidate later live results. It also brings the add-in host in line with the release rule in G1 (owner decision, 2026-11-05).
+
+**Files:**
+- Create: `ExecutionServer.AddIn/Dispatch/ControlSynchronizationContext.cs` (hidden WinForms control, handle forced, `BeginInvoke`), `ExecutionServer.AddIn/Diagnostics/SessionProbe.cs`
+- Create: `ExecutionServer.Core/Versions/SolidWorksVersion.cs`, `ExecutionServer.Core/Versions/CapabilityTable.cs`
+- Modify: `ExecutionServer.AddIn/ExecutionServer.AddIn.csproj` (framework reference to `System.Windows.Forms`, AddIn only), `ExecutionServer.AddIn/SwAddin.cs` (`:95-100` context, `:104-107` version, `:129` UI language, `:131` capabilities, from the router and table), `ExecutionServer.Core/Dispatch/UIThreadDispatcher.cs`, `ExecutionServer.Core/Ipc/IpcSession.Commands.cs`, `ExecutionServer.Core/Pipe/NamedPipeServer.cs` (outgoing frame queue)
+- Test: `ExecutionServer.Tests/Dispatch/UIThreadDispatcherTests.cs`, `ExecutionServer.Tests/Versions/CapabilityTableTests.cs`, `ExecutionServer.Tests/Pipe/NamedPipeServerTests.cs`, `tests/live/test_live_dispatch.py`
+
+**Interfaces:**
+- Produces (CAD-free): `SolidWorksVersion.Parse(string revision)`, which fails on a value it cannot read; `CapabilityTable.For(SolidWorksVersion)` with `Support`, `Names` and `Has(string)`.
+- `session.hello` gains the real version and UI language. If either cannot be read, the add-in reports that and answers `BACKEND_VERSION_UNSUPPORTED`; it never uses a default.
+
+- [ ] **Step 1: Write failing tests:**
+  - `CommandPostedWhileOneRuns_RunsAfterwards`: no queued command is stranded (F21).
+  - `ReentrantDrain_IsRefusedAndNothingIsLost`.
+  - `DrainOnWrongThread_RunsNothingAndReports`.
+  - `ResponseWrite_DoesNotBlockTheCommandThread`, with a stalled sink.
+  - `Frames_KeepTheirOrder`, and `Close_FlushesOrFailsQueuedFrames`.
+  - `Parse_RealRevisions`: `33.0.0` and a three-part service pack keep every segment; null, empty and malformed values fail.
+  - `Support_FollowsAdr045`: supported, newer service pack with a warning, older and newer major refused.
+  - `HelloLists_OnlyRegisteredOperations`.
+- [ ] **Step 2: Run** the C# check and confirm FAIL.
+- [ ] **Step 3: Implement.** Remove the base `SynchronizationContext` fallback. Refuse to start the server if `ConnectToSW` is not on an STA thread. Re-post when a command ends if the queue is not empty. Send all pipe writes through the pipe side, never from the UI thread. Stop releasing `ISldWorks` (`SwAddin.cs:255`) and `IModelDoc2` (`:434`, or wherever Task 7a moved it), per G1. Frozen drawing adapters are not changed; if shared code forces a change there, ask the owner first.
+- [ ] **Step 4: C# check, build (SOLIDWORKS closed by the owner), then the live test on a throwaway instance:** log the thread ID, apartment state and dispatch path once per session, and post commands during a running one.
+- [ ] **Step 5: Run** the Task 0 live suite. Expected: same as the baseline. Report any difference rather than editing frozen code.
+- [ ] **Step 6: Commit:** `fix(addin): keep commands on the STA thread and report real capabilities`.
+
 ### Task 8: Part adapters
 
 **Files:**
 - Create: `ExecutionServer.Adapters/Parts/{PartCreationAdapter,SketchAdapter,FeatureAdapter,PartMeasureAdapter}.cs`
 - Create: `ExecutionServer.Core/Parts/PartUnits.cs` (mm to metres, CAD-free)
+- Create: `ExecutionServer.Adapters/Native/{ComScope,DocumentLocator}.cs` (G1, ADR-059; full-path lookup only, 8.9.8)
 - Modify: `SwAddin.cs` (register operations, the `part.measure` capability, the real UI language at `:129`), the command path that handles `drawing.snapshot` (add `part.measure` beside it)
 - Test: `ExecutionServer.Tests/Parts/PartUnitsTests.cs`; `tests/live/test_live_part_ops.py`
 

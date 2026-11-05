@@ -15,7 +15,7 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-Seven open items: K3, J11, K8, K9, K10, K11 and K12. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+Eleven open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15 and K16. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
 
 ### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
 
@@ -71,12 +71,41 @@ Seven open items: K3, J11, K8, K9, K10, K11 and K12. Every decision found in the
 - **Document:** Spec (10.2.1).
 - **Blocks:** `later` (any curved feature; not the MVP plate).
 
+### K13: How the add-in binds SOLIDWORKS interop on a newer major version
+
+- **Why it matters.** ADR-045 builds against the oldest supported interop. `SolidWorks.Interop.props` sets `Private=false`, so the assemblies are not copied beside the add-in, and `SwAddin.OnAssemblyResolve` looks only in the add-in's folder. How a 2025-built add-in finds its interop on a 2026 install has not been tested, so ADR-045 and ADR-062 rest on an assumption.
+- **Recommendation.** Test a 2025-built add-in on a 2026 install before admitting 2026. Record what binds, and change the copy or redirect setting only if the test requires it.
+- **Document:** Spec (8.8.10), ADR-062, `docs/development/supported-versions.md` when it exists.
+- **Blocks:** `later` (admitting a second major).
+
+### K14: How far native feature identity holds
+
+- **Why it matters.** The spike proved `f<GetID()>` and `GetPersistReference3` across close and reopen on the plate (A2). Reconciliation (8.8.9) also relies on the binding after Save As, a file copy, or an engineer's edits, and across builds of the same plan. None of those has been tested. Unlike K9, this concerns part features, not drawing views and annotations.
+- **Recommendation.** Measure those cases in the A3 spike. Treat a changed ID as a missing and an unexpected feature, which is conservative and correct. Do not write IDs into the part (ADR-022, ADR-033).
+- **Document:** Spec (5.3.6, 8.8.9).
+- **Blocks:** `later` (reconciliation, A3).
+
+### K15: Reading feature definitions without side effects
+
+- **Why it matters.** `features.read` and reconciliation need feature parameters, parents and suppression. Native definition objects and their access-selection calls may change selection or the dirty flag, which would break the read-only promise (ADR-022), and could touch a borrowed document.
+- **Recommendation.** Spike each read on a scratch part in the A3 phase: compare dirty flag, selection and fingerprint before and after. Withhold any read that changes them, and report it as `unsupported`, so the affected drift is `not_comparable`.
+- **Document:** Spec (5.8.3, 8.9.4).
+- **Blocks:** `later` (`features.read`, A3).
+
+### K16: Expected geometry beyond exact calculation
+
+- **Why it matters.** `expected_geometry` computes values exactly from the IR, under narrow rules chosen for that reason (MVP design section 5). Fillets, chamfers on general edges, and most later features cannot be computed that way. Taking values from SOLIDWORKS would break the rule that expected values come from the IR, and silently weakening the checks would let a part appear verified on less evidence than the plate had.
+- **Recommendation.** State a verification level per node: exact where it can be computed, bounded where only limits can be (a fillet's volume lies between known bounds), author-declared where the IR carries expected values with tolerances, and structural only otherwise. Report the level in evidence and in the final response. Decide before A6.
+- **Document:** ADR, then Spec (10.2.1, 8.9.6).
+- **Blocks:** `later` (A5 for revolve in part, A6 in full).
+
 ---
 
 ## Closed
 
 | ID | Item | Recorded in |
 | --- | --- | --- |
+| K17 | What the ledger records when an operation took effect and then failed (owner decision, 2026-11-05) | [§8.7](../architecture/execution-engine.md#87-ipc-messages-builders-call), [§13.2.3](../architecture/project-store.md#1323-job-journal), [§8.9.5](solidworks-adapter.md#895-error-contract) |
 | K7 | Sheet format generation path from Drawing Template IR | [§6.5.2](../architecture/backend-operations.md#652-vocabulary), [§11.12](../architecture/drawing-template-ir.md), [ADR-055](../adr/ADR-055-generated-sheet-formats.md) |
 | X1 | Process topology and job ownership across MCP clients | [ADR-041](../adr/ADR-041-core-service-topology.md) |
 | I1 | One reference grammar | [§3.4.2](../architecture/shared-ir-core.md#342-references) |

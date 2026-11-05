@@ -2,6 +2,17 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.31
+
+Adds the compiler-oriented SOLIDWORKS adapter design, accepted by the owner on 2026-11-05. No production code or schema changed. No live SOLIDWORKS run was made for this design, and API facts not measured by the 2026-11-05 spike are marked unverified.
+
+- **New sections:** [8.8 SOLIDWORKS Adapter Architecture](../architecture/solidworks-adapter.md) and [8.9 SOLIDWORKS Adapter Interface Specification](solidworks-adapter.md): layers, the five-stage handler, determinism levels R0 to R4, failure and retry rules, observation and verification, reconciliation limits, version isolation, operations by phase, error normalization with `details.effect`, an evidence record, `op:` variant capabilities and representative C# interfaces. 8.8.3 lists where the design departs from the request that prompted it, including that the compiler stays Python (ADR-001).
+- **New ADRs:** ADR-058 to ADR-063, all Accepted.
+- **New plan:** [SOLIDWORKS adapter roadmap](../plans/solidworks-adapter-roadmap.md), which builds on the part chain MVP plan and does not replace it.
+- **Open Decisions** ([register](open-decisions.md)): logged **K13** (interop binding on a newer major), **K14** (native feature identity beyond reopen), **K15** (reading feature definitions without side effects), and **K16** (expected geometry beyond exact calculation); 11 open decisions now. K17 was logged and closed in this version.
+- **Accepted, not applied yet:** `PROPOSED_OPERATION_FAILED` and the evidence schema (roadmap A0).
+- **Owner decisions, 2026-11-05:** the compiler stays Python (ADR-001). ADR-059's COM release rule is adopted and applied to G1 and AGENTS.md section 2; the code does not follow it yet. The dispatcher and capability work joins the MVP as plan Task 7c. **Ledger (8.7, 13.2.3; closes K17):** an operation that may have changed the document and then failed is recorded and can never run again, `session.completed_operations` gains an additive `failed_operations`, and `operation_ids` stays successes only. Not implemented yet (plan Task 7a).
+
 ## What changed in 1.30
 
 Specifies the part chain MVP ([design](../superpowers/specs/2026-11-05-part-chain-mvp-design.md), [plan](../superpowers/plans/2026-11-05-part-chain-mvp.md)), using the answers recorded by the [live API spike](../superpowers/review/2026-11-05-part-chain-spike.md). No schema or code yet; those come with the MVP's later tasks. New rules are **[Builder's call]** except where marked as the owner's decision.
