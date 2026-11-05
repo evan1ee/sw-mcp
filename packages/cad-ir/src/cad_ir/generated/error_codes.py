@@ -50,6 +50,7 @@ class ErrorCode(StrEnum):
     CONFIG_INVALID = "CONFIG_INVALID"
     FILE_NOT_FOUND = "FILE_NOT_FOUND"
     STORE_UNAVAILABLE = "STORE_UNAVAILABLE"
+    PART_VERIFICATION_FAILED = "PART_VERIFICATION_FAILED"
 
 
 type Retryable = Literal["never", "after_fix", "safe"]
@@ -96,5 +97,6 @@ DEFAULT_RETRYABLE: Mapping[ErrorCode, Retryable] = MappingProxyType(
         ErrorCode.CONFIG_INVALID: "after_fix",
         ErrorCode.FILE_NOT_FOUND: "after_fix",
         ErrorCode.STORE_UNAVAILABLE: "after_fix",
+        ErrorCode.PART_VERIFICATION_FAILED: "after_fix",
     }
 )

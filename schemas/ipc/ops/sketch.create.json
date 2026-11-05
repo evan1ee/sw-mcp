@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/sketch.create.json",
+  "title": "Operation sketch.create (spec 6.5.2)",
+  "x-op": "sketch.create",
+  "x-mutates": "document",
+  "x-errors": [
+    "AUTH_PATH_DENIED",
+    "BACKEND_BUSY",
+    "BACKEND_REBUILD_ERROR",
+    "BACKEND_UI_BLOCKED",
+    "IR_SCHEMA_INVALID"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Entity": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "line",
+            "circle"
+          ]
+        },
+        "start": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "end": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "center": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "diameter": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "Params": {
+      "type": "object",
+      "required": [
+        "node_id",
+        "plane",
+        "entities"
+      ],
+      "properties": {
+        "node_id": {
+          "type": "string"
+        },
+        "plane": {
+          "enum": [
+            "plane:front",
+            "plane:top",
+            "plane:right"
+          ]
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "minItems": 1
+        },
+        "_meta": {
+          "$ref": "../v0.json#/$defs/Meta"
+        }
+      }
+    },
+    "Result": {
+      "type": "object",
+      "required": [
+        "native_id",
+        "feature_id",
+        "entity_count"
+      ],
+      "properties": {
+        "native_id": {
+          "type": "integer"
+        },
+        "feature_id": {
+          "type": "string"
+        },
+        "entity_count": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

@@ -92,7 +92,15 @@ type ErrorRetryable = Literal['never', 'after_fix', 'safe']
 
 type DocumentEventParamsEvent = Literal['regen', 'save', 'close', 'active_changed']
 
+type FeatureCreateEndConditionType = Literal['blind', 'through_all_both']
+
+type FeatureCreateParamsType = Literal['extrude', 'cut_extrude']
+
 type ModelItemsInsertParamsSource = Literal['entire_model', 'selected_feature']
+
+type SketchCreateEntityType = Literal['line', 'circle']
+
+type SketchCreateParamsPlane = Literal['plane:front', 'plane:top', 'plane:right']
 
 type ViewCreateParamsViewType = Literal['base', 'projected', 'isometric', 'flat_pattern']
 
@@ -541,6 +549,190 @@ class SnapshotParams:
             out["sheets"] = _dump(self.sheets)
         if self.meta is not None:
             out["_meta"] = _dump(self.meta)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PartBBoxM:
+    min: tuple[float, ...]
+    max: tuple[float, ...]
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "PartBBoxM")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            min=_list_of(_num)(_req(obj, "min", where), f"{where}.min"),
+            max=_list_of(_num)(_req(obj, "max", where), f"{where}.max"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["min"] = _dump(self.min)
+        out["max"] = _dump(self.max)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PartCylinderM:
+    point: tuple[float, ...]
+    direction: tuple[float, ...]
+    radius: float
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "PartCylinderM")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            point=_list_of(_num)(_req(obj, "point", where), f"{where}.point"),
+            direction=_list_of(_num)(_req(obj, "direction", where), f"{where}.direction"),
+            radius=_num(_req(obj, "radius", where), f"{where}.radius"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["point"] = _dump(self.point)
+        out["direction"] = _dump(self.direction)
+        out["radius"] = _dump(self.radius)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PartRebuildResult:
+    ok: bool
+    errors: tuple[str, ...]
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "PartRebuildResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            ok=_bool(_req(obj, "ok", where), f"{where}.ok"),
+            errors=_list_of(_str)(_req(obj, "errors", where), f"{where}.errors"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["ok"] = _dump(self.ok)
+        out["errors"] = _dump(self.errors)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PartFeatureInfo:
+    feature_id: str
+    native_id: int
+    type: str
+    status: str
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "PartFeatureInfo")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            feature_id=_str(_req(obj, "feature_id", where), f"{where}.feature_id"),
+            native_id=_int(_req(obj, "native_id", where), f"{where}.native_id"),
+            type=_str(_req(obj, "type", where), f"{where}.type"),
+            status=_str(_req(obj, "status", where), f"{where}.status"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["feature_id"] = _dump(self.feature_id)
+        out["native_id"] = _dump(self.native_id)
+        out["type"] = _dump(self.type)
+        out["status"] = _dump(self.status)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PartMeasureParams:
+    document: str
+    meta: Meta | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "PartMeasureParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            document=_str(_req(obj, "document", where), f"{where}.document"),
+            meta=_opt(obj, "_meta", where, Meta._at),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["document"] = _dump(self.document)
+        if self.meta is not None:
+            out["_meta"] = _dump(self.meta)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PartMeasureResult:
+    path: str
+    instance_id: str
+    solid_body_count: int
+    bbox_m: PartBBoxM
+    volume_m3: float
+    surface_area_m2: float
+    center_of_mass_m: tuple[float, ...]
+    cylinders_m: tuple[PartCylinderM, ...]
+    rebuild: PartRebuildResult
+    features: tuple[PartFeatureInfo, ...]
+    dirty: bool
+    read_only: bool
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "PartMeasureResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            path=_str(_req(obj, "path", where), f"{where}.path"),
+            instance_id=_str(_req(obj, "instance_id", where), f"{where}.instance_id"),
+            solid_body_count=_int(_req(obj, "solid_body_count", where), f"{where}.solid_body_count"),
+            bbox_m=PartBBoxM._at(_req(obj, "bbox_m", where), f"{where}.bbox_m"),
+            volume_m3=_num(_req(obj, "volume_m3", where), f"{where}.volume_m3"),
+            surface_area_m2=_num(_req(obj, "surface_area_m2", where), f"{where}.surface_area_m2"),
+            center_of_mass_m=_list_of(_num)(_req(obj, "center_of_mass_m", where), f"{where}.center_of_mass_m"),
+            cylinders_m=_list_of(PartCylinderM._at)(_req(obj, "cylinders_m", where), f"{where}.cylinders_m"),
+            rebuild=PartRebuildResult._at(_req(obj, "rebuild", where), f"{where}.rebuild"),
+            features=_list_of(PartFeatureInfo._at)(_req(obj, "features", where), f"{where}.features"),
+            dirty=_bool(_req(obj, "dirty", where), f"{where}.dirty"),
+            read_only=_bool(_req(obj, "read_only", where), f"{where}.read_only"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["path"] = _dump(self.path)
+        out["instance_id"] = _dump(self.instance_id)
+        out["solid_body_count"] = _dump(self.solid_body_count)
+        out["bbox_m"] = _dump(self.bbox_m)
+        out["volume_m3"] = _dump(self.volume_m3)
+        out["surface_area_m2"] = _dump(self.surface_area_m2)
+        out["center_of_mass_m"] = _dump(self.center_of_mass_m)
+        out["cylinders_m"] = _dump(self.cylinders_m)
+        out["rebuild"] = _dump(self.rebuild)
+        out["features"] = _dump(self.features)
+        out["dirty"] = _dump(self.dirty)
+        out["read_only"] = _dump(self.read_only)
         return out
 
 
@@ -1175,6 +1367,7 @@ class DocumentOpenParams:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DocumentOpenResult:
     owned: bool
+    instance_id: str | None = None
 
     @classmethod
     def from_json(cls, value: JsonValue) -> Self:
@@ -1185,11 +1378,14 @@ class DocumentOpenResult:
         obj = _obj(value, where)
         return cls(
             owned=_bool(_req(obj, "owned", where), f"{where}.owned"),
+            instance_id=_opt(obj, "instance_id", where, _str),
         )
 
     def to_json(self) -> dict[str, JsonValue]:
         out: dict[str, JsonValue] = {}
         out["owned"] = _dump(self.owned)
+        if self.instance_id is not None:
+            out["instance_id"] = _dump(self.instance_id)
         return out
 
 
@@ -1314,6 +1510,92 @@ class DrawingCreateResult:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class FeatureCreateEndCondition:
+    type: FeatureCreateEndConditionType
+    depth: float | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "FeatureCreateEndCondition")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            type=_str(_req(obj, "type", where), f"{where}.type"),
+            depth=_opt(obj, "depth", where, _num),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["type"] = _dump(self.type)
+        if self.depth is not None:
+            out["depth"] = _dump(self.depth)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class FeatureCreateParams:
+    node_id: str
+    type: FeatureCreateParamsType
+    profile: str
+    end_condition: FeatureCreateEndCondition
+    meta: Meta | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "FeatureCreateParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            node_id=_str(_req(obj, "node_id", where), f"{where}.node_id"),
+            type=_str(_req(obj, "type", where), f"{where}.type"),
+            profile=_str(_req(obj, "profile", where), f"{where}.profile"),
+            end_condition=FeatureCreateEndCondition._at(_req(obj, "end_condition", where), f"{where}.end_condition"),
+            meta=_opt(obj, "_meta", where, Meta._at),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["node_id"] = _dump(self.node_id)
+        out["type"] = _dump(self.type)
+        out["profile"] = _dump(self.profile)
+        out["end_condition"] = _dump(self.end_condition)
+        if self.meta is not None:
+            out["_meta"] = _dump(self.meta)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class FeatureCreateResult:
+    native_id: int
+    feature_id: str
+    status: str
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "FeatureCreateResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            native_id=_int(_req(obj, "native_id", where), f"{where}.native_id"),
+            feature_id=_str(_req(obj, "feature_id", where), f"{where}.feature_id"),
+            status=_str(_req(obj, "status", where), f"{where}.status"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["native_id"] = _dump(self.native_id)
+        out["feature_id"] = _dump(self.feature_id)
+        out["status"] = _dump(self.status)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ModelItemsInsertParams:
     view: str | None = None
     source: ModelItemsInsertParamsSource | None = None
@@ -1389,6 +1671,88 @@ class ModelItemsInsertResult:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class PartCreateParams:
+    template: str
+    meta: Meta | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "PartCreateParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            template=_str(_req(obj, "template", where), f"{where}.template"),
+            meta=_opt(obj, "_meta", where, Meta._at),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["template"] = _dump(self.template)
+        if self.meta is not None:
+            out["_meta"] = _dump(self.meta)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PartCreateTemplateInfo:
+    path: str
+    sha256: str
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "PartCreateTemplateInfo")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            path=_str(_req(obj, "path", where), f"{where}.path"),
+            sha256=_str(_req(obj, "sha256", where), f"{where}.sha256"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["path"] = _dump(self.path)
+        out["sha256"] = _dump(self.sha256)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PartCreateResult:
+    native_id: int
+    path: str
+    instance_id: str
+    previous_active: str | None
+    template: PartCreateTemplateInfo
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "PartCreateResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            native_id=_int(_req(obj, "native_id", where), f"{where}.native_id"),
+            path=_str(_req(obj, "path", where), f"{where}.path"),
+            instance_id=_str(_req(obj, "instance_id", where), f"{where}.instance_id"),
+            previous_active=_nullable(_str)(_req(obj, "previous_active", where), f"{where}.previous_active"),
+            template=PartCreateTemplateInfo._at(_req(obj, "template", where), f"{where}.template"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["native_id"] = _dump(self.native_id)
+        out["path"] = _dump(self.path)
+        out["instance_id"] = _dump(self.instance_id)
+        out["previous_active"] = _dump(self.previous_active)
+        out["template"] = _dump(self.template)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class SheetFormatGenerateParams:
     template: JsonValue
     destination_path: str
@@ -1437,6 +1801,101 @@ class SheetFormatGenerateResult:
         out: dict[str, JsonValue] = {}
         out["path"] = _dump(self.path)
         out["size_mm"] = _dump(self.size_mm)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SketchCreateEntity:
+    type: SketchCreateEntityType
+    start: tuple[float, ...] | None = None
+    end: tuple[float, ...] | None = None
+    center: tuple[float, ...] | None = None
+    diameter: float | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "SketchCreateEntity")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            type=_str(_req(obj, "type", where), f"{where}.type"),
+            start=_opt(obj, "start", where, _list_of(_num)),
+            end=_opt(obj, "end", where, _list_of(_num)),
+            center=_opt(obj, "center", where, _list_of(_num)),
+            diameter=_opt(obj, "diameter", where, _num),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["type"] = _dump(self.type)
+        if self.start is not None:
+            out["start"] = _dump(self.start)
+        if self.end is not None:
+            out["end"] = _dump(self.end)
+        if self.center is not None:
+            out["center"] = _dump(self.center)
+        if self.diameter is not None:
+            out["diameter"] = _dump(self.diameter)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SketchCreateParams:
+    node_id: str
+    plane: SketchCreateParamsPlane
+    entities: tuple[SketchCreateEntity, ...]
+    meta: Meta | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "SketchCreateParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            node_id=_str(_req(obj, "node_id", where), f"{where}.node_id"),
+            plane=_str(_req(obj, "plane", where), f"{where}.plane"),
+            entities=_list_of(SketchCreateEntity._at)(_req(obj, "entities", where), f"{where}.entities"),
+            meta=_opt(obj, "_meta", where, Meta._at),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["node_id"] = _dump(self.node_id)
+        out["plane"] = _dump(self.plane)
+        out["entities"] = _dump(self.entities)
+        if self.meta is not None:
+            out["_meta"] = _dump(self.meta)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class SketchCreateResult:
+    native_id: int
+    feature_id: str
+    entity_count: int
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "SketchCreateResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            native_id=_int(_req(obj, "native_id", where), f"{where}.native_id"),
+            feature_id=_str(_req(obj, "feature_id", where), f"{where}.feature_id"),
+            entity_count=_int(_req(obj, "entity_count", where), f"{where}.entity_count"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["native_id"] = _dump(self.native_id)
+        out["feature_id"] = _dump(self.feature_id)
+        out["entity_count"] = _dump(self.entity_count)
         return out
 
 

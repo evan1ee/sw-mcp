@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/feature.create.json",
+  "title": "Operation feature.create (spec 6.5.2)",
+  "x-op": "feature.create",
+  "x-mutates": "document",
+  "x-errors": [
+    "AUTH_PATH_DENIED",
+    "BACKEND_BUSY",
+    "BACKEND_REBUILD_ERROR",
+    "BACKEND_UI_BLOCKED",
+    "IR_SCHEMA_INVALID"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "EndCondition": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "blind",
+            "through_all_both"
+          ]
+        },
+        "depth": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "Params": {
+      "type": "object",
+      "required": [
+        "node_id",
+        "type",
+        "profile",
+        "end_condition"
+      ],
+      "properties": {
+        "node_id": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "extrude",
+            "cut_extrude"
+          ]
+        },
+        "profile": {
+          "type": "string"
+        },
+        "end_condition": {
+          "$ref": "#/$defs/EndCondition"
+        },
+        "_meta": {
+          "$ref": "../v0.json#/$defs/Meta"
+        }
+      }
+    },
+    "Result": {
+      "type": "object",
+      "required": [
+        "native_id",
+        "feature_id",
+        "status"
+      ],
+      "properties": {
+        "native_id": {
+          "type": "integer"
+        },
+        "feature_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

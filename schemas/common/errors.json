@@ -203,6 +203,11 @@
       "const": "STORE_UNAVAILABLE",
       "description": "A project store file cannot be read or written.",
       "x-retryable": "after_fix"
+    },
+    {
+      "const": "PART_VERIFICATION_FAILED",
+      "description": "One or more part verification checks failed.",
+      "x-retryable": "after_fix"
     }
   ]
 }

@@ -303,6 +303,182 @@
     "SnapshotResult": {
       "$ref": "../drawing-geometry-snapshot/v0.json"
     },
+    "PartBBoxM": {
+      "type": "object",
+      "required": [
+        "min",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "max": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
+    "PartCylinderM": {
+      "type": "object",
+      "required": [
+        "point",
+        "direction",
+        "radius"
+      ],
+      "properties": {
+        "point": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "direction": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "radius": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "PartRebuildResult": {
+      "type": "object",
+      "required": [
+        "ok",
+        "errors"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "PartFeatureInfo": {
+      "type": "object",
+      "required": [
+        "feature_id",
+        "native_id",
+        "type",
+        "status"
+      ],
+      "properties": {
+        "feature_id": {
+          "type": "string"
+        },
+        "native_id": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      }
+    },
+    "PartMeasureParams": {
+      "type": "object",
+      "required": [
+        "document"
+      ],
+      "properties": {
+        "document": {
+          "type": "string"
+        },
+        "_meta": {
+          "$ref": "#/$defs/Meta"
+        }
+      }
+    },
+    "PartMeasureResult": {
+      "type": "object",
+      "required": [
+        "path",
+        "instance_id",
+        "solid_body_count",
+        "bbox_m",
+        "volume_m3",
+        "surface_area_m2",
+        "center_of_mass_m",
+        "cylinders_m",
+        "rebuild",
+        "features",
+        "dirty",
+        "read_only"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "solid_body_count": {
+          "$ref": "../common/v0.json#/$defs/Count"
+        },
+        "bbox_m": {
+          "$ref": "#/$defs/PartBBoxM"
+        },
+        "volume_m3": {
+          "type": "number"
+        },
+        "surface_area_m2": {
+          "type": "number"
+        },
+        "center_of_mass_m": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "cylinders_m": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PartCylinderM"
+          }
+        },
+        "rebuild": {
+          "$ref": "#/$defs/PartRebuildResult"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PartFeatureInfo"
+          }
+        },
+        "dirty": {
+          "type": "boolean"
+        },
+        "read_only": {
+          "type": "boolean"
+        }
+      }
+    },
     "Operation": {
       "type": "object",
       "properties": {

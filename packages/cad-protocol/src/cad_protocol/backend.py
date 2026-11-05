@@ -24,6 +24,9 @@ class IpcBackend:
     ) -> JsonValue:
         return self._client.snapshot_drawing(document, sheets, meta=meta)
 
+    def measure_part(self, document: str, *, meta: Meta | None = None) -> JsonValue:
+        return self._client.measure_part(document, meta=meta)
+
     def apply_ops(
         self, groups: Sequence[OperationGroup], *, meta: Meta | None = None
     ) -> OpsApplyResult:

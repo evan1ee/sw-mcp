@@ -61,7 +61,8 @@ class Model:
 
 
 def pascal(text: str) -> str:
-    return "".join(part[:1].upper() + part[1:] for part in text.replace(".", "_").split("_"))
+    cleaned = text.replace(".", "_").replace(":", "_").replace("-", "_")
+    return "".join(part[:1].upper() + part[1:] for part in cleaned.split("_"))
 
 
 def _fail(where: str, message: str) -> SystemExit:

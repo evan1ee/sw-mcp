@@ -27,6 +27,7 @@ from cad_ir.generated.ipc import (
     OperationGroup,
     OpsApplyParams,
     OpsApplyResult,
+    PartMeasureParams,
     PingParams,
     PingResult,
     Request,
@@ -161,6 +162,13 @@ class IpcClient:
     ) -> JsonValue:
         return self.begin_snapshot_drawing(document, sheets, meta=meta).wait()
 
+    def begin_measure_part(self, document: str, *, meta: Meta | None = None) -> PendingCall:
+        params = PartMeasureParams(document=document, meta=meta)
+        return PendingCall(self, self._begin("part.measure", params.to_json(), "command"))
+
+    def measure_part(self, document: str, *, meta: Meta | None = None) -> JsonValue:
+        return self.begin_measure_part(document, meta=meta).wait()
+
     def apply_ops(
         self, groups: Sequence[OperationGroup], *, meta: Meta | None = None
     ) -> OpsApplyResult:
@@ -175,13 +183,12 @@ class IpcClient:
 
     def close(self) -> None:
         with self._lock:
-            if self._closed:
-                return
             self._closed = True
             for call in self._pending.values():
                 call.completed.set()
         self._stop_heartbeat.set()
-        self._transport.close()
+        with contextlib.suppress(Exception):
+            self._transport.close()
 
     # --- sending and waiting ------------------------------------------------------------
 

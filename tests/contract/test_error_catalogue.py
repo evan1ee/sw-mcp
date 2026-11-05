@@ -51,9 +51,10 @@ ADR_037_CODES = [
     "CONFIG_INVALID",
     "FILE_NOT_FOUND",
     "STORE_UNAVAILABLE",
+    "PART_VERIFICATION_FAILED",
 ]
 
-EXPECTED_CODE_COUNT = 40
+EXPECTED_CODE_COUNT = 41
 # Timeouts, interruptions and a lost add-in connection are after_fix: the operation may have run.
 SAFE = {
     "BACKEND_BUSY",
@@ -74,6 +75,7 @@ NEVER_EXPLICIT = {
 CODE_MENTION = re.compile(
     r"\b(?:IR|REV|REF|COMPILE|EXEC|BACKEND|DRAWING|AUTH|STORE|CONFIG|FILE)_[A-Z0-9_]+\b"
     r"|\bDUPLICATE_OPERATION\b"
+    r"|\bPART_VERIFICATION_FAILED\b"
 )
 
 
