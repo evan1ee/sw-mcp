@@ -441,7 +441,7 @@ Runs before the compiler, so plans are checked against real operation schemas.
   - `test_second_core_refused`.
   - `test_front_end_starts_core`.
   - `test_bad_token_closed`.
-  - `test_part_template_setting`: `part.template` defaults to empty; it is read from the user file and from the environment (`SWMCP_PART__TEMPLATE`), ignored with a warning in a project file; a relative path or one not ending in `.prtdot` is `CONFIG_INVALID` naming the key; a path that does not exist is accepted at load.
+  - `test_part_template_setting`: `part.template` defaults to empty; it is read from the user file, ignored with a warning in a project file and in the environment (`SWMCP_PART__TEMPLATE`); a relative path or one not ending in `.prtdot` is `CONFIG_INVALID` naming the key; a path that does not exist is accepted at load.
 - [ ] **Step 2: Run** and confirm FAIL.
 - [ ] **Step 3: Implement.** The SDK negotiates the protocol revision (ADR-044). The core's job thread and pipe host start together. Write `setup.md`: build and register the add-in, `access.allowed_roots`, and the `mcpServers` entry for Claude.
 - [ ] **Step 4: Full check.** Expected: PASS.

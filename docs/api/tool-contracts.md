@@ -160,7 +160,7 @@ The four `core` tools of Phase 1c that ship early with the part chain MVP, in th
 
 **Target path rules.** The target passes the 12.5 checks, its parent folder exists, it is not in a PDM vault (`access.pdm_vault_roots`), no file exists there, and the working path (the target's name plus about 44 characters) stays under 260 characters.
 
-**`get_execution_status`** gains, for `plan` jobs, an additive `part_result` (13.2.1): `path`, `fingerprint`, `checks` and `measured`. **`cancel_execution`** is unchanged, and its `changes` lists the working file (8.4.1).
+**`get_execution_status`** gains, for `plan` jobs, an additive `part_result` (13.2.1): `path`, `fingerprint`, `feature_ids`, `checks` and `measured`. **`cancel_execution`** is unchanged, and its `changes` lists the working file (8.4.1).
 
 ## 12.5 Projects and File Access
 

@@ -1,7 +1,7 @@
 # Part Chain MVP Design
 
 **Date:** 2026-11-05
-**Status:** Awaiting owner approval of this document as a whole. Nothing is built until it is approved. Revised after the [pre-implementation review](../review/2026-11-05-part-chain-mvp-pre-implementation-review.md); the owner decided D1 to D5 on 2026-11-05 (section 14).
+**Status:** Awaiting owner approval of this document as a whole. Nothing is built until it is approved. Revised after the [pre-implementation review](../review/2026-11-05-part-chain-mvp-pre-implementation-review.md); the owner decided D1 to D6 on 2026-11-05 (section 14).
 **Decision behind it:** [ADR-057](../../adr/ADR-057-freeze-drawings-build-part-chain-first.md)
 **Implementation plan:** [2026-11-05-part-chain-mvp.md](../plans/2026-11-05-part-chain-mvp.md)
 
