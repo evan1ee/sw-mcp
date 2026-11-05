@@ -1,6 +1,6 @@
 # ADR-063: Observation in the adapter, judgement in pure Python, and one evidence record
 
-- **Status:** Accepted — owner decision, 2026-11-05
+- **Status:** Accepted — owner decision, 2026-11-05. Extended by [ADR-064](ADR-064-per-operation-verification-contracts.md), which adds two check statuses and keeps every rule here
 - **Source:** specification v1.31, sections 8.8.9 and 8.9.6; architecture review F2, F6, F39. Extends ADR-007 and ADR-014
 
 ## Context

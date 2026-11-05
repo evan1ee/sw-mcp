@@ -1,6 +1,6 @@
 # 8. Execution Engine
 
-> Specification v1.31, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.32, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 8.1 Purpose
 
@@ -128,7 +128,7 @@ Any other transition is a programming error and raises; it is never written to t
 | --- | --- |
 | PLANNED | Accepted, waiting |
 | VALIDATED | Backend acquired and capabilities checked. The template is resolved: the caller's, otherwise `part.template` (13.3); neither gives `CONFIG_INVALID` and a missing file `FILE_NOT_FOUND`, each with `details.setting: part.template`. Compile, store the plan (6.7.4), and re-check that the target does not exist |
-| EXECUTING | Journal `document` `create`, then send `part.create` on `<name>.<job_id>.building.SLDPRT` beside the target. Then the plan's operations one batch each, journalled before sending (13.2.3), with postconditions checked. Forced rebuild, then `document.save` |
+| EXECUTING | Journal `document` `create`, then send `part.create` on `<name>.<job_id>.building.SLDPRT` beside the target. Then the plan's operations one batch each, journalled before sending (13.2.3), each judged against its contract before the next is sent (10.2.2). Forced rebuild, then `document.save` |
 | VERIFYING | `part.measure` and compare (10.2). Take the fingerprint. Close, and confirm the document is no longer open. Reopen read-only, confirm a new `instance_id`, measure and compare again. Close. Publish |
 | COMMITTED | The target exists and passed every check |
 | FAILED | See below |
@@ -147,7 +147,7 @@ Any other transition is a programming error and raises; it is never written to t
 
 | Case | Working file |
 | --- | --- |
-| Operation or verification failed (`PART_VERIFICATION_FAILED` and others) | Best-effort save, close, and renamed `<name>.<job_id>.failed.SLDPRT` beside the target, named in the error |
+| Operation or verification failed (`PROPOSED_FEATURE_VERIFICATION_FAILED`, `PART_VERIFICATION_FAILED` and others) | Best-effort save, close, and renamed `<name>.<job_id>.failed.SLDPRT` beside the target, named in the error |
 | Cancelled | Closed and removed. With `keep_partial`, renamed `<name>.<job_id>.partial.SLDPRT` |
 | `BACKEND_LOST`, `BACKEND_UI_BLOCKED`, `EXEC_TIMEOUT`, `EXEC_INTERRUPTED_BY_USER` | Left alone and listed as `unknown` (8.4). Nothing is resent |
 
@@ -180,7 +180,7 @@ The `session.hello` result holds `protocol`, `addin_version`, `solidworks` (`ver
 
 **`drawing.snapshot`.** `params`: `document` (path) and optional `sheets` (names; all sheets when absent). `result`: one complete Drawing Geometry Snapshot (11.5.1) holding those sheets. It is one command across sheets, so cancellation can fall between sheets (8.6.2). A requested sheet the drawing does not have fails the command with `IR_REFERENCE_UNRESOLVED`, `details.sheets` naming the missing ones **[Builder's call]**. The document must be open: `check_drawing` sends `ops.apply` with `document.open` (`read_only: true`) first, and `document.close` after, if the open reported `owned: true` (8.4).
 
-**`part.measure`** (MVP). `params`: `document` (the full path of an open part). `result`: `path`, `instance_id`, `solid_body_count`, `bbox_m` (`min`, `max`), `volume_m3`, `surface_area_m2`, `center_of_mass_m`, `cylinders_m` (a list of `{point, direction, radius}` for each cylindrical face), `rebuild` (`ok`, `errors`), `features` (a list of `{feature_id, native_id, type, status}`), `dirty` and `read_only`. Like `drawing.snapshot` it is a read-back command, not an operation. It returns raw SI values (metres, with `IMassProperty.UseSystemUnits = true`), and the core converts them, so a conversion error cannot both build and measure a part and still agree with itself. A document opened read-only is measured without a rebuild, so `dirty` stays false. A cylinder's `point` is any point on its axis, so a comparison uses only the components perpendicular to `direction` and gives the radius a tolerance (10.2). The document must be open, and the command fails with `FILE_NOT_FOUND` when no open document has that path. `instance_id` is issued by the add-in whenever it creates or opens a document (`part.create`, `document.open`), is not persisted, and tells a document the job holds from one reopened under the same path **[Builder's call]**.
+**`part.measure`** (MVP). `params`: `document` (the full path of an open part). `result`: `path`, `instance_id`, `solid_body_count`, `bbox_m` (`min`, `max`), `volume_m3`, `surface_area_m2`, `center_of_mass_m`, `cylinders_m` (a list of `{point, direction, radius}` for each cylindrical face), `rebuild` (`ok`, `errors`), `features` (a list of `{feature_id, native_id, type, status}`), `dirty` and `read_only`. Like `drawing.snapshot` it is a read-back command, not an operation. `rebuild` reports the document's observed state, never the return value of a rebuild; K19 settles its native source. It returns raw SI values (metres, with `IMassProperty.UseSystemUnits = true`), and the core converts them, so a conversion error cannot both build and measure a part and still agree with itself. A document opened read-only is measured without a rebuild, so `dirty` stays false. A cylinder's `point` is any point on its axis, so a comparison uses only the components perpendicular to `direction` and gives the radius a tolerance (10.2). The document must be open, and the command fails with `FILE_NOT_FOUND` when no open document has that path. `instance_id` is issued by the add-in whenever it creates or opens a document (`part.create`, `document.open`), is not persisted, and tells a document the job holds from one reopened under the same path **[Builder's call]**.
 
 **`ops.apply`.** `params.groups` is an ordered list of `{document, operations}`. This is the batch header of 6.5.1, and it lets a batch span documents in order. Each operation is `{operation_id, op, params}`. `result.outcomes` lists the attempted operations in order, each `{operation_id, result}` or `{operation_id, error}`. Operations after the first error are not attempted and not listed (6.5.1). An operation the add-in does not know fails the batch with `BACKEND_CAPABILITY_MISSING`, is never recorded in the ledger, and never answers `applied` **[Builder's call]**. A repeated ID stops the batch like any other error: its outcome has `error` with code `DUPLICATE_OPERATION` and also `result`, the original result. If the original failed but was recorded (see the ledger below), `result` is absent and `error.details.original_error` holds the original error. If cancellation stops a batch, the next operation's outcome has `error` with code `EXEC_CANCELLED`. An unexpected exception ends the batch with a `-32603` error; operations already completed stay in the ledger, so the core can ask for them.
 

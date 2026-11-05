@@ -1,6 +1,6 @@
 # 8.9 SOLIDWORKS Adapter Interface Specification
 
-> Specification v1.31, section 8.9. Index and section map: [README.md](README.md).
+> Specification v1.32, section 8.9. Index and section map: [README.md](README.md).
 
 **Status: Accepted by the owner, 2026-11-05. Not built yet.** Architecture: [8.8](../architecture/solidworks-adapter.md). This section extends 6.5, 6.6 and 8.7 and repeats none of their rules. Until the roadmap delivers each part, the schemas and code stay as they are, and the [ADRs](../adr/README.md) say where they must change. JSON here is illustrative. **`schemas/` is the normative form once written (ADR-035).**
 
@@ -59,6 +59,7 @@ General rules are 6.5.1. This section adds:
 4. **No positional or vendor terms in params.** No `T1`, `Sd`, `swEndCondThroughAll` or selection marks.
 5. **Lengths in the document's IR unit** in params (mm in the MVP, 6.5.2). The translator converts them once. Read commands return raw SI (8.7).
 6. **Standard result fields** for an operation creating a native feature: `native_id`, `feature_id`, `status`, and `node_id` echoed only as the join key. `status` values: `ok`, `warning`, `error`, `suppressed`.
+7. **Observation in the result (ADR-064).** An operation that creates a native object also returns `observation`: `native_type`, neutral `type`, `error_code`, `is_warning`, `suppressed`, `parents`, `parameters`, `solid_body_count`, `needs_rebuild`, `update_stamp` and `completeness`, as far as its tier reads them (10.2.2). Reading them must not change the document. These are additive to the schemas in roadmap A0.
 
 **Vocabulary by phase.** Names and parameters beyond the MVP are proposals, written to schemas before their phase. Feature names follow 5.3.2 and 5.7.
 
@@ -80,7 +81,7 @@ General rules are 6.5.1. This section adds:
 | A7 | `feature.create` `linear_pattern`, `circular_pattern`, `mirror` | Seed features, direction, count, spacing | Plus `instance_count` | ? |
 | A8 | Assembly and drawing groups | 6.5.2, 5.6 | Reviewed when the freeze lifts | Existing, frozen |
 
-**Postconditions** are evaluated by the core from these results (8.8.6). The existing names in 6.5.3 are enough to start: `feature_exists`, `feature_status_ok`, `rebuild_ok`, `entity_count`, `parameter_equals`.
+**Postconditions** are evaluated by the core from these results (8.8.6), against a contract derived from the IR (10.2.2). The existing names in 6.5.3 are enough to start: `feature_exists`, `feature_status_ok`, `rebuild_ok`, `entity_count`, `parameter_equals`.
 
 ## 8.9.4 Read commands
 
@@ -159,6 +160,8 @@ Errors use the ADR-037 catalogue. A handler either returns a result or throws on
 ```
 
 It stops codes such as `BACKEND_LOST` being misused for an ordinary failure (`ViewCreationAdapter.cs:124`, F13), which clients read as a dead session.
+
+**Failed contract (ADR-064).** The add-in does not know contracts, so this is not an operation error and has no `effect` of its own. The core ends the job with `PROPOSED_FEATURE_VERIFICATION_FAILED`, a placeholder until roadmap A0, with `details.node` and `details.checks`.
 
 **Ledger (owner decision, 2026-11-05; rule in 8.7).** Any operation whose `effect` is `applied` or `unknown` is recorded with its error, so a repeat answers `DUPLICATE_OPERATION` with the original error and never runs again. `session.completed_operations` keeps failures out of `operation_ids` and lists them in `failed_operations`, so crash recovery cannot read one as a success. Jobs already never resend, so this closes a gap in the protective layer and changes no job's normal path.
 
@@ -250,8 +253,10 @@ The `parts/` record gains `feature_ids` (already in `part_result`) and `measured
 | Operation `execution_status` | `not_attempted`, `succeeded`, `failed`, `cancelled`, `unknown` | `unknown` when sent without an answer (13.2.3) |
 | Outcome `execution_status` | Same values | `succeeded` only if every planned operation succeeded |
 | `rebuild_status` | `ok`, `errors`, `not_evaluated` | From the last `part.measure` of the stage that counted |
-| Check and postcondition `status` | `passed`, `failed`, `not_evaluated` | `not_evaluated` needs a `reason` |
-| Outcome `verification_status` | `passed`, `failed`, `not_evaluated` | `failed` if any failed, else `not_evaluated` if any is, else `passed`. **`passed` requires at least one check for each 10.2.1 row and both observation stages** |
+| Check and postcondition `status` | `passed`, `failed`, `warning`, `not_applicable`, `not_evaluated` | `not_evaluated` and `not_applicable` need a `reason`. `not_evaluated` reasons: `not_executed`, `unsupported`, `missing_data`, `malformed_data`. Only the IR can make a check `not_applicable`, never the backend (ADR-064) |
+| Outcome `failure_class` | `compilation`, `execution`, `feature_verification`, `final_verification`, or absent on success | The stage that ended the job (ADR-064) |
+| Operation `blocked_by` | Plan-local ID | On a `not_attempted` operation, the failed operation it depends on, from `depends_on` |
+| Outcome `verification_status` | `passed`, `failed`, `not_evaluated` | `failed` if any failed or, in the MVP, is a `warning` (ADR-064, K22), else `not_evaluated` if any required check is, else `passed`. `not_applicable` is ignored. **`passed` requires at least one check for each 10.2.1 row and both observation stages** |
 | `completeness` value | `present`, `empty`, `unavailable`, `unsupported` | Missing means `unavailable`. `empty` is never evidence of success by itself (F2) |
 
 A job reaches COMMITTED only when `execution_status` is `succeeded`, `rebuild_status` is `ok` and `verification_status` is `passed`. A required check that is `not_evaluated` ends the job FAILED.
@@ -471,4 +476,4 @@ Pure, in `cad-verification`. `DriftReport.state` is one of `in_sync`, `diverged`
 | Failed or suppressed features | None unexpected | Suppressed feature |
 | Save and reopen | All the above on a new `instance_id`, `dirty` false | File replaced while closed (spike answer 12) |
 
-Tolerances come from 10.2.1. Curved bodies need K12 before any curved feature ships. Parts whose expected values cannot be computed exactly need K16.
+Each check in a per-operation contract (10.2.2) also has a seeded failure, offline, against a recorded observation. Tolerances come from 10.2.1. Curved bodies need K12 before any curved feature ships. Parts whose expected values cannot be computed exactly need K16.

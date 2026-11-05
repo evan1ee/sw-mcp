@@ -2,6 +2,15 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.32
+
+Adopts per-operation verification from the [verifiable compilation gap analysis](../superpowers/review/2026-11-05-verifiable-compilation-gap-analysis.md). No schema or production code changed, and the code does not follow this yet (roadmap A0, A2 and MVP Tasks 8 to 9b). No live SOLIDWORKS run was made.
+
+- **New ADR:** [ADR-064](../adr/ADR-064-per-operation-verification-contracts.md), Accepted by the owner on 2026-11-05. It extends ADR-063.
+- **New section:** [10.2.2 Per-operation verification](../architecture/verification-engine.md): contracts derived from the IR, a judgement before each next operation, fail fast, and cost tiers.
+- **Changed:** 6.5.2 (a blind cut's direction leaves the plan and the wire), 6.5.3 (postconditions are names only), 8.4.1, 8.7 (`rebuild` is observed state), 8.8.9, 8.9.3 (`observation`), 8.9.5, 8.9.6 (`warning`, `not_applicable`, reasons, `failure_class`, `blocked_by`), 8.9.10, 10.2.1 and 13.2.3 (`op_verified`).
+- **Open Decisions** ([register](open-decisions.md)): logged **K18** (cost of per-feature observation), **K19** (rebuild state on a document that was not rebuilt), **K20** (which mass property call to use) and **K21** (native type names for extrudes and cuts). **K22** is closed by owner decision: a feature warning blocks a commit in the MVP. **K15** is narrowed by the official API help: `AccessSelections` is ruled out for observers. 15 open decisions now.
+
 ## What changed in 1.31
 
 Adds the compiler-oriented SOLIDWORKS adapter design, accepted by the owner on 2026-11-05. No production code or schema changed. No live SOLIDWORKS run was made for this design, and API facts not measured by the 2026-11-05 spike are marked unverified.

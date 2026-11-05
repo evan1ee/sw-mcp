@@ -332,7 +332,7 @@ Added by owner decision, 2026-11-05, from the [adapter roadmap](../../plans/soli
 
 **Interfaces:**
 - Consumes: the schemas of Task 6, the router and table of Task 7a, the spike's calls.
-- Produces: operations and the command that behave per design 7.
+- Produces: operations and the command that behave per design 7. From ADR-064: `document.rebuild`, and `observation` in each creating operation's result (8.9.3), T0 facts only. `rebuild` in `part.measure` follows K19.
 
 - [ ] **Step 1: Write failing tests:**
   - `PartUnits` conversions against literal values.
@@ -365,6 +365,7 @@ Added by owner decision, 2026-11-05, from the [adapter roadmap](../../plans/soli
   - `FileSystem.rename_new(source: str, target: str) -> None` (raises `FileExistsError`; write-through on the OS implementation)
   - `authorize(..., expect="new_file")`
   - `Store.put_part_revision(ref: str, doc: JsonValue, expected_revision: int | None) -> str | StoreError`, `Store.put_plan(plan_hash: str, plan: JsonValue) -> bool` (False when reused), `Store.get_part_revision(ref: str)`, `Store.put_part_record`
+  - `OpVerifiedRecord` (ADR-064, 13.2.3)
   - `JobRecord.part_result: JsonValue | None`, holding `path`, `fingerprint`, `checks`, `measured`, `feature_ids`, `template`
 
 - [ ] **Step 1: Write failing tests:**
@@ -390,7 +391,7 @@ Added by owner decision, 2026-11-05, from the [adapter roadmap](../../plans/soli
 - Test: `tests/integration/test_plan_job.py`, transcripts `tests/fixtures/ipc/plan_*.jsonl`
 
 **Interfaces:**
-- Consumes: `compile_bundle`, `CapabilityProfile.from_session`, `expected_geometry`, `compare`, `Backend.measure_part`, `Backend.close`, everything from Task 9a.
+- Consumes: `compile_bundle`, `CapabilityProfile.from_session`, `expected_geometry`, `compare`, `feature_contracts` and `evaluate` (ADR-064, written first in `cad_verification/api/`), `Backend.measure_part`, `Backend.close`, everything from Task 9a.
 - Produces:
   - `PlanSpec(authorized: Authorized, target_path: str, ref: str)`. The job loads the graph from the store by `ref`.
   - `JobEngine.submit(spec: CheckDrawingSpec | PlanSpec, request_id: str)`
@@ -405,6 +406,7 @@ Added by owner decision, 2026-11-05, from the [adapter roadmap](../../plans/soli
   - `test_publish_rechecks_path` (F6): a folder now resolving outside the root fails; no target.
   - `test_publish_order`: `publish_intent` before the rename, `published` after, then COMMITTED.
   - `test_cancel_after_publish_intent_has_no_effect` and `test_cancel_before_publish_intent_aborts`.
+  - `test_failed_contract_stops_the_job` (ADR-064): a wrong type or sick feature ends the job with `PROPOSED_FEATURE_VERIFICATION_FAILED`, names the node, sends nothing further, and journals `op_verified` first. A feature warning does the same (K22).
   - `test_wrong_volume_fails`: `PART_VERIFICATION_FAILED`, `details` lists the check, no target, `.failed` present and named.
   - `test_reopen_mismatch_fails`: only the second measurement is wrong.
   - `test_op_error_fails_and_keeps_file`.

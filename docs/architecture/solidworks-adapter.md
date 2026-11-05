@@ -1,6 +1,6 @@
 # 8.8 SOLIDWORKS Adapter Architecture
 
-> Specification v1.31, section 8.8. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.32, section 8.8. Index and section map: [specifications/README.md](../specifications/README.md).
 
 **Status: Accepted by the owner, 2026-11-05. Not built yet.** Code and schemas follow it as the roadmap delivers each part. Contracts: [8.9](../specifications/solidworks-adapter.md). Decisions: [ADR-058](../adr/ADR-058-compiler-oriented-adapter.md) to [ADR-063](../adr/ADR-063-observation-verification-boundary.md). Delivery: [roadmap](../plans/solidworks-adapter-roadmap.md).
 
@@ -368,7 +368,8 @@ flowchart TD
 1. **Three outcomes, never merged:** `execution_status`, `rebuild_status`, `verification_status`. A COM call that returned is at most `execution_status: succeeded`.
 2. **Independence.** Observers share no code with handlers beyond document lookup, and they read fresh from SOLIDWORKS. Expected values come from the IR. Units are converted in the core for measurement and in the translator for building, so one conversion bug cannot both build and measure a part wrongly and still agree with itself (10.2.1).
 3. **Absence is not success.** Each observation carries the review's completeness states: `present`, `empty`, `unavailable`, `unsupported` (F2). A check that lacks its data is `not_evaluated`, which never counts as passed.
-4. **Observation is read-only.** An observer on a document the job does not own changes nothing: not its selection, not its dirty flag. Where a native read cannot promise that, the capability is withheld (K15).
+4. **Observation is read-only.** An observer on a document the job does not own changes nothing: not its selection, not its dirty flag. Where a native read cannot promise that, the capability is withheld (K15). `AccessSelections` and its equivalents are never used to observe, because they put the model into a rollback state (ADR-064).
+5. **Each operation is judged before the next.** Its contract comes from the IR, and its observation arrives in the operation's own result (10.2.2, ADR-064). The final checks in the diagram above still measure the whole part.
 
 **Evidence** joins the chain `IR node → plan operation → wire operation → native feature → checks`. It is a pure projection of the plan, the journal, the operation results and the measurements. The journal stays the record of what happened, so evidence is never a second source of truth. Schema: 8.9.6. It is used for:
 

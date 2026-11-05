@@ -40,7 +40,7 @@ Complexity: **S** a few files, **M** one component, **L** several components.
 
 ### A0: Contract schemas. S
 
-**Scope.** Schemas: `PROPOSED_OPERATION_FAILED`, `details.effect`, `schemas/execution-evidence/v0.json` with fixtures.
+**Scope.** Schemas: `PROPOSED_OPERATION_FAILED`, `details.effect`, `schemas/execution-evidence/v0.json` with fixtures. From ADR-064: `VerificationContract` and check results in the evidence schema, `failure_class` and `blocked_by`, `observation` on `sketch.create` and `feature.create` results, `schemas/ipc/ops/document.rebuild.json`, the `op_verified` journal record, `PROPOSED_FEATURE_VERIFICATION_FAILED`, removing `dir` from `feature.create` and the compiler, and `warning` and `not_applicable` in `CheckResult`.
 
 **Acceptance.** Generated contracts show no drift. The schema has valid and invalid fixtures. No production behaviour changes.
 
@@ -65,7 +65,7 @@ Complexity: **S** a few files, **M** one component, **L** several components.
 
 ### A2: Vertical slice. L
 
-**Scope.** MVP Tasks 8, 9a, 9b, 12 and 13, with handlers in the five-stage form. Translators for sketch and extrude. `part.measure` with completeness. Evidence written by the `plan` job. Variant capabilities. Determinism R1, R2 and R3 tests.
+**Scope.** MVP Tasks 8, 9a, 9b, 12 and 13, with handlers in the five-stage form. Translators for sketch and extrude. `part.measure` with completeness. Evidence written by the `plan` job. `feature_contracts`, `evaluate` and the gate after each operation (ADR-064, T0 only). K19 before the reopen rebuild check. Variant capabilities. Determinism R1, R2 and R3 tests.
 
 **Depends on.** A1; the MVP's `cad-verification` task (Task 5).
 
@@ -81,7 +81,7 @@ Complexity: **S** a few files, **M** one component, **L** several components.
 
 ### A3: Inspection and reconciliation. M
 
-**Scope.** Spike K14 and K15. `features.read` (5.8) with paging. `reconcile`. `read_features` on the port. Store `feature_ids` and `measured` in `parts/` records. R4 numeric spread recording.
+**Scope.** Spike K14 and K15, with K15's extrude subset first, directly after M1, then K18, K20 and K21. T1 parameter checks become required as each read clears (ADR-064). `features.read` (5.8) with paging. `reconcile`. `read_features` on the port. Store `feature_ids` and `measured` in `parts/` records. R4 numeric spread recording.
 
 **Depends on.** A2.
 

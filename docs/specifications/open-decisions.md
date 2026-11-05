@@ -15,7 +15,7 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-Eleven open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15 and K16. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+Fifteen open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, K19, K20 and K21. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
 
 ### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
 
@@ -88,7 +88,8 @@ Eleven open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15 and K16. Every 
 ### K15: Reading feature definitions without side effects
 
 - **Why it matters.** `features.read` and reconciliation need feature parameters, parents and suppression. Native definition objects and their access-selection calls may change selection or the dirty flag, which would break the read-only promise (ADR-022), and could touch a borrowed document.
-- **Recommendation.** Spike each read on a scratch part in the A3 phase: compare dirty flag, selection and fingerprint before and after. Withhold any read that changes them, and report it as `unsupported`, so the affected drift is `not_comparable`.
+- **Narrowed (official API help, 2025).** `IExtrudeFeatureData2.AccessSelections` puts the model into a rollback state until it is released, so an observer must never call it, and scalar reads should not need it. The help does not say whether `IFeature.GetDefinition` on its own changes the dirty flag, so that remains the question. `IDimension.GetSystemValue3` is a possible alternative for reading a depth.
+- **Recommendation.** Spike each read on a scratch part in the A3 phase: compare dirty flag, selection and fingerprint before and after. Withhold any read that changes them, and report it as `unsupported`, so the affected drift is `not_comparable`. Run the extrude subset first, directly after M1, because the per-feature parameter checks of ADR-064 depend on it.
 - **Document:** Spec (5.8.3, 8.9.4).
 - **Blocks:** `later` (`features.read`, A3).
 
@@ -99,12 +100,41 @@ Eleven open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15 and K16. Every 
 - **Document:** ADR, then Spec (10.2.1, 8.9.6).
 - **Blocks:** `later` (A5 for revolve in part, A6 in full).
 
+### K18: What per-feature observation costs
+
+- **Why it matters.** ADR-064 adds native reads to every operation, in tiers ordered by expected cost. None of those costs has been measured. If they are high on a large part, the tier defaults are wrong. If they are low, volume checks at verification points could be on by default, which would catch a healthy feature that removed nothing.
+- **Recommendation.** Time each tier on a throwaway instance, on the plate and on the spike's 1,600-hole part. Set the default for the volume check from that data, and record it.
+- **Document:** ADR-064, Spec (10.2).
+- **Blocks:** `later` (the default for the volume check only).
+
+### K19: What rebuild state means on a document that was not rebuilt
+
+- **Why it matters.** 8.7 measures a reopened file without a rebuild, and ADR-063 forbids observers from rebuilding, so `part.measure.rebuild` can only report stored state. The 10.2.1 Rebuild check depends on it. The API help says `ForceRebuild3` returning true means the features were rebuilt, and does not say they are free of errors, so that return value cannot be the verdict. Whether `GetWhatsWrong` and `GetErrorCode2` hold their values on a reopened, unrebuilt document is unknown.
+- **Recommendation.** Define `rebuild` as observed state: `IModelDocExtension.GetWhatsWrong` plus `NeedsRebuild2`, keeping the rebuild's own return value as a separate field on `document.rebuild`. Spike it on a part with a known feature error, saved and reopened read-only. `ISldWorks.AllowFailedFeatureCreation(true)` is documented to create features with rebuild errors, which may also be the repeatable seeded defect 8.9.10 asks for. It is process-wide, so the spike must restore it, on a throwaway instance only.
+- **Document:** Spec (8.7, 8.9.3, 10.2.1).
+- **Blocks:** `1c` (the reopen Rebuild check in MVP Task 8).
+
+### K20: Which mass property call to use
+
+- **Why it matters.** The 2025 API help marks `IModelDocExtension.CreateMassProperty` obsolete. That is the call the spike proved and 8.7 relies on. Its successor, `CreateMassProperty2`, documents pre-selecting bodies through `SelectByID2`, which `BannedSymbols.txt` bans, or setting `SelectedItems`. Its behaviour with no selection is not stated.
+- **Recommendation.** Keep the proven call behind one method for now. Spike `CreateMassProperty2` with no selection and with `SelectedItems`, comparing values on the plate. Check again when admitting each new major version (ADR-045).
+- **Document:** Spec (8.7), ADR-045.
+- **Blocks:** `later` (admitting a newer major, or removal of the old call).
+
+### K21: Which native type names occur for extrudes and cuts
+
+- **Why it matters.** The spike saw `GetTypeName2` report `Extrusion` and `ICE` for the plate. The API help's table lists `Boss`, `BossThin`, `Cut`, `CutThin` and `Extrusion` under `IExtrudeFeatureData2`, and treats `ICE` as an Instant3D type. `cad_verification/part.py` accepts only some of these, so a correct cut could fail the feature check. Whether `GetDefinition` works on an `ICE` feature is also unknown, and parameter checks need it.
+- **Recommendation.** Spike `GetTypeName` and `GetTypeName2` across extrude and cut variants. Record the result in one pure table in `ExecutionServer.Core/Parts` that maps native names to neutral types, and have `cad-verification` compare only the neutral value (finding V12).
+- **Document:** Spec (5.3.6, 8.9.4).
+- **Blocks:** `later` (the plate's own types are measured; new feature variants need this).
+
 ---
 
 ## Closed
 
 | ID | Item | Recorded in |
 | --- | --- | --- |
+| K22 | Whether a feature warning blocks a commit: it does in the MVP, and a reviewed list may be allowed later (owner decision, 2026-11-05) | [ADR-064](../adr/ADR-064-per-operation-verification-contracts.md), [§10.2.1](../architecture/verification-engine.md#1021-part-chain-mvp-checks-builders-call) |
 | K17 | What the ledger records when an operation took effect and then failed (owner decision, 2026-11-05) | [§8.7](../architecture/execution-engine.md#87-ipc-messages-builders-call), [§13.2.3](../architecture/project-store.md#1323-job-journal), [§8.9.5](solidworks-adapter.md#895-error-contract) |
 | K7 | Sheet format generation path from Drawing Template IR | [§6.5.2](../architecture/backend-operations.md#652-vocabulary), [§11.12](../architecture/drawing-template-ir.md), [ADR-055](../adr/ADR-055-generated-sheet-formats.md) |
 | X1 | Process topology and job ownership across MCP clients | [ADR-041](../adr/ADR-041-core-service-topology.md) |

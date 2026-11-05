@@ -1,6 +1,6 @@
 # 6.5 Backend Operations and Execution Plans, 6.6 Capability Profile
 
-> Specification v1.31, sections 6.5–6.6. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.32, sections 6.5–6.6. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The compiler (section 6) and the drawing pipeline (11.4) change SOLIDWORKS only through **backend operations**, sent in `ops.apply` batches over the add-in pipe (ADR-036). This vocabulary is the contract between the Python side and the C# adapters.
 
@@ -59,7 +59,7 @@ Operation groups and the increment that needs them. Each group's schemas are wri
 - **The document is addressed by its full path only.** `GetOpenDocumentByName` finds a document by full path and returns null for a title or an unsaved document.
 - **Template.** `part.create` never uses SOLIDWORKS's own default-template preference, which can name a file that does not exist (`~BLANK_PART_TEMPLATE.prtdot`). The caller gives `template`; the core fills it from the configuration key `part.template` (13.3) when the caller names none, and fails with a catalogued error naming that setting when neither exists (8.4). The add-in fails with `FILE_NOT_FOUND` and `details.setting: part.template` when the file is missing. There is no fallback to an installed template. The template is only read.
 - **Existing files.** `part.create` and `document.save` refuse a path where a file already exists, with `AUTH_SOURCE_WRITE_NOT_ALLOWED`. `SaveAs4` with the silent option overwrites without warning, so the add-in must not rely on it to refuse.
-- **Failure.** A feature call that returns null fails with `BACKEND_REBUILD_ERROR`. A blind cut passes `Dir=true` (5.7.4).
+- **Failure.** A feature call that returns null fails with `BACKEND_REBUILD_ERROR`. The add-in's translator sets `Dir=true` for a blind cut (5.7.4). Neither the plan nor the wire carries a direction (8.9.3 rule 4, ADR-064).
 - **Ownership.** The add-in records the working part as owned by the requesting job, and refuses `document.save` and `document.close` on a `.SLDPRT` the requesting job does not own (ADR-046).
 
 ## 6.5.3 Execution Plan
@@ -73,9 +73,9 @@ The compiler's output for a bundle (6.2). Stored under `derived/plans/` (13.2) a
 | `provenance` | Compiler version, capability-profile hash (6.6), part fingerprints, recorded geometry candidates (ADR-049) |
 | `defaults` | Every default the compiler filled, by node and parameter (5.7) |
 | `operations` | Keyed by plan-local ID (ADR-048). Each has `sequence` (integer, the execution order), `document`, `op`, `params`, `source` (the IR item it implements), `depends_on` (plan-local IDs) and `postconditions` |
-| `verification_points` | Plan-local IDs after which API verification runs (10.2 layer 1) |
+| `verification_points` | Plan-local IDs where the optional T2 checks may run (10.2.2). Every operation is judged, whether or not it is listed here |
 
-- **Postconditions** are checks the add-in or core runs after an operation: `feature_exists`, `feature_status_ok`, `rebuild_ok`, `entity_count`, `parameter_equals` (within the 3.4.3 quantum). A failed postcondition fails the operation.
+- **Postconditions** name the checks that apply to an operation: `feature_exists`, `feature_status_ok`, `rebuild_ok`, `entity_count`, `parameter_equals` (within the 3.4.3 quantum). The plan holds names only, never expected values. Those come from the contract that `cad-verification` derives from the graph, and the core judges them from the operation's observation (10.2.2, ADR-064). A failed required check ends the job.
 - **Batches.** The core sends the operations in `sequence` order, cutting a batch at every verification point and after at most 100 operations. Each batch is journalled before it is sent (13.2.3). A `plan` job sends each operation as its own batch **[Builder's call]**, so an earlier result is always available to bind a later operation.
 - **Symbols [Builder's call].** A plan must be byte-identical for the same input, but a working file path and SOLIDWORKS feature IDs exist only at run time. So a plan holds symbols and the job binds them when it sends an operation: an operation's `document` of `$working` becomes the working file path, and a `profile` that is a sketch's node ID becomes the `feature_id` returned for that node. The job keeps the node ID to `feature_id` map in its `part_result` (12.4.5). `template` is absent from the plan and filled in by the job (6.5.2).
 - **Operation IDs.** A plan's IDs are plan-local, so one plan can be executed by several jobs. At execution, the job turns each into `<job_id>:<sequence>`.

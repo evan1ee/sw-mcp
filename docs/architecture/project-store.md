@@ -1,6 +1,6 @@
 # 13.2 Project Store and Job Journal
 
-> Specification v1.31, section 13.2. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.32, section 13.2. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The layout, write rules and retention of the project store (13.1, ADR-033), and the job journal that lets the core service (ADR-041) account for every job after a crash (ADR-032). Where a project and its store are is 12.5.
 
@@ -71,6 +71,7 @@ Each job has `jobs/<job_id>/job.json` (current state, replaced atomically) and `
 | `state` | On every lifecycle transition (8.4) | `from` (null for the first), `to`, `reason`, and `error` (ADR-037 object) when `to` is FAILED or ABORTED |
 | `batch_sent` | Before an `ops.apply` batch is sent | `batch_seq`, `operation_ids`, `documents` |
 | `op_result` | For each operation result received | `operation_id`, `ok`, `error_code`, and `recovered: true` when learned after a crash |
+| `op_verified` | After an operation's contract is judged (10.2.2) | `operation_id`, `node`, `feature_id`, `observation`, `checks`, `status` |
 | `snapshot` | After a read-back | `snapshot_id`, `sheet` |
 | `document` | When the job opens, creates, saves or closes a document (ADR-046) | `path`, `action` (`open`, `create`, `save`, `close`), `owned` |
 | `publish_intent` | Before a `plan` job renames its working file to the target (8.4.1) | `path`, `fingerprint` |
@@ -88,7 +89,7 @@ Each job has `jobs/<job_id>/job.json` (current state, replaced atomically) and `
 
 **In Phase 1a [Builder's call].** `check_drawing` writes `state`, `batch_sent` and `op_result` (for its `document.open` and `document.close`, 8.7), `document` (`action`: `open` or `close`, with `owned`), `snapshot` and `note`. Steps 1, 3 and 4 run when the store opens, after the order rule in 13.2.2. In step 3, "documents it touched" are those with a `document` `open` record and no `close` record; they become `documents` entries with `state: unknown`. Step 2 runs on the first backend connection after that: only operation IDs that appear in the job's `batch_sent` records and have no `op_result` are recorded. A crash leaves no job running: a job in VALIDATED, EXECUTING or VERIFYING is FAILED, one in PLANNED is ABORTED.
 
-**In the `plan` job (part chain MVP) [Builder's call].** The job writes `state`, `batch_sent`, `op_result`, `document`, `publish_intent`, `published` and `note` (including the reuse of an existing plan, 6.7.4). A `document` `create` record is written before `part.create` is sent, so the working part counts as touched, with `state: unknown`, even if the core died during `part.create`. Recovery never resumes a `plan` job. If a job has a `publish_intent` record and no `published` record, recovery compares the target file's fingerprint with the recorded one. On a match the job stays FAILED with `EXEC_INTERRUPTED` and gains the warning `published_unconfirmed`, which names the file; the file is never adopted silently, and no part record is written. On a mismatch, or no file, the job is FAILED with `EXEC_INTERRUPTED` and no warning. The journal reader's action mapping and the store schema change together, because an unknown `document` action would otherwise be read as `open`.
+**In the `plan` job (part chain MVP) [Builder's call].** The job writes `state`, `batch_sent`, `op_result`, `op_verified`, `document`, `publish_intent`, `published` and `note` (including the reuse of an existing plan, 6.7.4). A `document` `create` record is written before `part.create` is sent, so the working part counts as touched, with `state: unknown`, even if the core died during `part.create`. Recovery never resumes a `plan` job. If a job has a `publish_intent` record and no `published` record, recovery compares the target file's fingerprint with the recorded one. On a match the job stays FAILED with `EXEC_INTERRUPTED` and gains the warning `published_unconfirmed`, which names the file; the file is never adopted silently, and no part record is written. On a mismatch, or no file, the job is FAILED with `EXEC_INTERRUPTED` and no warning. The journal reader's action mapping and the store schema change together, because an unknown `document` action would otherwise be read as `open`.
 
 **Edge cases [Builder's call]** (register J18).
 - Recovery runs once per store per core start, whenever the store is first opened: at start for every listed store, and on the first `open_for` of a store that was not listed (a new store, or one missing from an unreadable list). No job of a store is visible through `status` before its recovery has run.

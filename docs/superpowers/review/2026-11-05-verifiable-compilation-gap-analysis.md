@@ -2,6 +2,8 @@
 
 Date: 2026-11-05. Reviewed at `0222b15` on `feat/part-chain-mvp`, against specification v1.31. This is a review only: no production code, schema, specification or ADR was changed. Every proposal below needs the owner's decision.
 
+**Later status (2026-11-05):** the owner accepted ADR-064 and decided K22, and spec v1.32 applies them. V5, V6 and V7 are fixed. V14 is still open. The rest of this review is unchanged, and its proposals read as written at the time.
+
 ## 1. Conclusion
 
 **The architecture can support contract-based, runtime-verifiable compilation with no redesign and no new package.** The hard structural decisions are already correct and accepted: a pure compiler, facts in C# and judgement in Python (ADR-063), three separate outcomes, a journal, and a working-file publish that only happens after verification.
@@ -331,7 +333,7 @@ Proposed mapping of the six requested states, extending ADR-063 rather than repl
 | Not Executed | `status: not_evaluated`, `reason: not_executed` | No |
 | Unsupported | `status: not_evaluated`, `reason: unsupported` | No, unless the contract marks the check `required: false` |
 
-The existing `completeness` state `unavailable` maps to `reason: unavailable`. Keeping `not_evaluated` as the single non-verdict preserves ADR-063's rule that it never counts as passed.
+The existing `completeness` state `unavailable` maps to `reason: missing_data`, the name the code now uses. Keeping `not_evaluated` as the single non-verdict preserves ADR-063's rule that it never counts as passed.
 
 **Failure classes.** Proposed additive evidence field `outcome.failure_class`:
 
