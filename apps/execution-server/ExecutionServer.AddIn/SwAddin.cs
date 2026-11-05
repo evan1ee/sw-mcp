@@ -137,6 +137,12 @@ public class SwAddin : ISwAddin
                     new OperationInfo { Op = "drawing.create", SchemaVersion = "0.1" },
                     new OperationInfo { Op = "view.create", SchemaVersion = "0.1" },
                     new OperationInfo { Op = "view.update", SchemaVersion = "0.1" },
+                    new OperationInfo { Op = "model_items.insert", SchemaVersion = "0.1" },
+                    new OperationInfo { Op = "dimensions.auto_arrange", SchemaVersion = "0.1" },
+                    new OperationInfo { Op = "center_mark.add", SchemaVersion = "0.1" },
+                    new OperationInfo { Op = "dimension.hide", SchemaVersion = "0.1" },
+                    new OperationInfo { Op = "dimension.show", SchemaVersion = "0.1" },
+                    new OperationInfo { Op = "dimension.move", SchemaVersion = "0.1" },
                     new OperationInfo { Op = "document.save", SchemaVersion = "0.1" }
                 },
                 LicensedModules = new List<string>(),
@@ -469,6 +475,60 @@ public class SwAddin : ISwAddin
                         ? pObj.ToObject<ViewUpdateParams>()
                         : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for view.update");
                     var res = new Adapters.Drawings.ViewCreationAdapter(_sw).UpdateView(p!, ct);
+                    return JObject.FromObject(res);
+                }
+
+                if (op.Op == "model_items.insert")
+                {
+                    var p = op.Params is JObject pObj
+                        ? pObj.ToObject<ModelItemsInsertParams>()
+                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for model_items.insert");
+                    var res = new Adapters.Drawings.AnnotationPlacementAdapter(_sw).InsertModelItems(p!, ct);
+                    return JObject.FromObject(res);
+                }
+
+                if (op.Op == "dimensions.auto_arrange")
+                {
+                    var p = op.Params is JObject pObj
+                        ? pObj.ToObject<DimensionsAutoArrangeParams>()
+                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for dimensions.auto_arrange");
+                    var res = new Adapters.Drawings.AnnotationPlacementAdapter(_sw).AutoArrangeDimensions(p!, ct);
+                    return JObject.FromObject(res);
+                }
+
+                if (op.Op == "center_mark.add")
+                {
+                    var p = op.Params is JObject pObj
+                        ? pObj.ToObject<CenterMarkAddParams>()
+                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for center_mark.add");
+                    var res = new Adapters.Drawings.AnnotationPlacementAdapter(_sw).AutoInsertCenterMarks(p!, ct);
+                    return JObject.FromObject(res);
+                }
+
+                if (op.Op == "dimension.hide")
+                {
+                    var p = op.Params is JObject pObj
+                        ? pObj.ToObject<DimensionHideParams>()
+                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for dimension.hide");
+                    var res = new Adapters.Drawings.AnnotationPlacementAdapter(_sw).HideDimension(p!, ct);
+                    return JObject.FromObject(res);
+                }
+
+                if (op.Op == "dimension.show")
+                {
+                    var p = op.Params is JObject pObj
+                        ? pObj.ToObject<DimensionShowParams>()
+                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for dimension.show");
+                    var res = new Adapters.Drawings.AnnotationPlacementAdapter(_sw).ShowDimension(p!, ct);
+                    return JObject.FromObject(res);
+                }
+
+                if (op.Op == "dimension.move")
+                {
+                    var p = op.Params is JObject pObj
+                        ? pObj.ToObject<DimensionMoveParams>()
+                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for dimension.move");
+                    var res = new Adapters.Drawings.AnnotationPlacementAdapter(_sw).MoveDimension(p!, ct);
                     return JObject.FromObject(res);
                 }
 
