@@ -65,7 +65,7 @@ F5 and F6 are in the shared add-in, and F7 (connection leak) and F8 (entry point
 ## Open items waiting for the freeze to lift
 
 - **Owner decisions** ([architecture roadmap](2026-11-05-architecture-roadmap.md)): O1, O3, O5, O6.
-- **ADR-056:** stays Proposed. Its [pipeline review](2026-11-05-drawing-execution-pipeline-review.md) is not a verified baseline (review section 7.1), and it still fails `ruff format --check` at line 224.
+- **ADR-056:** stays Proposed. Its [pipeline review](2026-11-05-drawing-execution-pipeline-review.md) is not a verified baseline (review section 7.1).
 - **Open decisions** ([register](../../specifications/open-decisions.md)): K3, J11, K8, K9, K10.
 
 ## How to resume
