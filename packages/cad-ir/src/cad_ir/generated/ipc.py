@@ -92,6 +92,8 @@ type ErrorRetryable = Literal['never', 'after_fix', 'safe']
 
 type DocumentEventParamsEvent = Literal['regen', 'save', 'close', 'active_changed']
 
+type ModelItemsInsertParamsSource = Literal['entire_model', 'selected_feature']
+
 type ViewCreateParamsViewType = Literal['base', 'projected', 'isometric', 'flat_pattern']
 
 type ViewCreateParamsOrientation = Literal['front', 'top', 'right', 'back', 'bottom', 'left', 'isometric']
@@ -830,6 +832,266 @@ class ResponseChunkParams:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class CenterMarkAddParams:
+    view: str
+    hole_centers: bool | None = None
+    slot_centers: bool | None = None
+    use_doc_defaults: bool | None = None
+    size_mm: float | None = None
+    gap_mm: float | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "CenterMarkAddParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            view=_str(_req(obj, "view", where), f"{where}.view"),
+            hole_centers=_opt(obj, "hole_centers", where, _bool),
+            slot_centers=_opt(obj, "slot_centers", where, _bool),
+            use_doc_defaults=_opt(obj, "use_doc_defaults", where, _bool),
+            size_mm=_opt(obj, "size_mm", where, _num),
+            gap_mm=_opt(obj, "gap_mm", where, _num),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["view"] = _dump(self.view)
+        if self.hole_centers is not None:
+            out["hole_centers"] = _dump(self.hole_centers)
+        if self.slot_centers is not None:
+            out["slot_centers"] = _dump(self.slot_centers)
+        if self.use_doc_defaults is not None:
+            out["use_doc_defaults"] = _dump(self.use_doc_defaults)
+        if self.size_mm is not None:
+            out["size_mm"] = _dump(self.size_mm)
+        if self.gap_mm is not None:
+            out["gap_mm"] = _dump(self.gap_mm)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CenterMarkAddResult:
+    count: int
+    view: str
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "CenterMarkAddResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            count=_int(_req(obj, "count", where), f"{where}.count"),
+            view=_str(_req(obj, "view", where), f"{where}.view"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["count"] = _dump(self.count)
+        out["view"] = _dump(self.view)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DimensionHideParams:
+    annotation: str
+    reason: str | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DimensionHideParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            annotation=_str(_req(obj, "annotation", where), f"{where}.annotation"),
+            reason=_opt(obj, "reason", where, _str),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["annotation"] = _dump(self.annotation)
+        if self.reason is not None:
+            out["reason"] = _dump(self.reason)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DimensionHideResult:
+    annotation: str
+    hidden: bool
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DimensionHideResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            annotation=_str(_req(obj, "annotation", where), f"{where}.annotation"),
+            hidden=_bool(_req(obj, "hidden", where), f"{where}.hidden"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["annotation"] = _dump(self.annotation)
+        out["hidden"] = _dump(self.hidden)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DimensionMoveParams:
+    annotation: str
+    position: tuple[float, ...]
+    center_text: bool | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DimensionMoveParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            annotation=_str(_req(obj, "annotation", where), f"{where}.annotation"),
+            position=_list_of(_num)(_req(obj, "position", where), f"{where}.position"),
+            center_text=_opt(obj, "center_text", where, _bool),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["annotation"] = _dump(self.annotation)
+        out["position"] = _dump(self.position)
+        if self.center_text is not None:
+            out["center_text"] = _dump(self.center_text)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DimensionMoveResult:
+    annotation: str
+    position: tuple[float, ...]
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DimensionMoveResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            annotation=_str(_req(obj, "annotation", where), f"{where}.annotation"),
+            position=_list_of(_num)(_req(obj, "position", where), f"{where}.position"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["annotation"] = _dump(self.annotation)
+        out["position"] = _dump(self.position)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DimensionShowParams:
+    annotation: str
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DimensionShowParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            annotation=_str(_req(obj, "annotation", where), f"{where}.annotation"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["annotation"] = _dump(self.annotation)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DimensionShowResult:
+    annotation: str
+    shown: bool
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DimensionShowResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            annotation=_str(_req(obj, "annotation", where), f"{where}.annotation"),
+            shown=_bool(_req(obj, "shown", where), f"{where}.shown"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["annotation"] = _dump(self.annotation)
+        out["shown"] = _dump(self.shown)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DimensionsAutoArrangeParams:
+    view: str
+    spacing_mm: float | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DimensionsAutoArrangeParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            view=_str(_req(obj, "view", where), f"{where}.view"),
+            spacing_mm=_opt(obj, "spacing_mm", where, _num),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["view"] = _dump(self.view)
+        if self.spacing_mm is not None:
+            out["spacing_mm"] = _dump(self.spacing_mm)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DimensionsAutoArrangeResult:
+    success: bool
+    view: str
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "DimensionsAutoArrangeResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            success=_bool(_req(obj, "success", where), f"{where}.success"),
+            view=_str(_req(obj, "view", where), f"{where}.view"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["success"] = _dump(self.success)
+        out["view"] = _dump(self.view)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class DocumentCloseParams:
     path: str
     meta: Meta | None = None
@@ -1048,6 +1310,81 @@ class DrawingCreateResult:
         out: dict[str, JsonValue] = {}
         out["document"] = _dump(self.document)
         out["sheet_name"] = _dump(self.sheet_name)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ModelItemsInsertParams:
+    view: str | None = None
+    source: ModelItemsInsertParamsSource | None = None
+    duplicate_dims: bool | None = None
+    hidden_feature_dims: bool | None = None
+    use_placement_in_sketch: bool | None = None
+    marked_for_drawing: bool | None = None
+    not_marked_for_drawing: bool | None = None
+    hole_callouts: bool | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "ModelItemsInsertParams")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            view=_opt(obj, "view", where, _str),
+            source=_opt(obj, "source", where, _str),
+            duplicate_dims=_opt(obj, "duplicate_dims", where, _bool),
+            hidden_feature_dims=_opt(obj, "hidden_feature_dims", where, _bool),
+            use_placement_in_sketch=_opt(obj, "use_placement_in_sketch", where, _bool),
+            marked_for_drawing=_opt(obj, "marked_for_drawing", where, _bool),
+            not_marked_for_drawing=_opt(obj, "not_marked_for_drawing", where, _bool),
+            hole_callouts=_opt(obj, "hole_callouts", where, _bool),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        if self.view is not None:
+            out["view"] = _dump(self.view)
+        if self.source is not None:
+            out["source"] = _dump(self.source)
+        if self.duplicate_dims is not None:
+            out["duplicate_dims"] = _dump(self.duplicate_dims)
+        if self.hidden_feature_dims is not None:
+            out["hidden_feature_dims"] = _dump(self.hidden_feature_dims)
+        if self.use_placement_in_sketch is not None:
+            out["use_placement_in_sketch"] = _dump(self.use_placement_in_sketch)
+        if self.marked_for_drawing is not None:
+            out["marked_for_drawing"] = _dump(self.marked_for_drawing)
+        if self.not_marked_for_drawing is not None:
+            out["not_marked_for_drawing"] = _dump(self.not_marked_for_drawing)
+        if self.hole_callouts is not None:
+            out["hole_callouts"] = _dump(self.hole_callouts)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ModelItemsInsertResult:
+    count: int
+    annotations: tuple[str, ...] | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "ModelItemsInsertResult")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            count=_int(_req(obj, "count", where), f"{where}.count"),
+            annotations=_opt(obj, "annotations", where, _list_of(_str)),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["count"] = _dump(self.count)
+        if self.annotations is not None:
+            out["annotations"] = _dump(self.annotations)
         return out
 
 

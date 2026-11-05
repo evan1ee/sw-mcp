@@ -1,0 +1,9 @@
+[
+  {
+    "count": "not_an_integer"
+  },
+  {
+    "count": 1,
+    "annotations": "not_an_array"
+  }
+]

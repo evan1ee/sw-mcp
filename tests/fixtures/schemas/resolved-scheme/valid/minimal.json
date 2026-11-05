@@ -1,0 +1,44 @@
+{
+  "schema_version": "0.1",
+  "drawing_intent": "drawing_intent:BRK-001-DI@1",
+  "part_revision": 1,
+  "pipeline_version": "1.0",
+  "entries": {
+    "ds_bore_1_diameter_b41219": {
+      "kind": "diameter",
+      "covers": [
+        "bore_1.diameter"
+      ],
+      "source": "model_item",
+      "tolerance": {
+        "critical": "bore_dia"
+      },
+      "status": "shown",
+      "origin": "derived"
+    },
+    "ds_sketch_bore_x_4556c0": {
+      "kind": "linear",
+      "covers": [
+        "sketch_bore.x"
+      ],
+      "measures": {
+        "from": "plane:right",
+        "to": "bore_1.axis"
+      },
+      "source": "reference",
+      "tolerance": "general",
+      "status": "shown",
+      "origin": "derived"
+    },
+    "ds_sketch_bore_x_be93d5": {
+      "kind": "linear",
+      "covers": [
+        "sketch_bore.x"
+      ],
+      "source": "model_item",
+      "status": "hidden",
+      "reason": "replaced_by:ds_sketch_bore_x_4556c0",
+      "origin": "derived"
+    }
+  }
+}

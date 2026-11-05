@@ -1,0 +1,11 @@
+[
+  {},
+  {
+    "view": "Drawing View1",
+    "source": "entire_model",
+    "marked_for_drawing": true,
+    "not_marked_for_drawing": false,
+    "hole_callouts": true,
+    "duplicate_dims": false
+  }
+]

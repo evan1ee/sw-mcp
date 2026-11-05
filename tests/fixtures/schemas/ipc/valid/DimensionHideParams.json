@@ -1,0 +1,9 @@
+[
+  {
+    "annotation": "D1@Sketch1"
+  },
+  {
+    "annotation": "D2@Sketch1",
+    "reason": "duplicate"
+  }
+]

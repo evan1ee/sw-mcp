@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/dimension.move.json",
+  "title": "Operation dimension.move (spec 6.5.2)",
+  "x-op": "dimension.move",
+  "x-mutates": "document",
+  "x-errors": [
+    "BACKEND_BUSY",
+    "BACKEND_UI_BLOCKED",
+    "REF_NOT_FOUND",
+    "IR_SCHEMA_INVALID"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Params": {
+      "type": "object",
+      "required": [
+        "annotation",
+        "position"
+      ],
+      "properties": {
+        "annotation": {
+          "type": "string"
+        },
+        "position": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "center_text": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Result": {
+      "type": "object",
+      "required": [
+        "annotation",
+        "position"
+      ],
+      "properties": {
+        "annotation": {
+          "type": "string"
+        },
+        "position": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    }
+  }
+}

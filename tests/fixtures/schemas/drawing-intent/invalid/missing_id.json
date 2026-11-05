@@ -1,0 +1,6 @@
+{
+  "module": "drawing_intent",
+  "schema_version": "0.1",
+  "units": "mm",
+  "documents": "part:bracket@4"
+}

@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/drawing-intent/v0.json",
+  "title": "Drawing Intent IR (spec 11.10)",
+  "type": "object",
+  "required": [
+    "module",
+    "id",
+    "schema_version",
+    "units",
+    "documents"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "module": {
+      "const": "drawing_intent"
+    },
+    "id": {
+      "$ref": "../common/v0.json#/$defs/DocumentId"
+    },
+    "revision": {
+      "$ref": "../common/v0.json#/$defs/Revision"
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.(0|[1-9][0-9]*)$"
+    },
+    "units": {
+      "const": "mm"
+    },
+    "documents": {
+      "$ref": "../common/v0.json#/$defs/DocumentRef"
+    },
+    "design_intent": {
+      "$ref": "../common/v0.json#/$defs/DocumentRef"
+    },
+    "configuration": {
+      "type": "string"
+    },
+    "general_tolerance": {
+      "type": "string"
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "process": {
+          "type": "string"
+        },
+        "material": {
+          "type": "string"
+        },
+        "treatment": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "surface_finish": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "general": {
+          "type": "object",
+          "required": [
+            "ra"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "ra": {
+              "type": "number"
+            }
+          }
+        },
+        "exceptions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "target",
+              "ra"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "target": {
+                "type": "string"
+              },
+              "ra": {
+                "type": "number"
+              },
+              "requirement": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "datums": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "ref",
+          "applies_to"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ref": {
+            "type": "string"
+          },
+          "applies_to": {
+            "enum": [
+              "surface",
+              "feature_of_size"
+            ]
+          }
+        }
+      }
+    },
+    "critical_dimensions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "param": {
+            "type": "string"
+          },
+          "ref": {
+            "type": "string"
+          },
+          "tolerance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "requirement": {
+            "type": "string"
+          },
+          "inspect": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "gdt": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "characteristic",
+          "tolerance",
+          "target",
+          "applies_to"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "characteristic": {
+            "type": "string"
+          },
+          "tolerance": {
+            "type": "number"
+          },
+          "target": {
+            "type": "string"
+          },
+          "applies_to": {
+            "enum": [
+              "surface",
+              "feature_of_size"
+            ]
+          },
+          "datums": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "requirement": {
+            "type": "string"
+          },
+          "inspect": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "scheme_overrides": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

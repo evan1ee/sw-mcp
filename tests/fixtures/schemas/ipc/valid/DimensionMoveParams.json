@@ -1,0 +1,17 @@
+[
+  {
+    "annotation": "D1@Sketch1",
+    "position": [
+      120.0,
+      140.0
+    ]
+  },
+  {
+    "annotation": "D2@Sketch1",
+    "position": [
+      150.0,
+      200.0
+    ],
+    "center_text": true
+  }
+]

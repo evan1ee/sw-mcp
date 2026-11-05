@@ -1,0 +1,15 @@
+[
+  {
+    "annotation": "D1@Sketch1",
+    "position": [
+      120.0
+    ]
+  },
+  {
+    "annotation": 123,
+    "position": [
+      120.0,
+      140.0
+    ]
+  }
+]
