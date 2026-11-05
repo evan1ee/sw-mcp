@@ -18,7 +18,7 @@ docs/
 1. [Product specification](specifications/product-spec.md) — vision, scope, targets, definition of done
 2. [Architecture overview](architecture/overview.md) — layers, components, task-driven IR composition
 3. [Production drawings](architecture/production-drawings.md) — the P0 capability
-4. [Roadmap](specifications/roadmap.md) — phases and the Phase 0 assumption register
+4. [Roadmap](specifications/roadmap.md) — phases, the Phase 0 assumption register and the Phase 1 work order
 5. [Decisions](adr/README.md) — why things are the way they are
 
 ## Specifications
@@ -27,7 +27,7 @@ docs/
 | --- | --- |
 | [README.md](specifications/README.md) | Version, status, conventions, section map |
 | [product-spec.md](specifications/product-spec.md) | §1 Executive summary, §2 Scope, §16 Targets, §20 Definition of done, §21 Product definition |
-| [roadmap.md](specifications/roadmap.md) | §18 Phases 0–5 |
+| [roadmap.md](specifications/roadmap.md) | §18 Phases 0–5, assumption register, Phase 1 work order |
 | [CHANGELOG.md](specifications/CHANGELOG.md) | What changed in each specification version |
 | [open-decisions.md](specifications/open-decisions.md) | Register of decisions found missing before implementation, where each is now recorded, and the place to log new gaps |
 

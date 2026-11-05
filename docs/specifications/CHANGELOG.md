@@ -2,6 +2,16 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.28
+
+Rewrites the roadmap (section 18) for readability, adds the order of work for Phase 1, and records the owner's decision to freeze drawing work and build the part chain first. Phase scope, acceptance criteria and assumptions A1–A17 are unchanged.
+
+- **Current focus** (section 18, [ADR-057](../adr/ADR-057-freeze-drawings-build-part-chain-first.md), owner decision): drawing work is frozen at commit `eea9389`, and development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. The Phase 1 work order is paused, except for M0 and the parts of M2 and M3 the part chain needs.
+- **Phase 1 work order** (section 18) **[Builder's call]**: milestones M0–M11 from the [2026-11-05 architecture roadmap](../superpowers/review/2026-11-05-architecture-roadmap.md), with dependencies, completion criteria and how they feed phase acceptance. Owner decisions O1, O5 and O6 stay open, and ADR-056 stays Proposed.
+- **Roadmap layout** (section 18): adds a phases-at-a-glance table, a goal for each phase, and grouped work items and acceptance lists.
+- **Assumption register** (section 18): states that `docs/specifications/assumptions.md` does not exist yet and that M0 creates it.
+- **Open Decisions** ([register](open-decisions.md)): logged items **K8** (snapshot keys when native names change or repeat), **K9** (view and annotation identity across sessions) and **K10** (form of the `produce_drawing` orchestrator); 5 open decisions now (K3, J11, K8, K9, K10).
+
 ## What changed in 1.27
 
 Adds the Drawing Intent IR schema (§11.10), Resolved Dimension Scheme schema (§11.10.1), and backend annotation and dimension placement operation schemas (§6.5.2) for Phase 1c Annotation & Dimension Placement Pipeline.

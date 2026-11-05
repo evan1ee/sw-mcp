@@ -1,6 +1,6 @@
 # 9. Incremental Compilation and Synchronization (P2)
 
-> Specification v1.27, section 9. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.28, section 9. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 9.1 Purpose
 

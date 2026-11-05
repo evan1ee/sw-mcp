@@ -1,6 +1,6 @@
 # 6.5 Backend Operations and Execution Plans, 6.6 Capability Profile
 
-> Specification v1.27, sections 6.5–6.6. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.28, sections 6.5–6.6. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The compiler (section 6) and the drawing pipeline (11.4) change SOLIDWORKS only through **backend operations**, sent in `ops.apply` batches over the add-in pipe (ADR-036). This vocabulary is the contract between the Python side and the C# adapters.
 
