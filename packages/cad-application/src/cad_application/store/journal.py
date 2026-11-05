@@ -7,6 +7,7 @@ from types import MappingProxyType
 from typing import Final
 
 from cad_ir.generated.error_codes import DEFAULT_RETRYABLE, ErrorCode
+from cad_ir.generated.ipc import FailedOperation
 
 from cad_application.ports import Clock, Store
 from cad_application.store.codec import Obj, format_ts
@@ -171,10 +172,24 @@ def recover(store: Store, clock: Clock) -> RecoveryResult:
 
 
 def record_completed_operations(
-    store: Store, result: RecoveryResult, completed: Sequence[str]
+    store: Store,
+    result: RecoveryResult,
+    completed: Sequence[str],
+    *,
+    failed: Sequence[FailedOperation | Mapping[str, str]] = (),
 ) -> tuple[str, ...]:
     """Step 2: ``op_result`` with ``recovered: true`` for pending IDs the add-in completed."""
     done = set(completed)
+    failed_by_id: dict[str, str] = {}
+    for f in failed:
+        if isinstance(f, FailedOperation):
+            failed_by_id[f.operation_id] = f.code
+        else:
+            op_id = f.get("operation_id")
+            code = f.get("code")
+            if isinstance(op_id, str) and isinstance(code, str):
+                failed_by_id[op_id] = code
+
     recorded: list[str] = []
     for job_id, pending in result.pending_operation_ids.items():
         journal = store.read_journal(job_id)
@@ -184,5 +199,11 @@ def record_completed_operations(
             if op in pending and op in done:
                 ts = store.timestamp()
                 store.append(job_id, OpResultRecord(ts, job_id, op, True, None, recovered=True))
+                recorded.append(op)
+            elif op in pending and op in failed_by_id:
+                ts = store.timestamp()
+                store.append(
+                    job_id, OpResultRecord(ts, job_id, op, False, failed_by_id[op], recovered=True)
+                )
                 recorded.append(op)
     return tuple(recorded)

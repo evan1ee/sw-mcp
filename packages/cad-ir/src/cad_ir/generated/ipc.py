@@ -503,8 +503,36 @@ class CompletedOperationsParams:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class FailedOperation:
+    operation_id: str
+    code: str
+    effect: str
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "FailedOperation")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            operation_id=_str(_req(obj, "operation_id", where), f"{where}.operation_id"),
+            code=_str(_req(obj, "code", where), f"{where}.code"),
+            effect=_str(_req(obj, "effect", where), f"{where}.effect"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["operation_id"] = _dump(self.operation_id)
+        out["code"] = _dump(self.code)
+        out["effect"] = _dump(self.effect)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class CompletedOperationsResult:
     operation_ids: tuple[str, ...]
+    failed_operations: tuple[FailedOperation, ...] | None = None
 
     @classmethod
     def from_json(cls, value: JsonValue) -> Self:
@@ -515,11 +543,14 @@ class CompletedOperationsResult:
         obj = _obj(value, where)
         return cls(
             operation_ids=_list_of(_str)(_req(obj, "operation_ids", where), f"{where}.operation_ids"),
+            failed_operations=_opt(obj, "failed_operations", where, _list_of(FailedOperation._at)),
         )
 
     def to_json(self) -> dict[str, JsonValue]:
         out: dict[str, JsonValue] = {}
         out["operation_ids"] = _dump(self.operation_ids)
+        if self.failed_operations is not None:
+            out["failed_operations"] = _dump(self.failed_operations)
         return out
 
 

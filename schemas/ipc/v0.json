@@ -266,6 +266,25 @@
         }
       }
     },
+    "FailedOperation": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "effect": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation_id",
+        "code",
+        "effect"
+      ]
+    },
     "CompletedOperationsResult": {
       "type": "object",
       "properties": {
@@ -273,6 +292,12 @@
           "type": "array",
           "items": {
             "type": "string"
+          }
+        },
+        "failed_operations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FailedOperation"
           }
         }
       },

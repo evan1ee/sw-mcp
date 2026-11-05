@@ -327,10 +327,25 @@ public sealed class CompletedOperationsParams
     public Meta? Meta { get; set; }
 }
 
+public sealed class FailedOperation
+{
+    [JsonProperty("operation_id", Required = Required.Always)]
+    public string OperationId { get; set; } = string.Empty;
+
+    [JsonProperty("code", Required = Required.Always)]
+    public string Code { get; set; } = string.Empty;
+
+    [JsonProperty("effect", Required = Required.Always)]
+    public string Effect { get; set; } = string.Empty;
+}
+
 public sealed class CompletedOperationsResult
 {
     [JsonProperty("operation_ids", Required = Required.Always)]
     public List<string> OperationIds { get; set; } = new List<string>();
+
+    [JsonProperty("failed_operations", NullValueHandling = NullValueHandling.Ignore)]
+    public List<FailedOperation>? FailedOperations { get; set; }
 }
 
 public sealed class SnapshotParams
