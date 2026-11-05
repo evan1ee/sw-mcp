@@ -4,30 +4,23 @@ Last updated: 2026-11-05. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Current State
 
-- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. The owner approved the MVP [design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md). Progress on `feat/part-chain-mvp`, as of 2026-11-05: Tasks 0 and 1 done ([spike](docs/superpowers/review/2026-11-05-part-chain-spike.md)); Task 2 committed with review fixes (`a71b510`); Tasks 3 (`d8bc5f9`), 6 (`6bc1feb`), 4 (`dfbdd00`), and 5 (`af4ad47`) are committed and reviewed clean (`task-5-review.md`: Approved). The pure core pipeline is complete. The add-in has no part handlers yet (Tasks 7a, 7c, 7b, 8). Spike results that changed the design: no usable default template (new `part.template` setting), lookup by full path only, blind cut needs `Dir=true`, `FileCloseNotify` does not fire for API close (use `DestroyNotify2`). Two earlier spike runs ended with the owner's SOLIDWORKS exiting; the cause is unproven (the final run on a throwaway instance was clean). Never run live spikes against the owner's working session.
+- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. The owner approved the MVP [design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md). Progress on `feat/part-chain-mvp`, as of 2026-11-05: Tasks 0 and 1 done ([spike](docs/superpowers/review/2026-11-05-part-chain-spike.md)); Task 2 committed with review fixes (`a71b510`); Tasks 3 (`d8bc5f9`), 6 (`6bc1feb`), 4 (`dfbdd00`), and 5 (`af4ad47`) committed and reviewed clean; Task 7a committed (`995aee6`); Task 7c committed (`a1abcac`). Next is Task 7b (Events and instance IDs), followed by Task 8 (Part adapters).
 - **Frozen drawing state:** Annotation and dimension placement increment implemented and exercised by a live test script (Spec §11.4, §11.5, §11.10, §11.10.1, §6.5.2). This work was called "Phase 1c" here, but roadmap §18 defines Phase 1c as IR-built parts; by §18 it is partial Phase 1b, and Phase 1a acceptance is not yet met. The live test passes against local SOLIDWORKS 2025 SP0.1 with 0 violations, **but that is not evidence of drawing correctness for D1, D2, D3 or D7**: the add-in reads no line or text geometry and reports a fixed border and title block ([architecture review](docs/superpowers/review/2026-11-05-architecture-review.md) F1 to F3).
-- **Architecture review:** completed 2026-11-05: [review](docs/superpowers/review/2026-11-05-architecture-review.md), [roadmap](docs/superpowers/review/2026-11-05-architecture-roadmap.md). The design and foundations are sound; the SOLIDWORKS adapters are prototype quality. Awaiting owner decisions (see Next Steps).
-- **SOLIDWORKS adapter design (Accepted by the owner, 2026-11-05; committed as `360005f`):** [8.8 architecture](docs/architecture/solidworks-adapter.md), [8.9 interface specification](docs/specifications/solidworks-adapter.md), ADR-058 to ADR-063, [roadmap](docs/plans/solidworks-adapter-roadmap.md). Documents only: no production code, schema or live run, so the code does not follow it yet.
-- **Verifiable compilation gap analysis (2026-11-05, at `0222b15`; proposals only, awaiting the owner):** [review](docs/superpowers/review/2026-11-05-verifiable-compilation-gap-analysis.md). No redesign needed. Per-feature checks cannot yet be evaluated (V1, V2, V8). The owner accepted [ADR-064](docs/adr/ADR-064-per-operation-verification-contracts.md) on 2026-11-05 and decided K22 (a feature warning blocks a commit in the MVP). It is in the spec at 10.2.2, and **the code and schemas do not follow it yet**: A0 and MVP Tasks 8 to 9b deliver it. V14 is settled: the plan hash includes the pinned revision (6.7.4, owner decision). Wrong verdicts V5, V6 and V7 are fixed and committed: `compare` reports `not_evaluated` for absent or malformed data, `expected_geometry` handles line-loop cuts, the validator rejects cuts outside the base or overlapping each other, and the compiler refuses bundles beyond one part. Task 9b should read `CheckResult.status`, with `passed` kept as a convenience. The design's section 5 gained the matching rule.
-- **Task 7a work landed as `995aee6` during that review.** V4 and V10 were re-checked against it and are closed apart from the part handlers (Task 8).
-- **Roadmap A0 is done (spec v1.34):** schemas for evidence, contracts, `observation`, `document.rebuild`, `op_verified` and two new error codes; `dir` removed. Nothing uses them yet: A2 and Tasks 8 to 9b do.
-- **Spec:** v1.34 across all topic files in `docs/`. Section 18 now carries the current focus with the MVP's stages, and the paused Phase 1 work order (M0 to M11). Section 11.10 (Drawing Intent IR) and Section 11.10.1 (Resolved Scheme IR) normative schemas defined. Section 6.5.2 updated for 6 IPC annotation operations: `model_items.insert`, `dimensions.auto_arrange`, `center_mark.add`, `dimension.hide`, `dimension.show`, `dimension.move`. 15 open decisions remain: K3 (title block locators), J11 (draft-view switched indicator), K8 (snapshot keys), K9 (identity), K10 (orchestrator form), K11 (UI events), K12 (curved measurement), from the adapter design K13 (interop on a newer major), K14 (feature identity beyond reopen), K15 (side-effect-free reads) and K16 (expected geometry beyond exact calculation), and from the gap analysis K18 (observation cost), K19 (rebuild state without a rebuild), K20 (mass property call) and K21 (native type names). K17 is closed: the new ledger rule is in 8.7 and is built in plan Task 7a.
-- **Branch:** `feat/part-chain-mvp`, from `feat/drawing-annotation-pipeline` at `961c629` (PR #12 merged to `main` at `eea9389`; the docs freeze commits are on that branch). Neither branch's newer commits are pushed.
+- **Architecture review:** completed 2026-11-05: [review](docs/superpowers/review/2026-11-05-architecture-review.md), [roadmap](docs/superpowers/review/2026-11-05-architecture-roadmap.md). The design and foundations are sound; the SOLIDWORKS adapters are prototype quality.
+- **SOLIDWORKS adapter design (Accepted by the owner, 2026-11-05; committed as `360005f`):** [8.8 architecture](docs/architecture/solidworks-adapter.md), [8.9 interface specification](docs/specifications/solidworks-adapter.md), ADR-058 to ADR-063, [roadmap](docs/plans/solidworks-adapter-roadmap.md).
+- **Verifiable compilation gap analysis (2026-11-05, at `0222b15`):** [review](docs/superpowers/review/2026-11-05-verifiable-compilation-gap-analysis.md). The owner accepted [ADR-064](docs/adr/ADR-064-per-operation-verification-contracts.md) on 2026-11-05 and decided K22 (a feature warning blocks a commit in the MVP). V14 settled in `026229f`: the plan hash includes the pinned revision (6.7.4). Wrong verdicts V5, V6 and V7 are fixed in `98a3c31`.
+- **Roadmap A0 is done (spec v1.34):** schemas for evidence, contracts, `observation`, `document.rebuild`, `op_verified` and two new error codes.
+- **Spec:** v1.34 across all topic files in `docs/`. Section 18 now carries the current focus with the MVP's stages, and the paused Phase 1 work order (M0 to M11).
+- **Branch:** `feat/part-chain-mvp`.
 - **Verification Suite Evidence:**
   - `uv run python scripts/generate_contracts.py --check` passes cleanly (0 drift across C# and Python contracts).
-  - `uv run ruff check` passes. `uv run ruff format --check` passes (420 files).
+  - `uv run ruff check` passes. `uv run ruff format --check` passes (424 files).
   - `uv run pyright` passes (0 errors, 0 warnings across all packages, apps, tests).
   - `uv run lint-imports` passes (5 contracts kept, 0 broken).
-  - `uv run pytest -m "not live"` passes (2,936 passed, 9 deselected in 44.1s).
-  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (271 passed, 0 failed in 1s).
-  - `dotnet build apps/execution-server/ExecutionServer.sln` fails with MSB3027: SOLIDWORKS (PID 6396) is locking `ExecutionServer.Adapters.dll` and `ExecutionServer.Core.dll`.
-  - `uv run pytest tests/live/ -m live -v` passes (5 passed, 1 skipped in 8.7s):
-    - `test_live_annotation_pipeline::test_live_annotation_and_dimension_pipeline`: PASSED (model items inserted, center marks added, dimensions auto-arranged, duplicates hidden, D1/D2/D3/D5/D7 pass with 0 failures)
-    - `test_live_view_pipeline::test_live_view_planning_and_creation_pipeline`: PASSED (4 views placed, 0 check D7 violations)
-    - `test_live_sheet_format::test_live_sheet_format_generate_and_drawing_create`: PASSED
-    - `test_live_smoke::test_live_session_discovery`: PASSED
-    - `test_live_smoke::test_live_session_handshake`: PASSED
-    - `test_live_smoke::test_live_drawing_snapshot`: SKIPPED (standalone snapshot test requiring external file)
+  - `uv run pytest -m "not live"` passes (3,140 passed, 11 deselected in 46.7s).
+  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (314 passed, 0 failed, 0 skipped in 1s).
+  - `dotnet build apps/execution-server/ExecutionServer.sln` passes cleanly (0 warnings, 0 errors in 3.2s).
+  - `uv run pytest tests/live/ -m live -v` baseline: 5 passed, 1 skipped.
 
 ## Changes Made
 
@@ -90,16 +83,18 @@ Last updated: 2026-11-05. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Next Steps
 
-**SOLIDWORKS adapter design:** the owner confirmed on 2026-11-05 that the compiler stays Python, and that the dispatcher and capability work joins the MVP as plan Task 7c (after 7a, before 7b). The owner also adopted ADR-059's COM release rule, now in G1 and AGENTS.md; the add-in does not follow it yet (Task 7c fixes the host, and frozen drawing adapters still release documents). The owner accepted ADR-058 to ADR-063, so no decision on this design remains open. K13 to K16 are settled by spikes in their [roadmap](docs/plans/solidworks-adapter-roadmap.md) phases, and A0's schema work is next.
-
 **Part chain MVP (current work, ADR-057):** the MVP runs from Claude over MCP to a verified `.SLDPRT`; first part: a 100 × 60 × 10 mm plate with four Ø8 mm through holes.
 
-1. Ask the owner to close SOLIDWORKS so the locked DLLs are released and `ExecutionServer.sln` can be built without MSB3027.
-2. Follow the plan's order for the add-in and runtime: Tasks 7a, 7c, 7b, 8, 9a, 9b, 10, 11, 12, 13.
-   - Task 7a: Dispatch and ownership (`ExecutionServer.Core/Ownership`, `OperationRouter`, failed operations ledger per K17).
-   - Task 7c: Dispatcher and capability table (STA execution, `ControlSynchronizationContext`, capability table).
-   - Task 7b: Events and instance IDs (`DocumentEventMonitor`).
-   - Task 8: Part adapters (`PartCreationAdapter`, `SketchAdapter`, `FeatureAdapter`, `PartMeasureAdapter`).
+Current order:
+- Tasks 0, 1, 2, 3, 6, 4, 5: complete and reviewed clean.
+- Task 7a: complete (`995aee6`).
+- Task 7c: complete (`a1abcac`).
+- Next: **Task 7b: Events and instance IDs** (`DocumentEventMonitor.cs`, subscribe `RegenNotify`, `RegenPostNotify`, `FileSavePostNotify`, `DestroyNotify2`, handle instance IDs, rule 13 user-action detection).
+- Following: **Task 8: Part adapters** (`PartCreationAdapter`, `SketchAdapter`, `FeatureAdapter`, `PartMeasureAdapter`, `PartUnits`, `ComScope`, `DocumentLocator`).
+- Tasks 9a & 9b: Store, journal, recovery rules, plan job.
+- Tasks 10 & 11: MCP tools and SDK runtime.
+- Task 12: Live acceptance test.
+- Task 13: Sign-off run from Claude.
 
 Do not continue drawing work, including the ADR-056 list below, until the owner lifts the freeze.
 
