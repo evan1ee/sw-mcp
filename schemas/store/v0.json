@@ -100,6 +100,27 @@
         "updated_at"
       ]
     },
+    "PartRecord": {
+      "type": "object",
+      "properties": {
+        "part_key": { "type": "string" },
+        "path": { "type": "string" },
+        "fingerprint": { "$ref": "../common/v0.json#/$defs/ContentHash" },
+        "produced": { "type": "boolean" },
+        "graph": { "type": "string" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "updated_at": { "$ref": "#/$defs/Timestamp" }
+      },
+      "required": [
+        "part_key",
+        "path",
+        "fingerprint",
+        "produced",
+        "graph",
+        "job_id",
+        "updated_at"
+      ]
+    },
     "ReportMeta": {
       "type": "object",
       "properties": {
@@ -141,7 +162,8 @@
         "error": { "anyOf": [{ "$ref": "../common/v0.json#/$defs/Error" }, { "type": "null" }] },
         "warnings": { "type": "array", "items": { "$ref": "#/$defs/JobWarning" } },
         "documents": { "type": "array", "items": { "$ref": "#/$defs/JobDocument" } },
-        "next_op_seq": { "type": "integer", "minimum": 1 }
+        "next_op_seq": { "type": "integer", "minimum": 1 },
+        "part_result": { "anyOf": [{ "type": "object" }, { "type": "null" }] }
       },
       "required": [
         "job_id",
@@ -250,7 +272,7 @@
         "ts": { "$ref": "#/$defs/Timestamp" },
         "job_id": { "$ref": "#/$defs/JobId" },
         "path": { "type": "string" },
-        "action": { "enum": ["open", "save", "close"] },
+        "action": { "enum": ["open", "create", "save", "close"] },
         "owned": { "type": "boolean" }
       },
       "required": ["type", "ts", "job_id", "path", "action", "owned"]
@@ -265,6 +287,30 @@
       },
       "required": ["type", "ts", "job_id", "message"]
     },
+    "PublishIntentRecord": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "publish_intent" },
+        "ts": { "$ref": "#/$defs/Timestamp" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "path": { "type": "string" },
+        "fingerprint": { "$ref": "../common/v0.json#/$defs/ContentHash" }
+      },
+      "required": ["type", "ts", "job_id", "path", "fingerprint"]
+    },
+    "PublishedRecord": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "published" },
+        "ts": { "$ref": "#/$defs/Timestamp" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "path": { "type": "string" },
+        "fingerprint": {
+          "anyOf": [{ "$ref": "../common/v0.json#/$defs/ContentHash" }, { "type": "null" }]
+        }
+      },
+      "required": ["type", "ts", "job_id", "path"]
+    },
     "JournalRecord": {
       "oneOf": [
         { "$ref": "#/$defs/StateRecord" },
@@ -273,7 +319,9 @@
         { "$ref": "#/$defs/OpVerifiedRecord" },
         { "$ref": "#/$defs/SnapshotRecord" },
         { "$ref": "#/$defs/DocumentRecord" },
-        { "$ref": "#/$defs/NoteRecord" }
+        { "$ref": "#/$defs/NoteRecord" },
+        { "$ref": "#/$defs/PublishIntentRecord" },
+        { "$ref": "#/$defs/PublishedRecord" }
       ]
     }
   }

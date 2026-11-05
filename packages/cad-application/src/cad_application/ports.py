@@ -19,7 +19,7 @@ from cad_application.ids import IdPrefix
 from cad_application.store.errors import StoreError
 from cad_application.store.job_records import JobRecord
 from cad_application.store.journal_records import JournalRecord
-from cad_application.store.records import DrawingMatch, DrawingRecord, ReportMeta
+from cad_application.store.records import DrawingMatch, DrawingRecord, PartRecord, ReportMeta
 
 type LogValue = str | int | None
 
@@ -150,6 +150,13 @@ class FileSystem(Protocol):
         """Like ``write_atomic``, but raises ``FileExistsError`` if the target exists."""
         ...
 
+    def rename_new(self, source: str, target: str) -> None:
+        """Atomically rename source to target without replacing target.
+
+        Raises FileExistsError if target exists.
+        """
+        ...
+
     def append_line(self, path: str, line: str) -> None:
         """Append ``line`` and ``\\n``, flushed and ``fsync``ed before returning."""
         ...
@@ -237,6 +244,18 @@ class Store(Protocol):
     def list_report_metas(self) -> tuple[ReportMeta, ...] | StoreError: ...
 
     def delete_report(self, report_id: str) -> None: ...
+
+    def put_plan(self, plan_hash: str, plan: JsonValue) -> bool: ...
+
+    def put_part_revision(
+        self, ref: str, doc: JsonValue, expected_revision: int | None
+    ) -> str | StoreError: ...
+
+    def get_part_revision(self, ref: str) -> JsonValue | StoreError | None: ...
+
+    def put_part_record(self, record: PartRecord) -> None: ...
+
+    def get_part_record(self, part_key: str) -> PartRecord | StoreError | None: ...
 
     def delete_job(self, job_id: str) -> None: ...
 

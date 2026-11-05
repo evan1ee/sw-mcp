@@ -201,6 +201,24 @@ class MemoryFileSystem:
         with self._guard:
             self._write_via_tmp(self._real(path), data, must_be_new=True)
 
+    def rename_new(self, source: str, target: str) -> None:
+        with self._guard:
+            real_src = self._real(source)
+            real_tgt = self._real(target)
+            self._parent_checked(real_tgt)
+            src_node = self._nodes.get(_key(real_src))
+            if src_node is None:
+                raise FileNotFoundError(real_src)
+            tgt_node = self._nodes.get(_key(real_tgt))
+            if tgt_node is not None:
+                raise FileExistsError(real_tgt)
+            if self._step("rename"):
+                raise SimulatedCrash("rename")
+            del self._nodes[_key(real_src)]
+            src_node.name = ntpath.basename(real_tgt)
+            self._touch(src_node)
+            self._nodes[_key(real_tgt)] = src_node
+
     def append_line(self, path: str, line: str) -> None:
         with self._guard:
             real = self._real(path)

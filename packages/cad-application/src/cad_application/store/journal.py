@@ -1,7 +1,7 @@
 """Job transitions and crash recovery (spec 8.4, 13.2.2, 13.2.3 Phase 1a)."""
 
 import ntpath
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import Final
@@ -17,8 +17,11 @@ from cad_application.store.journal_records import (
     BatchSentRecord,
     DocumentRecord,
     OpResultRecord,
+    PublishedRecord,
+    PublishIntentRecord,
     StateRecord,
 )
+from cad_application.store.records import JobWarning
 
 # The edges of the 8.4 state diagram; any other transition is a programming error.
 TRANSITIONS: Final[Mapping[JobState, frozenset[JobState]]] = MappingProxyType(
@@ -91,13 +94,13 @@ def _interrupted_error() -> Obj:
 
 
 def _unknown_documents(journal: Sequence[object]) -> tuple[JobDocument, ...]:
-    """Documents with an ``open`` record and no later ``close`` (13.2.3)."""
+    """Documents with an ``open`` or ``create`` record and no later ``close`` (13.2.3)."""
     open_now: dict[str, JobDocument] = {}
     for record in journal:
         if not isinstance(record, DocumentRecord):
             continue
         key = ntpath.normcase(record.path)
-        if record.action == "open":
+        if record.action in ("open", "create"):
             open_now[key] = JobDocument(record.path, record.owned, "unknown")
         elif record.action == "close":
             open_now.pop(key, None)
@@ -127,7 +130,11 @@ def _journal_chain(job: JobRecord, journal: Sequence[object]) -> tuple[StateReco
     return tuple(chain)
 
 
-def recover(store: Store, clock: Clock) -> RecoveryResult:
+def recover(
+    store: Store,
+    clock: Clock,
+    read_fingerprint: Callable[[str], str | None] = lambda _: None,
+) -> RecoveryResult:
     """Steps 1, 3 and 4 of 13.2.3, after the order rule of 13.2.2. Never resumes or resends."""
     ts = format_ts(clock.now())
     interrupted: list[JobRecord] = []
@@ -156,7 +163,22 @@ def recover(store: Store, clock: Clock) -> RecoveryResult:
         if job.is_final or job.state == "RECOVERY":
             continue
         target: JobState = "ABORTED" if job.state == "PLANNED" else "FAILED"
-        with_documents = replace(job, documents=_unknown_documents(journal))
+        warnings = list(job.warnings)
+        intent = next((r for r in reversed(journal) if isinstance(r, PublishIntentRecord)), None)
+        published = any(isinstance(r, PublishedRecord) for r in journal)
+        if intent is not None and not published:
+            target_fp = read_fingerprint(intent.path)
+            if target_fp is not None and target_fp == intent.fingerprint:
+                msg = (
+                    f"Target file '{intent.path}' matches publish intent fingerprint "
+                    "but publication was unconfirmed before restart."
+                )
+                warnings.append(JobWarning("published_unconfirmed", msg))
+        with_documents = replace(
+            job,
+            documents=_unknown_documents(journal),
+            warnings=tuple(warnings),
+        )
         reason = "core service restarted while the job was not finished"
         record = StateRecord(ts, job_id, job.state, target, reason, _interrupted_error())
         interrupted.append(_enter(store, with_documents, record))

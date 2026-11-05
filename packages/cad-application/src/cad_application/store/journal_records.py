@@ -7,6 +7,7 @@ from cad_ir.core.json_types import JsonValue
 
 from cad_application.store.codec import (
     Obj,
+    as_obj,
     get_bool,
     get_int,
     get_list,
@@ -15,7 +16,7 @@ from cad_application.store.codec import (
 )
 from cad_application.store.job_records import JobState, parse_state
 
-type DocumentAction = Literal["open", "save", "close"]
+type DocumentAction = Literal["open", "create", "save", "close"]
 
 
 def _strings(obj: Obj, key: str) -> tuple[str, ...]:
@@ -86,6 +87,31 @@ class OpResultRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class OpVerifiedRecord:
+    ts: str
+    job_id: str
+    operation_id: str
+    node: str | None
+    feature_id: str | None
+    observation: Obj | None
+    checks: tuple[Obj, ...] | list[Obj]
+    status: str
+
+    def to_json(self) -> Obj:
+        return {
+            "type": "op_verified",
+            "ts": self.ts,
+            "job_id": self.job_id,
+            "operation_id": self.operation_id,
+            "node": self.node,
+            "feature_id": self.feature_id,
+            "observation": self.observation,
+            "checks": list(self.checks),
+            "status": self.status,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class SnapshotRecord:
     ts: str
     job_id: str
@@ -131,15 +157,59 @@ class NoteRecord:
         return {"type": "note", "ts": self.ts, "job_id": self.job_id, "message": self.message}
 
 
+@dataclass(frozen=True, slots=True)
+class PublishIntentRecord:
+    ts: str
+    job_id: str
+    path: str
+    fingerprint: str
+
+    def to_json(self) -> Obj:
+        return {
+            "type": "publish_intent",
+            "ts": self.ts,
+            "job_id": self.job_id,
+            "path": self.path,
+            "fingerprint": self.fingerprint,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PublishedRecord:
+    ts: str
+    job_id: str
+    path: str
+    fingerprint: str | None = None
+
+    def to_json(self) -> Obj:
+        body: Obj = {
+            "type": "published",
+            "ts": self.ts,
+            "job_id": self.job_id,
+            "path": self.path,
+        }
+        if self.fingerprint is not None:
+            body["fingerprint"] = self.fingerprint
+        return body
+
+
 type JournalRecord = (
-    StateRecord | BatchSentRecord | OpResultRecord | SnapshotRecord | DocumentRecord | NoteRecord
+    StateRecord
+    | BatchSentRecord
+    | OpResultRecord
+    | OpVerifiedRecord
+    | SnapshotRecord
+    | DocumentRecord
+    | NoteRecord
+    | PublishIntentRecord
+    | PublishedRecord
 )
 
 
 def _action(text: str) -> DocumentAction:
-    if text == "save":
-        return "save"
-    return "close" if text == "close" else "open"
+    if text in ("open", "create", "save", "close"):
+        return text  # type: ignore[return-value]
+    raise ValueError(f"Unknown document action: {text!r}")
 
 
 def _state_record(obj: Obj, ts: str, job_id: str) -> StateRecord:
@@ -159,28 +229,62 @@ def journal_from_json(obj: Obj) -> JournalRecord:
     """``obj`` must satisfy the ``JournalRecord`` schema."""
     kind = get_str(obj, "type")
     ts, job_id = get_str(obj, "ts"), get_str(obj, "job_id")
-    if kind == "state":
-        return _state_record(obj, ts, job_id)
-    if kind == "batch_sent":
-        return BatchSentRecord(
-            ts,
-            job_id,
-            get_int(obj, "batch_seq"),
-            _strings(obj, "operation_ids"),
-            _strings(obj, "documents"),
-        )
-    if kind == "op_result":
-        return OpResultRecord(
-            ts,
-            job_id,
-            get_str(obj, "operation_id"),
-            get_bool(obj, "ok"),
-            get_opt_str(obj, "error_code"),
-            obj.get("recovered") is True,
-        )
-    if kind == "snapshot":
-        return SnapshotRecord(ts, job_id, get_str(obj, "snapshot_id"), get_opt_str(obj, "sheet"))
-    if kind == "document":
-        path, owned = get_str(obj, "path"), get_bool(obj, "owned")
-        return DocumentRecord(ts, job_id, path, _action(get_str(obj, "action")), owned)
-    return NoteRecord(ts, job_id, get_str(obj, "message"))
+    match kind:
+        case "state":
+            record: JournalRecord = _state_record(obj, ts, job_id)
+        case "batch_sent":
+            record = BatchSentRecord(
+                ts,
+                job_id,
+                get_int(obj, "batch_seq"),
+                _strings(obj, "operation_ids"),
+                _strings(obj, "documents"),
+            )
+        case "op_result":
+            record = OpResultRecord(
+                ts,
+                job_id,
+                get_str(obj, "operation_id"),
+                get_bool(obj, "ok"),
+                get_opt_str(obj, "error_code"),
+                obj.get("recovered") is True,
+            )
+        case "op_verified":
+            checks = tuple(as_obj(c) for c in get_list(obj, "checks"))
+            obs = obj.get("observation")
+            record = OpVerifiedRecord(
+                ts,
+                job_id,
+                get_str(obj, "operation_id"),
+                get_opt_str(obj, "node"),
+                get_opt_str(obj, "feature_id"),
+                as_obj(obs) if isinstance(obs, dict) else None,
+                checks,
+                get_str(obj, "status"),
+            )
+        case "snapshot":
+            record = SnapshotRecord(
+                ts, job_id, get_str(obj, "snapshot_id"), get_opt_str(obj, "sheet")
+            )
+        case "document":
+            path, owned = get_str(obj, "path"), get_bool(obj, "owned")
+            record = DocumentRecord(ts, job_id, path, _action(get_str(obj, "action")), owned)
+        case "publish_intent":
+            record = PublishIntentRecord(
+                ts,
+                job_id,
+                get_str(obj, "path"),
+                get_str(obj, "fingerprint"),
+            )
+        case "published":
+            record = PublishedRecord(
+                ts,
+                job_id,
+                get_str(obj, "path"),
+                get_opt_str(obj, "fingerprint"),
+            )
+        case "note":
+            record = NoteRecord(ts, job_id, get_str(obj, "message"))
+        case _:
+            raise ValueError(f"Unknown journal record type: {kind!r}")
+    return record

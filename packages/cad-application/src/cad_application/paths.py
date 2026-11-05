@@ -124,7 +124,10 @@ def _locate(path: str, settings: Settings, fs: FileSystem) -> tuple[str, str] | 
 
 
 def _check_target(
-    resolved: str, fs: FileSystem, expect: Literal["file", "dir"], suffix: str | None
+    resolved: str,
+    fs: FileSystem,
+    expect: Literal["file", "dir", "new_file"],
+    suffix: str | None,
 ) -> ToolError | None:
     """After authorization: the suffix, then that the target exists and is the right kind."""
     if suffix is not None and ntpath.splitext(resolved)[1].lower() != suffix.lower():
@@ -133,6 +136,23 @@ def _check_target(
             f"The path must end with {suffix} (any case).",
             {"reason": "suffix"},
         )
+    if expect == "new_file":
+        parent = ntpath.dirname(resolved)
+        found_parent = fs.stat(parent)
+        if found_parent is None or not found_parent.is_dir:
+            return ToolError(
+                "FILE_NOT_FOUND",
+                "The parent folder does not exist or is not a folder.",
+                {"reason": "missing_parent"},
+            )
+        found_target = fs.stat(resolved)
+        if found_target is not None:
+            return ToolError(
+                "AUTH_SOURCE_WRITE_NOT_ALLOWED",
+                "A file already exists at the target path.",
+                {"reason": "file_exists"},
+            )
+        return None
     found = fs.stat(resolved)
     if found is None or found.is_dir != (expect == "dir"):
         what = "a folder" if expect == "dir" else "a file"
@@ -145,7 +165,7 @@ def authorize(
     settings: Settings,
     fs: FileSystem,
     *,
-    expect: Literal["file", "dir"] = "file",
+    expect: Literal["file", "dir", "new_file"] = "file",
     suffix: str | None = None,
 ) -> Authorized | ToolError:
     """Check ``path`` in the order of 12.5, then locate its project and store."""
@@ -158,6 +178,12 @@ def authorize(
     directory = resolved if expect == "dir" else ntpath.dirname(resolved)
     project = _project_root(fs, directory, root)
     in_vault = any(_within(project, _normalised(fs, v)) for v in settings.pdm_vault_roots)
+    if expect == "new_file" and in_vault:
+        return ToolError(
+            "AUTH_SOURCE_WRITE_NOT_ALLOWED",
+            "New files cannot be created inside a PDM vault.",
+            {"reason": "in_vault"},
+        )
     if in_vault and not settings.local_app_data:
         return ToolError("CONFIG_INVALID", "The local application data folder is unknown.", None)
     store_dir = _store_dir(project, in_vault, settings.local_app_data)

@@ -5,6 +5,7 @@ thread. Waiting goes through the ``Clock`` port, so long-polls run without real 
 The lock is never held across a ``Backend`` call.
 """
 
+import hashlib
 import threading
 from collections import deque
 from collections.abc import Callable, Mapping
@@ -176,8 +177,15 @@ class JobEngine:
 
     # --- internals ---------------------------------------------------------------------
 
+    def _read_fingerprint(self, path: str) -> str | None:
+        try:
+            data = self._stores.fs.read_bytes(path)
+            return f"sha256:{hashlib.sha256(data).hexdigest()}"
+        except (FileNotFoundError, OSError):
+            return None
+
     def _recover_store(self, store: Store, project_root: str) -> RecoveryResult:
-        result = recover(store, self._clock)
+        result = recover(store, self._clock, self._read_fingerprint)
         with self._cond:
             self._recovered = (*self._recovered, (store, result))
         for job in result.interrupted:
