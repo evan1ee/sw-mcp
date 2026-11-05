@@ -4,7 +4,7 @@ Last updated: 2026-11-05. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Current State
 
-- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. The owner approved the MVP [design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md). Progress on `feat/part-chain-mvp`, as of 2026-11-05: Tasks 0 and 1 done ([spike](docs/superpowers/review/2026-11-05-part-chain-spike.md)); Task 2 committed with review fixes (`a71b510`); Tasks 3 (`d8bc5f9`), 6 (`6bc1feb`), 4 (`dfbdd00`), and 5 (`af4ad47`) committed and reviewed clean; Task 7a committed (`995aee6`); Task 7c committed (`a1abcac`); Task 7b committed (`ac05aeb`); Task 8 committed (`893b67d`); Task 9a committed (`b995c2a`). Next is Task 9b (The `plan` job, `cad_application/jobs/plan_job.py`).
+- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. The owner approved the MVP [design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md). Progress on `feat/part-chain-mvp`, as of 2026-11-05: Tasks 0 and 1 done ([spike](docs/superpowers/review/2026-11-05-part-chain-spike.md)); Task 2 committed with review fixes (`a71b510`); Tasks 3 (`d8bc5f9`), 6 (`6bc1feb`), 4 (`dfbdd00`), and 5 (`af4ad47`) committed and reviewed clean; Task 7a committed (`995aee6`); Task 7c committed (`a1abcac`); Task 7b committed (`ac05aeb`); Task 8 committed (`893b67d`); Task 9a committed (`b995c2a`). Task 9b was stopped at user request; working tree is clean at `6b1c5c7`, and partial WIP is saved in `git stash` (`stash@{0}: wip-task-9b-plan-job`). Next is to resume and complete Task 9b (The `plan` job, `cad_application/jobs/plan_job.py`).
 - **Frozen drawing state:** Annotation and dimension placement increment implemented and exercised by a live test script (Spec §11.4, §11.5, §11.10, §11.10.1, §6.5.2). This work was called "Phase 1c" here, but roadmap §18 defines Phase 1c as IR-built parts; by §18 it is partial Phase 1b, and Phase 1a acceptance is not yet met. The live test passes against local SOLIDWORKS 2025 SP0.1 with 0 violations, **but that is not evidence of drawing correctness for D1, D2, D3 or D7**: the add-in reads no line or text geometry and reports a fixed border and title block ([architecture review](docs/superpowers/review/2026-11-05-architecture-review.md) F1 to F3).
 - **Architecture review:** completed 2026-11-05: [review](docs/superpowers/review/2026-11-05-architecture-review.md), [roadmap](docs/superpowers/review/2026-11-05-architecture-roadmap.md). The design and foundations are sound; the SOLIDWORKS adapters are prototype quality.
 - **SOLIDWORKS adapter design (Accepted by the owner, 2026-11-05; committed as `360005f`):** [8.8 architecture](docs/architecture/solidworks-adapter.md), [8.9 interface specification](docs/specifications/solidworks-adapter.md), ADR-058 to ADR-063, [roadmap](docs/plans/solidworks-adapter-roadmap.md).
@@ -82,6 +82,19 @@ Last updated: 2026-11-05. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 - **Spec v1.28 (section 18 rewrite, at the owner's request):** `docs/specifications/roadmap.md` restructured for readability, with the review roadmap's M0 to M11 order added as the Phase 1 work order. Phase scope, acceptance criteria and A1 to A17 are unchanged. O1, O5 and O6 stay open, and the order remains a recommendation until O1 is decided.
 - **Part chain MVP design and plan (v1.29):** written on `feat/part-chain-mvp`, with a builder check on the design, then revised after the [pre-implementation review](docs/superpowers/review/2026-11-05-part-chain-mvp-pre-implementation-review.md) (CONDITIONAL GO; F1 to F24 applied). No code changed, and SOLIDWORKS behaviour is unverified.
 
+- **Store, Journal and Recovery Rules (Task 9a, committed as `b995c2a`):**
+  - Updated `schemas/store/v0.json` with `PublishIntentRecord`, `PublishedRecord`, `PartRecord`, `DocumentRecord.action` containing `create`, and `JobRecord.part_result`. Regenerated schemas (`cad_ir.generated.schemas`).
+  - Added schema test fixtures under `tests/fixtures/schemas/store/{valid,invalid}/`.
+  - Implemented `DocumentAction` with `"create"`, `_action()` strict validation, `OpVerifiedRecord`, `PublishIntentRecord`, `PublishedRecord` in `journal_records.py`.
+  - Added `part_result` to `JobRecord` (`job_records.py`), ensuring v0 backwards compatibility.
+  - Implemented `PartRecord` in `cad_application/store/records.py`.
+  - Added `FileSystem.rename_new` to `ports.py`, `MemoryFileSystem`, and `OsFileSystem` (`MoveFileExW` on Windows with `MOVEFILE_WRITE_THROUGH = 0x8` and write-through, no replacement).
+  - Extended `paths.authorize` for `expect="new_file"` checking suffix, parent directory existence, target non-existence (`AUTH_SOURCE_WRITE_NOT_ALLOWED`), and PDM vault rejection (`AUTH_SOURCE_WRITE_NOT_ALLOWED`).
+  - Added `put_plan` (returns `False` on reuse), `put_part_revision` (spec 3.4.5 revision 1, canonical byte reuse, `REV_CONFLICT`), `get_part_revision`, and `put_part_record` to `FileStore`.
+  - Updated `journal.recover` to mark created documents unknown after crashes and compare target fingerprints on unconfirmed publish intent (`JobWarning("published_unconfirmed", ...)`).
+  - Added comprehensive test suites: `test_part_store.py`, `test_rename_new.py`, `test_new_file_authorize` in `test_paths.py`, and `test_part_recovery.py`.
+  - Reviewed and verified clean (APPROVED). Committed as `b995c2a`.
+
 ## Next Steps
 
 **Part chain MVP (current work, ADR-057):** the MVP runs from Claude over MCP to a verified `.SLDPRT`; first part: a 100 × 60 × 10 mm plate with four Ø8 mm through holes.
@@ -93,7 +106,7 @@ Current order:
 - Task 7b: complete (`ac05aeb`).
 - Task 8: complete (`893b67d`).
 - Task 9a: complete (`b995c2a`).
-- Next: **Task 9b: The `plan` job** (`packages/cad-application/src/cad_application/jobs/plan_job.py`, `jobs/part_files.py`).
+- Next: **Task 9b: The `plan` job** (`packages/cad-application/src/cad_application/jobs/plan_job.py`, `jobs/part_files.py`, `cad_verification/api/contracts.py`). Note: WIP was stashed cleanly in `git stash` (`stash@{0}: wip-task-9b-plan-job`). To resume, either `git stash pop` and resolve the engine capability checks for `check_drawing`, or re-implement Task 9b cleanly.
 - Following: **Tasks 10 & 11: MCP tools and SDK runtime**.
 - Task 12: Live acceptance test.
 - Task 13: Sign-off run from Claude.
