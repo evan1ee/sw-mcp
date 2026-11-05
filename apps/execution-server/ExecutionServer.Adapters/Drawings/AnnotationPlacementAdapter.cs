@@ -38,7 +38,6 @@ public sealed class AnnotationPlacementAdapter
         int insertedCount = 0;
         var insertedAnnotations = new List<string>();
 
-        try
         {
             ct.ThrowIfCancellationRequested();
 
@@ -87,10 +86,6 @@ public sealed class AnnotationPlacementAdapter
 
             insertedCount = 1;
         }
-        finally
-        {
-            Marshal.ReleaseComObject(model);
-        }
 
         return new ModelItemsInsertResult
         {
@@ -112,7 +107,6 @@ public sealed class AnnotationPlacementAdapter
 
         var drawing = (IDrawingDoc)model;
 
-        try
         {
             ct.ThrowIfCancellationRequested();
 
@@ -149,10 +143,6 @@ public sealed class AnnotationPlacementAdapter
 
             model.Extension.AlignDimensions((int)swAlignDimensionType_e.swAlignDimensionType_AutoArrange, spacingM);
         }
-        finally
-        {
-            Marshal.ReleaseComObject(model);
-        }
 
         return new DimensionsAutoArrangeResult
         {
@@ -175,7 +165,6 @@ public sealed class AnnotationPlacementAdapter
         var drawing = (IDrawingDoc)model;
         int count = 0;
 
-        try
         {
             ct.ThrowIfCancellationRequested();
             IView? view = FindView(drawing, p.View);
@@ -218,10 +207,6 @@ public sealed class AnnotationPlacementAdapter
                 Marshal.ReleaseComObject(view);
             }
         }
-        finally
-        {
-            Marshal.ReleaseComObject(model);
-        }
 
         return new CenterMarkAddResult
         {
@@ -244,7 +229,6 @@ public sealed class AnnotationPlacementAdapter
         var drawing = (IDrawingDoc)model;
         bool hidden = false;
 
-        try
         {
             ct.ThrowIfCancellationRequested();
             var ann = FindAnnotation(drawing, p.Annotation);
@@ -260,10 +244,6 @@ public sealed class AnnotationPlacementAdapter
                     Marshal.ReleaseComObject(ann);
                 }
             }
-        }
-        finally
-        {
-            Marshal.ReleaseComObject(model);
         }
 
         return new DimensionHideResult
@@ -287,7 +267,6 @@ public sealed class AnnotationPlacementAdapter
         var drawing = (IDrawingDoc)model;
         bool shown = false;
 
-        try
         {
             ct.ThrowIfCancellationRequested();
             var ann = FindAnnotation(drawing, p.Annotation);
@@ -303,10 +282,6 @@ public sealed class AnnotationPlacementAdapter
                     Marshal.ReleaseComObject(ann);
                 }
             }
-        }
-        finally
-        {
-            Marshal.ReleaseComObject(model);
         }
 
         return new DimensionShowResult
@@ -329,7 +304,6 @@ public sealed class AnnotationPlacementAdapter
 
         var drawing = (IDrawingDoc)model;
 
-        try
         {
             ct.ThrowIfCancellationRequested();
             var ann = FindAnnotation(drawing, p.Annotation);
@@ -346,10 +320,6 @@ public sealed class AnnotationPlacementAdapter
                     Marshal.ReleaseComObject(ann);
                 }
             }
-        }
-        finally
-        {
-            Marshal.ReleaseComObject(model);
         }
 
         return new DimensionMoveResult

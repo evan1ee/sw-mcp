@@ -6,7 +6,10 @@ from pathlib import Path
 from typing import Any, Final
 
 import pytest
-from cad_compiler.validator.semantic import validate_graph
+from cad_compiler.validator.semantic import (
+    _validate_lines_loop,  # pyright: ignore[reportPrivateUsage]
+    validate_graph,
+)
 from cad_ir.generated import ErrorCode
 from cad_ir.part_feature_graph.model import (
     Circle,
@@ -643,3 +646,17 @@ def test_two_cuts_sharing_one_sketch_rejected() -> None:
     )
     issues = validate_graph(graph)
     assert any(i.code == ErrorCode.IR_RULE_VIOLATED and "overlap" in i.message for i in issues)
+
+
+def _square(x: float, y: float, size: float) -> list[Line]:
+    a, b, c, d = (x, y), (x + size, y), (x + size, y + size), (x, y + size)
+    return [Line(start=a, end=b), Line(start=b, end=c), Line(start=c, end=d), Line(start=d, end=a)]
+
+
+def test_separate_line_loops_rejected() -> None:
+    issues = _validate_lines_loop(_square(0, 0, 10) + _square(30, 0, 10), "/nodes/s")
+    assert [i.code for i in issues] == [ErrorCode.IR_RULE_VIOLATED]
+
+
+def test_single_line_loop_accepted() -> None:
+    assert _validate_lines_loop(_square(0, 0, 10), "/nodes/s") == []

@@ -70,6 +70,23 @@ def _point_in_polygon(px: float, py: float, polygon: list[tuple[float, float]]) 
     return inside
 
 
+def _is_connected(edges: list[tuple[int, int]]) -> bool:
+    """Return True when every edge belongs to one connected component."""
+    adjacency: dict[int, list[int]] = {}
+    for u, v in edges:
+        adjacency.setdefault(u, []).append(v)
+        adjacency.setdefault(v, []).append(u)
+    start = next(iter(adjacency))
+    seen = {start}
+    stack = [start]
+    while stack:
+        for nxt in adjacency[stack.pop()]:
+            if nxt not in seen:
+                seen.add(nxt)
+                stack.append(nxt)
+    return len(seen) == len(adjacency)
+
+
 def _validate_lines_loop(lines: list[Line], pointer: str) -> list[ValidationIssue]:
     """Validate that lines form a single non-self-intersecting closed loop."""
     issues: list[ValidationIssue] = []
@@ -96,7 +113,11 @@ def _validate_lines_loop(lines: list[Line], pointer: str) -> list[ValidationIssu
         deg[u] = deg.get(u, 0) + 1
         deg[v] = deg.get(v, 0) + 1
 
-    if any(d != _LOOP_DEGREE for d in deg.values()) or len(deg) != len(edges):
+    if (
+        any(d != _LOOP_DEGREE for d in deg.values())
+        or len(deg) != len(edges)
+        or not _is_connected(edges)
+    ):
         issues.append(
             ValidationIssue(
                 code=ErrorCode.IR_RULE_VIOLATED,

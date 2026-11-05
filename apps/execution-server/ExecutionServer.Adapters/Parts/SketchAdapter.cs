@@ -43,12 +43,14 @@ public sealed class SketchAdapter
         bool prevAddToDb = sm.AddToDB;
         bool prevAutoInference = sm.AutoInference;
 
+        bool sketchOpen = false;
         try
         {
             sm.AddToDB = true;
             sm.AutoInference = false;
 
             sm.InsertSketch(true);
+            sketchOpen = true;
 
             foreach (var entity in p.Entities)
             {
@@ -96,9 +98,16 @@ public sealed class SketchAdapter
             }
 
             sm.InsertSketch(true); // Close sketch
+            sketchOpen = false;
         }
         finally
         {
+            if (sketchOpen)
+            {
+                // Leave edit mode so later commands do not run inside a half-built sketch.
+                sm.InsertSketch(true);
+            }
+
             sm.AddToDB = prevAddToDb;
             sm.AutoInference = prevAutoInference;
         }
