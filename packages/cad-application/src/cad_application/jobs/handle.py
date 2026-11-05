@@ -8,10 +8,11 @@ never made while it is held.
 import threading
 from collections.abc import Callable
 from dataclasses import replace
+from typing import cast
 
 from cad_ir.core.json_types import JsonValue
 
-from cad_application.jobs.model import CheckDrawingSpec
+from cad_application.jobs.model import CheckDrawingSpec, PlanSpec
 from cad_application.ports import Backend, EventLog, Store
 from cad_application.store.codec import Obj
 from cad_application.store.job_records import JobProgress, JobRecord, JobState
@@ -24,18 +25,22 @@ type Notification = tuple[str, JsonValue]
 class JobEntry:
     """The engine's mutable bookkeeping for one job. Fields change only under the engine lock."""
 
-    def __init__(self, record: JobRecord, store: Store, spec: CheckDrawingSpec) -> None:
+    def __init__(self, record: JobRecord, store: Store, spec: CheckDrawingSpec | PlanSpec) -> None:
         self.record = record
         self.store = store
         self.spec = spec
         self.cancel_requested = False
+        self.keep_partial = False
         self.backend: Backend | None = None
         self.notifications: list[Notification] = []
         self.notes_guard = threading.Lock()
 
 
-class JobHandle:
-    """What ``check_drawing.run`` sees of its job. Every record it returns is immutable."""
+class JobHandle[S = CheckDrawingSpec]:
+    """What ``check_drawing.run`` or ``plan_job.run`` sees of its job.
+
+    Every record it returns is immutable.
+    """
 
     def __init__(self, entry: JobEntry, cond: threading.Condition, log: EventLog) -> None:
         self._entry = entry
@@ -52,13 +57,18 @@ class JobHandle:
         return self._entry.store
 
     @property
-    def spec(self) -> CheckDrawingSpec:
-        return self._entry.spec
+    def spec(self) -> S:
+        return cast("S", self._entry.spec)
 
     @property
     def cancel_requested(self) -> bool:
         with self._cond:
             return self._entry.cancel_requested
+
+    @property
+    def keep_partial(self) -> bool:
+        with self._cond:
+            return self._entry.keep_partial
 
     def set_backend(self, backend: Backend | None) -> None:
         with self._cond:

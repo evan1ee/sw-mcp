@@ -46,6 +46,11 @@ SCENARIOS = {
     "check_drawing_timeout",
     "check_drawing_lost",
     "check_drawing_sp_warning",
+    "plan_plate_committed",
+    "plan_op_failed",
+    "plan_wrong_volume",
+    "plan_cancelled",
+    "plan_backend_lost",
 }
 # The add-in must answer -32602 to these requests, so their params are invalid by design.
 BAD_PARAMS_ON_PURPOSE = {"invalid_params"}
@@ -54,6 +59,7 @@ PARAMS_DEF = {
     "session.ping": "PingParams",
     "session.completed_operations": "CompletedOperationsParams",
     "drawing.snapshot": "SnapshotParams",
+    "part.measure": "PartMeasureParams",
     "ops.apply": "OpsApplyParams",
     "job.cancel": "JobCancelParams",
     "job.progress": "JobProgressParams",
@@ -66,6 +72,7 @@ RESULT_DEF = {
     "session.ping": "PingResult",
     "session.completed_operations": "CompletedOperationsResult",
     "drawing.snapshot": "SnapshotResult",
+    "part.measure": "PartMeasureResult",
     "ops.apply": "OpsApplyResult",
     "job.cancel": "JobCancelResult",
 }
@@ -375,6 +382,29 @@ def _check_sp_warning(t: Transcript, tr: ReplayTransport) -> None:
     _job_close(client)
 
 
+def _drive_plan(t: Transcript, tr: ReplayTransport) -> None:
+    client = _client(t, tr)
+    entries = t.entries
+    for idx, entry in enumerate(entries):
+        if entry.direction != "core_to_addin" or entry.frame is None:
+            continue
+        method = entry.frame["method"]
+        params = entry.frame.get("params", {})
+        next_is_close = idx + 1 < len(entries) and entries[idx + 1].is_close
+        if method == "session.hello":
+            client.hello()
+        elif method == "ops.apply":
+            groups = [OperationGroup.from_json(g) for g in params["groups"]]
+            if next_is_close:
+                _expect("BACKEND_LOST", lambda g=groups: client.apply_ops(g))
+            else:
+                client.apply_ops(groups)
+        elif method == "part.measure":
+            assert isinstance(client.measure_part(params["document"]), dict)
+        elif method == "job.cancel":
+            assert client.cancel() is True
+
+
 DRIVERS: dict[str, Callable[[Transcript, ReplayTransport], None]] = {
     "handshake": _handshake,
     "wrong_token": _wrong_token,
@@ -396,6 +426,11 @@ DRIVERS: dict[str, Callable[[Transcript, ReplayTransport], None]] = {
     "check_drawing_timeout": _check_timeout,
     "check_drawing_lost": _check_lost,
     "check_drawing_sp_warning": _check_sp_warning,
+    "plan_plate_committed": _drive_plan,
+    "plan_op_failed": _drive_plan,
+    "plan_wrong_volume": _drive_plan,
+    "plan_cancelled": _drive_plan,
+    "plan_backend_lost": _drive_plan,
 }
 
 

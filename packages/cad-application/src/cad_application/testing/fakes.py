@@ -194,7 +194,6 @@ class FakeBackend:
 
     def close(self) -> None:
         self.closed = True
-        self.calls.append(RecordedCall("close", None, ()))
 
 
 class FakeBackendProvider:

@@ -59,6 +59,7 @@ class Settings:
     backup_keep: int = 5
     logging_level: str = "info"
     logging_retention_days: int = 14
+    part_template: str = ""
     # Not a configuration key: the core service fills it from the environment (12.5).
     local_app_data: str = ""
     warnings: tuple[str, ...] = ()

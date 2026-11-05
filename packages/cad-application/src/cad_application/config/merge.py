@@ -251,6 +251,9 @@ def _settings_of(tree: Tree, warnings: tuple[str, ...]) -> Settings:
         backup_keep=_ints(tree, "store", "backup_keep"),
         logging_level=_text(tree, "logging", "level"),
         logging_retention_days=_ints(tree, "logging", "retention_days"),
+        part_template=_text(tree, "part", "template")
+        if "part" in tree and isinstance(tree["part"], dict) and "template" in tree["part"]
+        else "",
         warnings=warnings,
     )
 
