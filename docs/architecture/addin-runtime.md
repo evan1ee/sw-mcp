@@ -1,6 +1,6 @@
 # 8.6 Add-in Runtime
 
-> Specification v1.34, section 8.6. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.35, section 8.6. Index and section map: [specifications/README.md](../specifications/README.md).
 
 How the C# add-in (ADR-028) starts, is found by the core service (ADR-041), runs commands on SOLIDWORKS's thread, bounds their time, and leaves the engineer's SOLIDWORKS as it found it. The wire protocol is ADR-036; version handling is ADR-045.
 
@@ -19,7 +19,7 @@ On `ConnectToSW`, the add-in:
    ```json
    { "pipe": "sw-mcp-addin-14872-9f3c01ab", "token": "…", "pid": 14872,
      "solidworks": { "version": "2025", "service_pack": "5.0" },
-     "addin_version": "0.1.0", "protocol": "1.0", "started_at": "2026-11-03T09:12:44Z" }
+     "addin_version": "0.1.0", "protocol": "0.1", "started_at": "2026-11-03T09:12:44Z" }
    ```
 
 On `DisconnectFromSW` it deletes the file and closes the pipe.
@@ -36,11 +36,11 @@ All SOLIDWORKS API calls run on SOLIDWORKS's main (UI) thread (8.3 rule 2). Noth
 
 | Thread | Does | Never does |
 | --- | --- | --- |
-| Pipe thread (one, background) | Reads and writes frames, parses JSON-RPC, validates the token, answers `session.ping`, puts commands on the command queue | Call any SOLIDWORKS API |
-| UI thread | Takes one command at a time from the queue and runs it to completion; raises document-event notifications | Block on pipe I/O |
+| Pipe thread (one, background) | Reads and writes frames, parses JSON-RPC, validates the token, answers `session.ping`, `session.completed_operations` and `job.cancel` (8.7), puts other commands on the command queue | Call any SOLIDWORKS API |
+| UI thread | Takes one command at a time from the queue and runs it to completion; raises document-event notifications; hands response bytes to the pipe thread's outgoing queue | Block on pipe I/O, or perform it |
 
-- **Handing work to the UI thread.** In `ConnectToSW`, which runs on the UI thread, the add-in captures the thread's `SynchronizationContext`. If there is none, it creates a hidden WinForms control and uses its `BeginInvoke`. The pipe thread posts each command through it. Phase 0 proves this under load (assumption A14, section 18).
-- **One command at a time.** The queue has a single consumer. A posted command that finds another still running waits in the queue; it is never run in parallel.
+- **Handing work to the UI thread (ADR-059).** In `ConnectToSW`, which runs on the UI thread, the add-in creates a hidden WinForms control, forces its handle, and uses its `BeginInvoke`. There is no fallback to a base `SynchronizationContext`, whose `Post` would run on the thread pool. If the thread is not STA, the add-in refuses to start its server and logs why. Each command first asserts it is on the captured thread. Phase 0 proves this under load (assumption A14, section 18).
+- **One command at a time.** The queue has a single consumer. A posted command that finds another still running waits in the queue; it is never run in parallel. A refused re-entrant drain relies on the re-post made when each command ends (ADR-059).
 - **Cancellation** is checked between operations of an `ops.apply` batch and before each sheet of a `drawing.snapshot`, never inside a SOLIDWORKS call (8.4).
 - **Results** are serialized on the UI thread into plain data, so no SOLIDWORKS object ever reaches the pipe thread (implementation guideline G1).
 
@@ -69,4 +69,4 @@ Rules 11 and 12 of 8.3 change SOLIDWORKS user preferences: sketch inference and 
 
 - **Ownership.** At the start of each job, the add-in records which documents are open and which is active. Documents opened during the job are owned by it; the rest are borrowed. Closing and saving follow ADR-046.
 - **Document events** (`RegenNotify` and `RegenPostNotify`, `FileSavePostNotify`, `DestroyNotify2`, active-document changes; the spike showed `FileSaveNotify` does not fire for an API save, nor `FileCloseNotify` for an API close) are raised as `document.event` notifications (ADR-036). For a document the running job holds, an event the job did not cause interrupts the job between commands (8.3 rule 13). The core records events for other documents for external-edit detection (9.3).
-- **The "AI job running" banner** (8.3 rule 13) is a non-modal window owned by the add-in. Its Stop button sends the same cancellation as `cancel_execution`.
+- **The "AI job running" banner** (8.3 rule 13) is a non-modal window owned by the add-in. Its Stop button sends the same cancellation as `cancel_execution`. It is not built for the part chain MVP (the exception in 8.3 rule 13).

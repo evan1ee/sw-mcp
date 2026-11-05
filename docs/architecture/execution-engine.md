@@ -1,6 +1,6 @@
 # 8. Execution Engine
 
-> Specification v1.34, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.35, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 8.1 Purpose
 
@@ -37,7 +37,7 @@ The C# command set is designed for this system, including annotation geometry re
 6. Release COM references appropriately.
 7. Never block the queue indefinitely.
 8. Distinguish timeout from confirmed cancellation. A timeout never triggers automatic resubmission.
-9. **Units boundary.** The SOLIDWORKS API works in system units (metres, radians, kilograms), whatever the document units are. However, some calls also have document-unit variants, for example the `IDimension` value getters and setters (`Value` / `GetValue3` vs `SystemValue` / `GetSystemValue3`; Phase 0 confirms which of each pair uses document units). The adapter uses only system-unit variants, and a code check bans the document-unit ones. Conversion happens in exactly one place: the C# adapter's parameter marshaling. The IR, the compiler and the reports use the units declared in the IR.
+9. **Units boundary.** The SOLIDWORKS API works in system units (metres, radians, kilograms), whatever the document units are. However, some calls also have document-unit variants, for example the `IDimension` value getters and setters (`Value` / `GetValue3` vs `SystemValue` / `GetSystemValue3`; Phase 0 confirms which of each pair uses document units). The adapter uses only system-unit variants, and a code check bans the document-unit ones. Conversion happens in exactly one place per direction: going in, the C# translator (8.8.6); coming back, the core, which receives raw SI from read commands (8.7). So one conversion error cannot both build and measure a part wrongly and agree with itself (8.8.9). The IR, the compiler and the reports use the units declared in the IR.
 10. **Visible, interactive session.** Some drawing APIs, including display-data read-back, view polylines and annotation positioning, return incomplete data when SOLIDWORKS is invisible or runs without an interactive desktop. The execution server attaches to or starts a visible SOLIDWORKS in a logged-in user session. It cannot run as a Windows service.
 11. **Deterministic creation.** Interactive helpers make API-created geometry depend on screen state:
     - Sketch entities are added with `ISketchManager.AddToDB = true`, with sketch inference and snapping off, so entities are never snapped to nearby geometry.
@@ -98,7 +98,7 @@ Any other transition is a programming error and raises; it is never written to t
 | `check_drawing` | `check_drawing` | Read back only; checks. Never saves the drawing. It may switch draft-quality views to high quality in memory for read-back (11.5) and reports that it did. It may rebuild in memory for D10 (11.5.3, A16) |
 
 - Jobs run one at a time per SOLIDWORKS session (8.3 rule 13), in one queue shared by every connected agent (ADR-041). A job keeps running when the agent that started it disconnects. Further jobs wait in the queue in state PLANNED, with a `queued_position`: the number of jobs that will start before this one (the running job, if any, plus earlier PLANNED jobs). `0` means it starts next. It is absent once the job leaves PLANNED.
-- `cancel_execution` takes effect between commands, never in the middle of one. A cancelled job ends in ABORTED after the current command finishes; what it changed is listed, and the undo object (8.5) is rolled back unless the caller asks to keep the partial result. A PLANNED job is ABORTED at once. Cancelling a finished job changes nothing and returns its final state.
+- `cancel_execution` takes effect between commands, never in the middle of one. A cancelled job ends in ABORTED after the current command finishes; what it changed is listed, and its partial work is removed unless the caller asks to keep it: by the undo object (8.5) where a job type uses one, by the working-file rule for `plan` jobs (8.4.1). A PLANNED job is ABORTED at once. Cancelling a finished job changes nothing and returns its final state.
 - How the engine is threaded, and how long-polls wait, is ADR-053.
 
 **`check_drawing` lifecycle [Builder's call].** The path checks (12.5), the file fingerprint (13.1) and argument validation happen in the tool call, before a job exists; a failure there is the tool's error and creates no job.
@@ -155,7 +155,7 @@ The job reuses `check_drawing`'s handling of notifications, journalling and stop
 
 ## 8.5 Transactions and Recovery (P2)
 
-SOLIDWORKS has no general atomic transaction across modeling operations. It does offer undo objects: `IModelDocExtension.StartRecordingUndoObject` and `FinishRecordingUndoObject2` group a sequence of operations into one undo step. The executor wraps each plan in an undo object, which gives a cheap rollback before the document is saved. Undo objects do not survive save or close and are bounded by the undo stack, so they complement checkpoints rather than replace them. Beyond that, the system uses controlled recovery: operation IDs, execution journal, before/after inspection, checkpoints and Save Copy, retry classification, idempotency checks, compensation strategies, diagnostics. Recovery never blindly repeats operations that may have succeeded.
+SOLIDWORKS has no general atomic transaction across modeling operations. It does offer undo objects: `IModelDocExtension.StartRecordingUndoObject` and `FinishRecordingUndoObject2` group a sequence of operations into one undo step. From P2, the executor can wrap a plan in an undo object, which gives a cheap rollback before the document is saved. The part chain does not: it builds on a working file and discards it (8.4.1, ADR-046). Undo objects do not survive save or close and are bounded by the undo stack, so they complement checkpoints rather than replace them. Beyond that, the system uses controlled recovery: operation IDs, execution journal, before/after inspection, checkpoints and Save Copy, retry classification, idempotency checks, compensation strategies, diagnostics. Recovery never blindly repeats operations that may have succeeded.
 
 Example: a 10-feature graph fails at feature 7. The system must determine which features exist, whether feature 7 partially executed, whether to skip, resume or roll back to a checkpoint, and whether a retry would duplicate features.
 

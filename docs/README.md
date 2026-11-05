@@ -2,14 +2,14 @@
 
 Documentation for the AI-native Parametric CAD System: an MCP server and SOLIDWORKS execution engine that lets AI agents build parametric models and production drawings through a deterministic, verified pipeline.
 
-The [specification](specifications/README.md) (v1.34) is split across these folders by topic. Section numbers are kept, so a reference such as "see 11.5" resolves through the [section map](specifications/README.md#how-this-specification-is-organized).
+The [specification](specifications/README.md) (v1.35) is split across these folders by topic. Section numbers are kept, so a reference such as "see 11.5" resolves through the [section map](specifications/README.md#how-this-specification-is-organized).
 
 ```
 docs/
 ├── specifications/   what the product is and when it ships
 ├── architecture/     how the system works, one file per component or IR module
 ├── api/              the MCP tool surface agents call
-├── adr/              architecture decision records, ADR-001 … ADR-064
+├── adr/              architecture decision records, ADR-001 … ADR-069
 ├── development/      repository layout and testing
 ├── plans/            cross-cutting implementation roadmaps
 ```
@@ -31,7 +31,9 @@ docs/
 | [roadmap.md](specifications/roadmap.md) | §18 Phases 0–5, assumption register, Phase 1 work order |
 | [CHANGELOG.md](specifications/CHANGELOG.md) | What changed in each specification version |
 | [open-decisions.md](specifications/open-decisions.md) | Register of decisions found missing before implementation, where each is now recorded, and the place to log new gaps |
-| [solidworks-adapter.md](specifications/solidworks-adapter.md) | §8.9 SOLIDWORKS adapter interface specification |
+| [ir-specification.md](specifications/ir-specification.md) | §22 CAD IR: document, geometry, sketch, feature and reference models, graph, expressions, validation (Proposed) |
+| [compiler-architecture-specification.md](specifications/compiler-architecture-specification.md) | §23 Compiler: verifiable compilation, stages, plan, backend interface, determinism, errors, incremental, verification, cross-specification contracts (Proposed) |
+| [solidworks-adapter.md](specifications/solidworks-adapter.md) | §8.9 SOLIDWORKS adapter interface specification, including the API capability mapping (8.9.11) and reference resolution (8.9.12) |
 
 ## Architecture
 

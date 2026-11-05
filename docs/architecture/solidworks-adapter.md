@@ -1,6 +1,6 @@
 # 8.8 SOLIDWORKS Adapter Architecture
 
-> Specification v1.34, section 8.8. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.35, section 8.8. Index and section map: [specifications/README.md](../specifications/README.md).
 
 **Status: Accepted by the owner, 2026-11-05. Not built yet.** Code and schemas follow it as the roadmap delivers each part. Contracts: [8.9](../specifications/solidworks-adapter.md). Decisions: [ADR-058](../adr/ADR-058-compiler-oriented-adapter.md) to [ADR-063](../adr/ADR-063-observation-verification-boundary.md). Delivery: [roadmap](../plans/solidworks-adapter-roadmap.md).
 

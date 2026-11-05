@@ -1,6 +1,6 @@
 # 4. Design Intent IR
 
-> Specification v1.34, section 4. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.35, section 4. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 4.1 Purpose
 
@@ -85,11 +85,11 @@ Parameters are explicit and reusable:
 ```json
 {
   "parameters": {
-    "housing_length": { "value": 80, "unit": "mm" },
-    "wall_thickness": { "value": 1.5, "unit": "mm" },
-    "draft_angle": { "value": 1, "unit": "deg" }
+    "housing_length": { "kind": "length", "value": 80 },
+    "wall_thickness": { "kind": "length", "value": 1.5 },
+    "draft_angle": { "kind": "angle", "value": 1 }
   }
 }
 ```
 
-Expressions and parameter dependencies come in a later schema version.
+Values use the document's `units` and degrees (3.4.3), and `kind` is a quantity kind (3.4.8). Expressions and parameter dependencies come in a later schema version. The matching proposal for part documents is [22.8.3](../specifications/ir-specification.md#2283-proposed-variables-and-expressions-p-adr-065).

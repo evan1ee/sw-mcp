@@ -1,6 +1,6 @@
 # 6. CAD Compiler
 
-> Specification v1.34, section 6. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.35, section 6. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 6.1 Purpose
 
@@ -30,7 +30,9 @@ flowchart TD
 | Graph Analyzer | Cycles, topological order, upstream/downstream sets, affected sets, modification analysis |
 | Geometry Resolver | Semantic and persistent references, signature matching, confidence, ambiguity. Decides in Python over facts the add-in gathers in one call (ADR-049) |
 | Feature Lowering | Map to backend operations (6.5), apply explicit defaults (5.7.6), translate coordinates, reject what the capability profile lacks (6.6) |
-| Execution Planner | Ordered operations, preconditions, postconditions, verification points, operation IDs; produces the Execution Plan of 6.5.3 |
+| Execution Planner | Ordered operations, postcondition names, verification points, operation IDs; produces the Execution Plan of 6.5.3. Preconditions are not plan content: they are enforced at lowering and at the handler's Admit stage (23.4.1, 8.8.6) |
+
+The whole path from IR to a verified result, including how this section relates to verification, is [§23](../specifications/compiler-architecture-specification.md). Verification planning is deliberately not one of these stages (ADR-064).
 
 ## 6.4 Determinism
 

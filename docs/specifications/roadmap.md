@@ -1,6 +1,6 @@
 # 18. Roadmap
 
-> Specification v1.34, section 18. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.35, section 18. Index and section map: [specifications/README.md](../specifications/README.md).
 
 This section says what each phase delivers, how it is accepted and, for Phase 1, in what order the work runs. Current status is in [`HANDOFF.md`](../../HANDOFF.md).
 
@@ -14,7 +14,7 @@ Part Feature Graph IR → compiler → Execution Plan → executor → verified 
 - **While frozen:** no new drawing features. Shared code may change when the part chain needs it, and the drawing tests must keep passing.
 - **Phase 1 work order:** paused, except for M0 and the parts of M2 and M3 the part chain needs. The rest resumes when the owner lifts the freeze.
 
-**The MVP** ([design](../superpowers/specs/2026-11-05-part-chain-mvp-design.md), [plan](../superpowers/plans/2026-11-05-part-chain-mvp.md); awaiting the owner's approval). You ask Claude for a part over MCP, and a `.SLDPRT` appears only if measurements in SOLIDWORKS match the IR. Its first part is a 100 × 60 × 10 mm plate with four Ø8 mm through holes.
+**The MVP** ([design](../superpowers/specs/2026-11-05-part-chain-mvp-design.md), [plan](../superpowers/plans/2026-11-05-part-chain-mvp.md); approved by the owner). You ask Claude for a part over MCP, and a `.SLDPRT` appears only if measurements in SOLIDWORKS match the IR. Its first part is a 100 × 60 × 10 mm plate with four Ø8 mm through holes.
 
 | Stage | Delivers | Done when |
 | --- | --- | --- |

@@ -1,10 +1,10 @@
 # 8.9 SOLIDWORKS Adapter Interface Specification
 
-> Specification v1.34, section 8.9. Index and section map: [README.md](README.md).
+> Specification v1.35, section 8.9. Index and section map: [README.md](README.md).
 
 **Status: Accepted by the owner, 2026-11-05. Not built yet.** Architecture: [8.8](../architecture/solidworks-adapter.md). This section extends 6.5, 6.6 and 8.7 and repeats none of their rules. Until the roadmap delivers each part, the schemas and code stay as they are, and the [ADRs](../adr/README.md) say where they must change. JSON here is illustrative. **`schemas/` is the normative form once written (ADR-035).**
 
-**How API facts are marked.** ✔ means measured in the [2026-11-05 spike](../superpowers/review/2026-11-05-part-chain-spike.md). ? means from general API knowledge and unverified, and it must pass a spike before use.
+**How API facts are marked.** ✔ means measured in the [2026-11-05 spike](../superpowers/review/2026-11-05-part-chain-spike.md). ◐ means the member and its signature were read from the installed interop assembly and its remarks from the installed API help (8.9.11), but it has never been run here. ? means from general API knowledge and unverified. ◐ and ? must both pass a spike before use.
 
 ## 8.9.1 Contract map
 
@@ -61,7 +61,7 @@ General rules are 6.5.1. This section adds:
 6. **Standard result fields** for an operation creating a native feature: `native_id`, `feature_id`, `status`, and `node_id` echoed only as the join key. `status` values: `ok`, `warning`, `error`, `suppressed`.
 7. **Observation in the result (ADR-064).** An operation that creates a native object also returns `observation`: `native_type`, neutral `type`, `error_code`, `is_warning`, `suppressed`, `parents`, `parameters`, `solid_body_count`, `needs_rebuild`, `update_stamp` and `completeness`, as far as its tier reads them (10.2.2). Reading them must not change the document. A fact that was not read is absent, and `completeness` says why. The schema is `Observation` in `schemas/ipc/v0.json`; parameters are raw SI (`depth_m`).
 
-**Vocabulary by phase.** Names and parameters beyond the MVP are proposals, written to schemas before their phase. Feature names follow 5.3.2 and 5.7.
+**Vocabulary by phase.** Names and parameters beyond the MVP are proposals, written to schemas before their phase. Feature names follow 5.3.2 and 5.7. Where a route below says ?, the current evidence for it is in 8.9.11.
 
 | Phase | Operation | Key params | Observed result | Native route |
 | --- | --- | --- | --- | --- |
@@ -148,6 +148,11 @@ Errors use the ADR-037 catalogue. A handler either returns a result or throws on
 | Native call returned false, or its error output is non-zero | `BACKEND_OPERATION_FAILED` | `unknown`, unless proven |
 | `COMException` from a native call | `BACKEND_OPERATION_FAILED`, with `hresult` | `unknown` |
 | Read-back disagrees with the call's claim | `BACKEND_OPERATION_FAILED` | `applied` or `unknown` |
+| A selection call returned false, before any feature call | `BACKEND_OPERATION_FAILED`, `stage: invoke`, `native.call` names it | `none`, once the selection is cleared |
+| Sketch left in an over-defined or no-solution state | `BACKEND_OPERATION_FAILED` | `applied` |
+| Pinned reference no longer resolves (8.9.12) | `REF_NOT_FOUND` | `none` |
+| Pinned reference resolves, signature differs (8.9.12) | `REF_SIGNATURE_MISMATCH` | `none` |
+| Modal dialog or blocked UI thread | `BACKEND_UI_BLOCKED` (8.6.3) | `unknown` |
 | Cancellation between steps | `EXEC_CANCELLED` | `none` |
 | Any other exception (a bug) | JSON-RPC `-32603`, logged with a stack (8.7) | `unknown` |
 
@@ -483,3 +488,173 @@ Pure, in `cad-verification`. `DriftReport.state` is one of `in_sync`, `diverged`
 | Save and reopen | All the above on a new `instance_id`, `dirty` false | File replaced while closed (spike answer 12) |
 
 Each check in a per-operation contract (10.2.2) also has a seeded failure, offline, against a recorded observation. Tolerances come from 10.2.1. Curved bodies need K12 before any curved feature ships. Parts whose expected values cannot be computed exactly need K16.
+
+## 8.9.11 API capability mapping
+
+**Status: Proposed for phases A4 to A7.** Operation names and phases are 8.9.3. This adds the native route, the evidence for it, and what the IR's meaning costs at that route.
+
+**Sources and their limits.** All read on 2026-11-05 without starting SOLIDWORKS:
+
+- **Signatures** come from reflecting `SolidWorks.Interop.sldworks.dll` and `SolidWorks.Interop.swconst.dll`, file version 33.0.0.5050, from the local install of SOLIDWORKS 2025. This confirms that the member exists and its parameter list, on this install.
+- **Remarks and obsolete status** come from `sldworksapi.chm` and `sldworksapiprogguide.chm` of the same install. The public equivalents are `https://help.solidworks.com/2025/english/api/sldworksapi/SolidWorks.Interop.sldworks~SolidWorks.Interop.sldworks.<Interface>~<Member>.html`.
+- **The installed help matches that install, and the public site is later (2025 SP05).** They were not compared. Help text says what a member is documented to do, not that this project's call sequence works. Nothing marked ◐ has been run.
+
+| IR (§22) | Operation | Native route | Steps and selections, per the help | Evidence |
+| --- | --- | --- | --- | --- |
+| `sketch` on a standard plane | `sketch.create` | `IFeature.Select2`, `ISketchManager.InsertSketch`, `CreateLine`, `CreateCircleByRadius` | Plane selected; `AddToDB` and `AutoInference` scoped; leave sketch mode in `finally` | ✔ |
+| Sketch `arc` | `sketch.create` | `ISketchManager.CreateArc`, 10 parameters | Centre, start, end, `Int16 Direction`: +1 counter-clockwise, -1 clockwise | ◐ |
+| Construction line | `sketch.create` | `ISketchManager.CreateCenterLine`, 6 parameters | | ◐ |
+| Sketch `point` | `sketch.create` | `ISketchManager.CreatePoint`, 3 parameters | Returns `SketchPoint` | ◐ |
+| Sketch relation | `sketch.create` | `ISketch.RelationManager` (a property; there is no `GetRelationManager`), then `ISketchRelationManager.AddRelation(object Entities, int RelationType)` with `swConstraintType_e` | **A sketch must be active.** Takes entities directly, so it needs no selection. `IModelDoc2.SketchAddConstraints` also exists, but works from a selection and a string name, and is not used | ◐ |
+| Sketch dimension | `sketch.create` | `IModelDocExtension.AddDimension(x, y, z, direction)`, or `IModelDoc2.AddDimension2`. Value through `IDimension.SetSystemValue3` | **Multi-step.** Pre-select the entities, place the text by coordinates, then set the value. The help tells callers to select by location, not by name. See K27 | ◐ |
+| Constraint state | Observation | `ISketch.GetConstrainedStatus`, `swConstrainedStatus_e` | No parameters | ◐ |
+| `extrude` | `feature.create` | `IFeatureManager.FeatureExtrusion3`, 23 parameters | Sketch selected with `Select2(false, 0)` | ✔ |
+| `cut_extrude` | `feature.create` | `IFeatureManager.FeatureCut4`, 27 parameters | Same. Blind needs `Dir=true` (5.7.4) | ✔ |
+| `revolve`, `cut_revolve` | `feature.create` | `IFeatureManager.FeatureRevolve2`, 20 parameters; `IsCut` selects a cut | Sketch mark 0, axis mark 4 or 16, up-to entity mark 32. Angles in radians | ◐ |
+| `sweep`, `swept_cut` | `feature.create` | `IFeatureManager.CreateDefinition(swFmSweep` or `swFmSweepCut)`, `ISweepFeatureData`, `CreateFeature` | Profile mark 1, path mark 4, guide mark 2, direction mark 128. The programming guide selects with `SelectByRay`. **`InsertProtrusionSwept4` and `InsertCutSwept5` are obsolete** as of the 2018 sweep architecture | ◐ |
+| `loft`, `lofted_cut` | `feature.create` | `IFeatureManager.InsertProtrusionBlend2`, 18 parameters; `InsertCutBlend`, 12 parameters | Profile mark 1, guide mark 2, centerline mark 4. **Selection order sets the loft direction.** Profiles must be closed for a solid. Not marked obsolete, and not in `CreateDefinition`'s list of default-initialized types | ◐ |
+| `fillet` (constant radius) | `feature.create` | `CreateDefinition(swFmFillet)`, `ISimpleFilletFeatureData2.Initialize(swSimpleFilletType_e)`, `DefaultRadius`, `Edges`, `CreateFeature` | **`FeatureFillet3` is obsolete for constant-radius fillets as of 2020.** `Initialize` is required, and the help says the type is then narrowed through `ConicTypeForCrossSectionProfile` | ◐ |
+| `chamfer` | `feature.create` | `IFeatureManager.InsertFeatureChamfer`, 8 parameters; `swChamferType_e`: `AngleDistance`, `DistanceDistance`, `EqualDistance`, `Vertex` | Edges pre-selected; the remarks read do not state the marks. Vertex distances on a non-linear edge are arc lengths | ◐ |
+| `linear_pattern` | `feature.create` | `CreateDefinition(swFmLPattern)`, `ILinearPatternFeatureData` (`D1TotalInstances`, `D1Spacing` in metres, `D1Axis`, `PatternFeatureArray`), `CreateFeature` | **`FeatureLinearPattern5` is obsolete.** Its help documents direction mark 1 and features mark 4, with `IEntity.Select4` and `IFeature.Select2` allowed. Whether the data-object route needs them is unverified | ◐ |
+| `circular_pattern` | `feature.create` | `CreateDefinition(swFmCirPattern)`, `ICircularPatternFeatureData` (`TotalInstances`, `Spacing`, `Axis`, `EqualSpacing`), `CreateFeature` | **`FeatureCircularPattern5` is obsolete.** Same note | ◐ |
+| `mirror` | `feature.create` | `IFeatureManager.InsertMirrorFeature2`, 5 parameters | Features mark 1, bodies mark 256, plane or planar face mark 2 | ◐ |
+| `plane` | `reference_plane.create` | `IFeatureManager.InsertRefPlane`, 6 parameters; `swRefPlaneReferenceConstraints_e` | Entities marks 0, 1, 2. Returns an untyped object | ◐ |
+| `axis` | `reference_axis.create` (name proposed) | **`IModelDoc2.InsertAxis2(bool)`**, not on `IFeatureManager` | Returns only a boolean, so the handler must find the new feature afterwards (`FeatureByPositionReverse(0)` found sketches ✔) | ◐ |
+| `coordinate_system` | `coordinate_system.create` (name proposed) | `IFeatureManager.InsertCoordinateSystem`, 3 parameters | Remarks not read | ? |
+| `hole_wizard` | `feature.create` | `IFeatureManager.HoleWizard5`, 27 parameters | Signature only | ? |
+| Forced rebuild | `document.rebuild` | `IModelDoc2.ForceRebuild3(bool TopOnly)` | The return value is not a health verdict (10.2.2) | ✔ |
+
+**Names this project must not assume.** Reflection showed these do not exist on the 2025 interop, though they look plausible: `IFeatureManager.FeatureCut5` and `InsertAxis2`, `ISketch.GetRelationManager`, `ISafeEntity`, `IMassProperty.SelectedItems` (it is on `IMassProperty2`) and `IModelDocExtension.GetLastError2`.
+
+### Route choice
+
+[ADR-068](../adr/ADR-068-native-feature-call-routes.md) (Proposed) sets the rule: **use the feature-data route where the help marks the positional call obsolete, and the positional call otherwise,** behind one method per native call (8.8.10). A feature-data route has a cost. Defaults come from SOLIDWORKS rather than from the argument list, so every property the IR relies on must be set explicitly and read back, or a change of defaults on a later version is silent.
+
+### Gaps between IR meaning and the API
+
+| IR says | SOLIDWORKS does | Who closes the gap |
+| --- | --- | --- |
+| `blind` runs along the sketch normal, for both types | A blind cut defaults the other way ✔ | Translator, per type |
+| Selection through entities only (8.3 rule 11) | Most feature help documents `SelectByID2` | K26: the same marks with `Select2` and `Select4`. Only sketches and extrudes are proven |
+| A sketch dimension is one value | Needs pre-selection, a text position and a value set | Handler. The text position is derived and carries no meaning. K27 |
+| A sketch stores final geometry | The solver may move it | Seed consistency (22.4.4). K27 |
+| Angles in degrees | Radians | Translator (8.3 rule 9) |
+| `cut_revolve` is its own type | One call with `IsCut` | Translator |
+| A reference plane or axis is a typed node | `InsertRefPlane` returns an object, and `InsertAxis2` a boolean | Handler finds and returns the feature, or fails |
+| A feature is created or not | A call can return null, or create a feature with errors under `AllowFailedFeatureCreation` | Handler, 8.9.5 |
+| Changing a parameter (section 9) | `ModifyDefinition` may return true and leave a rebuild error or unpredictable state | `feature.update` reads back, and treats doubt as `unknown` (23.8) |
+
+## 8.9.12 Reference resolution in the adapter
+
+The split is ADR-049: the add-in gathers and dereferences, and Python decides. This specifies the add-in's half.
+
+**No handles are held.** A command looks up what it needs and drops it (G1). Between commands, the adapter's "handles" are plain values:
+
+| Handle | Form | Valid for | Evidence |
+| --- | --- | --- | --- |
+| Document | Full path plus `instance_id` | While open; a reopen gets a new `instance_id` | ✔ |
+| Feature | `f<IFeature.GetID()>` | Across close and reopen on the plate. Further cases: K14 | ✔ |
+| Standard plane | Role, by `RefPlane` order and checked normal | The document | ✔ |
+| Face, edge, vertex | Base64 of `GetPersistReference3` bytes, plus the signature it matched | Until use proves otherwise | ◐ |
+
+**Native identifiers, from the help.** The verdicts are [ADR-067](../adr/ADR-067-entity-identity-ladder.md) (Proposed).
+
+| Identifier | Documented behaviour | Verdict |
+| --- | --- | --- |
+| `IModelDocExtension.GetPersistReference3` | Persists across sessions, and is portable. The internal bytes may change from rebuild to rebuild or between releases, while finding the right entity stays consistent | **Use, for pinning.** Never compare bytes: the spike's identical feature references do not make that safe |
+| `GetObjectByPersistReference3` | Out error code; `swPersistReferencedObject_Suppressed` and `_Deleted` apply to topological entities. Often returns a feature base class | **Use, at execution.** Mapped below |
+| `IEntity.GetSafeEntity` | Valid after rebuilds until the entity is deleted, and does not persist between sessions | **Only within one command,** across a rebuild inside that command |
+| `IFace2.SetFaceId`, `GetFaceId` | Saved with the document, but **removed whenever the document is rebuilt** | **Never** |
+| Tracking IDs (`IFace2.GetTrackingIDs`) | Live until a rebuild. They propagate across splits, unlike the others. Persisting them needs a macro feature | **Never.** Macros are out (section 14) |
+| `IPartDoc.SetEntityName`, `GetEntityByName` | Stored in the part, and will not rename a named entity | **Not by default.** It writes to the document, so never on a source part (ADR-022). A possible option on a job-owned working part, unmeasured |
+| Attributes (`IAttributeDef.CreateInstance5`) | The guide says they behave like features | **Not for parts,** for the same reason. K9 evaluates them for drawings |
+| Face or edge index in an enumeration | No promise | **Never** (1.3 principle 5) |
+
+**Using a pinned reference, inside an operation:**
+
+```mermaid
+flowchart TD
+    A["Pinned ID + stored signature<br/>from the plan"] --> B["GetObjectByPersistReference3"]
+    B -->|"Null, or Deleted"| N["REF_NOT_FOUND<br/>effect none"]
+    B -->|"Suppressed"| N2["REF_NOT_FOUND<br/>details.reason suppressed"]
+    B -->|"Object"| C["Compute signature<br/>(7.3), raw SI"]
+    C --> D{"Within the stored<br/>tolerance?"}
+    D -->|"No"| M["REF_SIGNATURE_MISMATCH<br/>effect none, both signatures in details"]
+    D -->|"Yes"| E["IEntity.Select4 with the mark<br/>the feature call expects"]
+    E -->|"False"| F["BACKEND_OPERATION_FAILED<br/>stage invoke"]
+    E -->|"True"| G["Feature call"]
+```
+
+**Invalidation and re-resolution.**
+
+- The add-in **never re-resolves.** A failed reference fails the operation. Choosing a replacement is a decision, and decisions are Python's (ADR-049, 7.4).
+- After a rebuild, a pinned ID is checked again on next use, never assumed. There is no cache to invalidate, because nothing is held between commands.
+- Re-resolution is a new `geometry.candidates` round and a new compile, with a new plan hash, from the authored role. A running job does not do this: it fails (8.8.8).
+- **Ambiguity** is decided in Python only (`REF_AMBIGUOUS`, 7.4). `GetObjectByPersistReference3` answers with one object, so the add-in cannot see ambiguity at use. The signature re-check is what catches a wrong one.
+
+**Limits of topological naming, stated plainly.** A persistent reference and a matching signature show that an entity is plausibly the same, not that it means the same (7.5). A split face may resolve to one part of itself. Two symmetric faces have equal signatures apart from position. How persistent references behave across a topology-changing rebuild has not been measured on any entity: K28. Measuring the result (10.2.1) is the backstop for what references cannot promise.
+
+## 8.9.13 Verification evidence the adapter exposes
+
+The adapter reports **raw observations** only. Conclusions are pure Python's (ADR-063). Observers never rebuild, modify, or use `AccessSelections` (ADR-064).
+
+| Fact | Field | Native source | Evidence | Tier or command |
+| --- | --- | --- | --- | --- |
+| Feature exists, its type | `feature_id`, `native_type` | `IFeature.GetID`, `GetTypeName2` | ✔ (K21 for variants) | T0 |
+| Feature health | `error_code`, `is_warning` | `IFeature.GetErrorCode2` | ◐ | T0 |
+| Suppression | `suppressed` | `IFeature.IsSuppressed2` | ◐ | T0 |
+| Direct parents | `parents` | `IFeature.GetParents` | ◐ | T0 |
+| Feature tree | `features` | Traversal from `IPartDoc.FirstFeature` | ◐ | `part.measure`, `features.read` |
+| Change stamp | `update_stamp` | `IModelDoc2.GetUpdateStamp` | ◐ | T0 |
+| Rebuild status | `rebuild`, `needs_rebuild` | `IModelDocExtension.GetWhatsWrong`, `NeedsRebuild2` | ◐ (K19) | T1, `part.measure` |
+| Sketch entity count | `entity_count` | `ISketch.GetSketchSegments` | ◐ | T0 |
+| Sketch constraint state | `constraint_state` | `ISketch.GetConstrainedStatus` | ◐ | T0, from A4 |
+| Feature parameters | `parameters` (`depth_m`) | `IFeature.GetDefinition`, then typed getters, or `IDimension.GetSystemValue3` | ◐ (K15) | T1 |
+| Body count | `solid_body_count` | `IPartDoc.GetBodies2` | ✔ | T1, `part.measure` |
+| Bounding box | `bbox_m` | `IBody2.GetBodyBox` | ✔ prismatic only (K12) | T3 |
+| Volume, area, center of mass | `volume_m3`, `surface_area_m2`, `center_of_mass_m` | `IModelDocExtension.CreateMassProperty`, `UseSystemUnits = true` | ✔ (K20: marked obsolete) | T2, T3 |
+| Cylindrical faces | `cylinders_m` | `IBody2.GetFaces`, `ISurface.IsCylinder`, `CylinderParams` | ✔ | T3 |
+| Other face and edge data | `geometry.candidates` signature (7.3) | `IFace2`, `IEdge`, `ISurface`, `ICurve` | ◐ | A6 |
+| Body validity | Not yet requested | `IBody2.Check3` | ◐ | Later |
+| Measurement between entities | Not yet requested | `IModelDocExtension.CreateMeasure`, `IMeasure.Calculate` (`Distance`, `Angle`, `Radius`) | ◐ | Later, if a contract needs it |
+| Persistent reference | Handle in 8.9.12 | `GetPersistReference3` | ✔ features; ◐ entities | `geometry.candidates` |
+| Document state | `dirty`, `read_only`, `instance_id` | `IModelDoc2.GetSaveFlag`, `IsOpenedReadOnly`, the add-in | ✔ | Every read command |
+
+**Observation is not conclusion.**
+
+| Adapter reports | Pure Python concludes |
+| --- | --- |
+| `volume_m3: 5.798938e-05` | "Volume within ±0.01% of 57989.38 mm³: passed" |
+| `error_code: 0`, `is_warning: false` | "`feature_status_ok`: passed" |
+| `solid_body_count: 2` | "Bodies: expected 1: failed" |
+| `completeness: { "parameters": "unsupported" }` | "`parameter_equals`: `not_evaluated`, `unsupported`" |
+| `rebuild: { "ok": true, "errors": [] }` | "Rebuild: passed". The field means "no errors reported", not that the model is right |
+
+## 8.9.14 Where the adapter's concerns are specified
+
+The adapter design is split across existing sections. This maps common questions to the rule that answers them, so nothing needs restating.
+
+| Concern | Authority |
+| --- | --- |
+| Boundaries and layers | [8.8.5](../architecture/solidworks-adapter.md#885-layers-and-boundaries), ADR-058, ADR-061 |
+| Application host, COM interop, document lookup, selection and sketch scopes | 8.8.5, 8.8.7 (Session state), 8.9.8 |
+| Rebuild points | 8.8.7 (Rebuild boundaries) |
+| STA thread and affinity, dispatch, re-entrancy | 8.3, 8.6.2, 8.8.7, ADR-059 |
+| Application and document lifecycle | 8.6.1, 8.6.5, ADR-028, ADR-046 |
+| COM ownership and release | G1, ADR-059, `ComScope` in 8.9.8 |
+| Exceptions at entry points | ADR-059, 8.8.7 |
+| Timeouts and cancellation | 8.6.3, 8.4, 8.3 rule 8 |
+| Recovery from a failed operation | 8.8.8, 13.2.3. A working file with unknown contents is never repaired |
+| Error categories | 8.9.5 |
+| Version differences | 8.8.10, ADR-045, ADR-062. Nothing version-specific reaches the IR or the compiler beyond a capability name |
+
+**The operation lifecycle** is the five stages of [8.8.6](../architecture/solidworks-adapter.md#886-the-operation-handler):
+
+| Step | Stage |
+| --- | --- |
+| Receive; check capabilities; validate inputs | 1 Admit. Shape and range also in 2 |
+| Resolve references | 3 Invoke, as its first native step (8.9.12). Python already pinned them |
+| Prepare state; execute API calls; check the API result | 3 Invoke, inside scopes |
+| Rebuild if required | Only as a named step (8.8.7), never implicit. Native regeneration happens by itself |
+| Collect result handles | 4 Read back |
+| Return a structured result | 5 Report |

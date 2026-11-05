@@ -2,6 +2,26 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.35
+
+Adds a coherent architecture reference for the IR, the compiler and the adapter, and aligns the topic files with each other. No schema or production code changed, and no live SOLIDWORKS run was made.
+
+- **New sections, Proposed:** [§22 CAD IR](ir-specification.md) and [§23 Compiler Architecture](compiler-architecture-specification.md). They point to the topic sections for what is decided, and label everything new. 23.13 names one owner for each shared contract.
+- **§8.9 extended, no new adapter file:** 8.9.11 maps the IR to native calls, with evidence levels; 8.9.12 is the add-in's half of reference resolution; 8.9.13 lists the raw facts it exposes; 8.9.14 maps concerns to their existing sections. 8.9.5 gains rows for selection failure, over-defined sketches, references and a blocked UI. A new mark, ◐, means read from the installed interop and help but never run.
+- **API findings:** the 2025 help marks these obsolete: `InsertProtrusionSwept4`, `InsertCutSwept5`, `FeatureFillet3` for constant radius, `FeatureLinearPattern5` and `FeatureCircularPattern5`. It also documents that face IDs are removed on rebuild and tracking IDs last only until one.
+- **Proposed ADRs:** [ADR-065](../adr/ADR-065-part-parameters-and-expressions.md) to [ADR-069](../adr/ADR-069-stable-operation-ids.md). None is applied.
+- **Register:** adds K23 to K28.
+- **Alignment fixes (wording only; each matched an accepted decision or the schema):**
+  - 8.6.2 follows ADR-059: hidden control with no fallback, re-post, and the pipe thread's full list of answers. 8.6.1's example uses protocol `0.1`.
+  - 8.3 rule 9: one conversion place per direction, as 8.7 and 8.8.9 already said.
+  - 8.4 and 8.5, and 6.5.2's Undo row: part jobs use the working-file rule, not undo.
+  - 6.3: preconditions are not plan content, because the schema has no such field.
+  - 5.7.2 and 5.7.5: reference examples that the grammar rejects now say so (K23). 5.7.1 notes the ordering risk. 5.7.3 separates mirror from `pattern`, as Proposed, and states `spacing`'s two kinds.
+  - 13.1: the `apply_part_graph` exception. 13.2.1: `evidence.json`, and `feature_ids` and `measured` from A3.
+  - 4.6: parameters use `kind`, since 3.4.3 fixes units per document.
+  - 5.6 cross-refers K25. 3.2, 6.3, 7.5, 9.3 and 10.2 cross-refer the new sections. 17: the adapters do not verify, and `execution-evidence/` is listed.
+  - 18: the MVP is approved, as HANDOFF already said.
+
 ## What changed in 1.34
 
 Delivers roadmap phase [A0](../plans/solidworks-adapter-roadmap.md): the contracts that ADR-063 and ADR-064 need now exist as schemas. The add-in and the job do not use them yet, so no job behaves differently.

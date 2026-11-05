@@ -1,6 +1,6 @@
 # 11.12 Drawing Template IR
 
-> Specification v1.34, section 11.12. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.35, section 11.12. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## Purpose
 

@@ -1,6 +1,6 @@
 # 5.7 Part Feature Graph Schema Guide
 
-> Specification v1.34, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.35, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
 
 Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3.2) read as one language and the compiler's defaults are explicit. Each type has one schema file, `schemas/part-feature-graph/features/<type>.json`, with one minimal example of at most 400 tokens (12.3).
 
@@ -30,13 +30,13 @@ Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3
 | `display_name` | Optional, for reports only |
 | `x_solidworks` | Backend-specific extension object (5.5). Never needed for a type to work; ignored by other backends |
 
-**Order.** Nodes are built in topological order. Ties are broken by the node ID's sort order, so the same graph always builds the same feature order.
+**Order.** Nodes are built in topological order. Ties are broken by the node ID's sort order, so the same graph always builds the same feature order. A tie between two nodes that change a body would make geometry depend on how their IDs are spelled. The MVP's semantic rules prevent it for its one extrude and its cuts; [ADR-066](../adr/ADR-066-body-order-is-explicit.md) (Proposed) generalizes that.
 
 ## 5.7.2 Naming and values
 
 - Fields and enum values are lower snake case. Booleans are named for the true case (`reverse`, `merge_result`).
 - Lengths are in the document's `units` and angles in degrees (3.4.3). Counts are integers.
-- A parameter that an agent or a drawing can refer to is a named field. Its `ParamRef` is `<node_id>.<field>` (`extrude_base.depth`), and for nested objects `<node_id>.<object>.<field>` (`extrude_base.end_condition.depth`). Sketch dimensions are `<sketch_id>.<dimension_id>` (`sketch_bore.x`).
+- A parameter that an agent or a drawing can refer to is a named field. Its `ParamRef` is `<node_id>.<field>` (`bore_1.diameter`), and for nested objects `<node_id>.<object>.<field>` (`extrude_base.end_condition.depth`). Sketch dimensions are `<sketch_id>.<dimension_id>` (`sketch_bore.x`). The grammar in 3.4.2 and the schema's `ParamRef` accept two segments only, so the nested form cannot validate yet: register K23.
 - Parameter names and role names (5.7.5) are disjoint per type (3.4.2 rule 2).
 
 ## 5.7.3 Shared objects
@@ -46,7 +46,7 @@ Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3
 | `end_condition` | `type` (`blind`, `through_all`, `through_all_both`, `up_to_next`, `up_to_surface`, `offset_from_surface`, `mid_plane`), `depth`, `target` (`GeometryRef`), `offset`, `reverse`, `draft` (`{angle, outward}`) | Extrude, cut, boss, rib |
 | `end_condition_2` | Same, for the second direction | Same |
 | `thin` | `thickness`, `type` (`one_side`, `mid_plane`, `two_side`), `thickness_2` | Thin extrude and revolve |
-| `pattern` | `seeds` (node IDs), `direction` and `direction_2` (`GeometryRef`), `spacing`, `count`, `skip` (instance indices) | Linear, circular and mirror patterns |
+| `pattern` | `seeds` (node IDs), `direction` and `direction_2` (`GeometryRef`), `spacing`, `count`, `skip` (instance indices). A linear pattern's `spacing` is a length, and a circular pattern's an angle with `direction` as its axis | Linear and circular patterns. A mirror takes `seeds` and a `plane` (22.5.2, Proposed) |
 | `hole_spec` | `standard` (`iso`), `type` (`simple`, `counterbore`, `countersink`, `tapped`), `size` (`M6`), `fit` (`close`, `normal`, `loose`), `depth` (`end_condition`), `thread_depth`, `cosmetic_thread` | Hole Wizard |
 | `sheet_metal` | `thickness`, `bend_radius`, `k_factor` or `bend_table`, `relief` | Sheet metal parameters and features |
 
@@ -80,7 +80,7 @@ Each type's schema lists the roles it defines (11.1, 3.4.2): the role name, the 
 - **Hole Wizard:** `cylindrical_face`, `axis`, `counterbore_face`.
 - **Revolve:** `faces_by_axial_order` (a list ordered along the axis).
 
-A role that is a set or a list can be referred to only with an index (`extrude_base.side_faces.0`), and only where the type defines a stable order. A role that matches more than one entity when one is expected fails with `REF_AMBIGUOUS` (7.4).
+A role that is a set or a list can be referred to as a whole where the field takes a set, otherwise only with an index (`extrude_base.side_faces.0`, not yet accepted by the schema's `GeometryRef`: register K23), and only where the type defines a stable order. A role that matches more than one entity when one is expected fails with `REF_AMBIGUOUS` (7.4).
 
 ## 5.7.6 Defaults
 

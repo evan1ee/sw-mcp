@@ -15,7 +15,7 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-Fifteen open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, K19, K20 and K21. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+Twenty-one open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, K19, K20, K21, K23, K24, K25, K26, K27 and K28. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
 
 ### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
 
@@ -128,6 +128,48 @@ Fifteen open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, K19
 - **Document:** Spec (5.3.6, 8.9.4).
 - **Blocks:** `later` (the plate's own types are measured; new feature variants need this).
 
+### K23: Reference grammar beyond two segments
+
+- **Why it matters.** 3.4.2 and the schemas accept `ParamRef` and feature-plus-role `GeometryRef` as exactly `<id>.<name>`. 5.7.2 also defines `extrude_base.end_condition.depth`, 5.7.5 defines `extrude_base.side_faces.0`, and 11.10's `hole_pattern.spacing` lives inside a `pattern` object. Those forms cannot validate, so depth, spacing and indexed roles have no valid reference.
+- **Recommendation.** Extend both to dot-separated paths of two or more segments, with a final integer allowed only on a role. Keep 3.4.2 rule 2 by checking each path against the type's schema. Major 0 permits this.
+- **Document:** Spec (3.4.2, 5.7.2, 5.7.5), schemas.
+- **Blocks:** `later` (A6 for roles; any drawing reference to a nested parameter when the freeze lifts).
+
+### K24: Which length unit operation params use
+
+- **Why it matters.** 6.7.2 converts inch documents to millimetres inside the compiler. 8.9.3 rule 5 says params are in the document's unit, while 6.5.2 says millimetres, and no wire field states a unit, so a translator could not tell. The part schema is `mm` only, so nothing breaks yet.
+- **Recommendation.** Params are always millimetres and degrees, whatever the document's unit. The compiler alone converts, and 8.9.3 rule 5 says "millimetres". Reports convert back. Inch part documents stay refused until a test proves this.
+- **Document:** Spec (3.4.3, 6.5.1, 6.7.2, 8.9.3).
+- **Blocks:** `later` (admitting `in` part documents).
+
+### K25: Nested assemblies in a bundle
+
+- **Why it matters.** 5.6 has components that refer to nested `assembly:<id>` documents. 3.4.5 and `cad_ir/bundle/manifest.py` allow at most one `assembly` per bundle.
+- **Recommendation.** Decide with the Assembly Graph schema: either allow several, with one root named in the manifest, or make nested assemblies separate compiles that the parent refers to by pinned reference.
+- **Document:** Spec (3.4.5, 5.6).
+- **Blocks:** `later` (Phase 2 assemblies).
+
+### K26: Selection for feature calls without SelectByID2
+
+- **Why it matters.** The API help documents `IModelDocExtension.SelectByID2` and marks as the way to pre-select for `FeatureRevolve2`, `InsertProtrusionBlend2`, `InsertMirrorFeature2`, `InsertRefPlane` and others, and `SelectByRay` for sweeps. 8.3 rule 11 and `BannedSymbols.txt` ban `SelectByID2`. The linear pattern's help does document `IEntity.Select4` and `IFeature.Select2` with marks, which suggests the same marks work, but only sketches and extrudes are proven.
+- **Recommendation.** Before each phase in 8.9.11, spike the route with `Select2` and `Select4` and the documented marks on a throwaway instance. Record it in the spike record, and only then mark the row ✔. If a route truly needs another selection call, decide it per call and record why.
+- **Document:** Spec (8.3 rule 11, 8.9.11), ADR-068.
+- **Blocks:** `later` (A5 for revolve, A6, A7).
+
+### K27: Sketch solver and seed geometry
+
+- **Why it matters.** 22.4.4 proposes that coordinates already satisfy every relation and dimension, so the solver has nothing to move. Whether `ISketchRelationManager.AddRelation` and a dimension's value set really leave consistent geometry unmoved is unmeasured, as is the right order of relations and dimensions. `IModelDocExtension.AddDimension` needs pre-selection, and its help warns about selection by name, which ties it to K26.
+- **Recommendation.** Spike on arcs and lines at the start of A4: read coordinates back after each step, compare with the seed, and record `GetConstrainedStatus` for under-defined, fully defined and over-defined sketches.
+- **Document:** Spec (22.4, 8.9.11).
+- **Blocks:** `later` (A4).
+
+### K28: Persistent references to faces and edges
+
+- **Why it matters.** The spike proved `GetPersistReference3` on features across close and reopen, never on faces, edges or vertices, and never across a topology-changing rebuild. The help says the internal bytes may change between rebuilds while finding the entity stays consistent. ADR-049, 8.9.12 and ADR-067 rest on this.
+- **Recommendation.** At the start of A6, measure references on a part's faces and edges across save and reopen, a depth change, a change that splits a face, and deleting the owner. Record which `swPersistReferencedObject_e` status each gives, and whether a signature check catches a wrong answer. Decide then whether a written entity name on a job-owned part is worth allowing.
+- **Document:** Spec (7.5, 8.9.12), ADR-067.
+- **Blocks:** `later` (A6).
+
 ---
 
 ## Closed
@@ -181,7 +223,7 @@ Fifteen open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, K19
 | J2 | Phase 1a tool contracts were an outline: exact inputs, outputs, errors, `drawing_intent` in 1a, sections, cursors, long-poll, cancel output, the code for invalid arguments and unknown tools (blocked 1a) | [§12.4.2, §12.4.5](../api/tool-contracts.md#1245-phase-1a-contracts), §8.7 (unknown sheets) |
 | J3 | Which `ids` each tool returns, where the one-line summary is made, and the in-process result the transport will carry (blocked 1a) | [§12.4.2](../api/tool-contracts.md#1242-shared-conventions) |
 | J4 | No schema for the contract files themselves; how CI compares them with the 12.4.4 table; annotation defaults (blocked 1a) | [§12.4.1, §12.4.4](../api/tool-contracts.md#1241-contract-file) |
-| J5 | Store port, record contents, a drawing record for drawings the system did not make, lock, atomic writes, journal order and torn lines, recovery in 1a, retention references, finding a job by ID across stores (blocked 1a) | [§13.1](../architecture/data-management.md#131-storage-and-document-identity-builders-call), [§13.2](../architecture/project-store.md) |
+| J5 | Store port, record contents, a drawing record for drawings the system did not make, lock, atomic writes, journal order and torn lines, recovery in 1a, retention references, finding a job by ID across stores (blocked 1a) | [§13.1](../architecture/data-management.md#131-storage-and-document-identity-builders-call-adr-033), [§13.2](../architecture/project-store.md) |
 | J6 | Threads or asyncio for the job engine, given a blocking IPC client; long-poll waits without wall-clock waits in tests; cancel from another thread (blocked 1a) | [ADR-053](../adr/ADR-053-job-engine-threading.md) |
 | J7 | Configuration schema absent; error locations; where reading and validation live; loading title-block mappings without inventing one (blocked 1a) | [§13.3](../architecture/configuration.md) |
 | J8 | Path checks as a pure function over a port; the code for a missing file (new `FILE_NOT_FOUND`); store folder hash (blocked 1a) | [§12.5](../api/tool-contracts.md#125-projects-and-file-access), [ADR-037](../adr/ADR-037-error-model.md) |

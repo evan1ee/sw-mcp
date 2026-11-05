@@ -1,6 +1,6 @@
 # 10. Verification Engine
 
-> Specification v1.34, section 10. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.35, section 10. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 10.1 Purpose
 
@@ -15,7 +15,7 @@ Verification is a core capability. A successful API call does not prove the inte
 | 3. Design intent | Does it meet the requirements? | Dimensional constraints, wall thickness, draft, hole spacing, clearance, interference, manufacturing constraints | P2 |
 | 4. Drawing | Is the drawing production-ready? | Section 11.5 | **P0** |
 
-Example: a housing builds without errors and its volume matches, but one local wall is 0.8 mm against a 2 mm minimum → API PASS, Geometry PASS, Design Intent FAIL. A model can be geometrically valid without being engineering-correct.
+Example: a housing builds without errors and its volume matches, but one local wall is 0.8 mm against a 2 mm minimum → API PASS, Geometry PASS, Design Intent FAIL. A model can be geometrically valid without being engineering-correct. Layer 1 covers three separate claims, each with its own recorded outcome: execution success, rebuild success and feature validity ([23.9.1](../specifications/compiler-architecture-specification.md#2391-five-different-claims), ADR-063).
 
 Each result includes: requirement ID, measured value, expected value or range, tolerance, pass/fail, measurement method, diagnostics.
 

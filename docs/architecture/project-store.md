@@ -1,6 +1,6 @@
 # 13.2 Project Store and Job Journal
 
-> Specification v1.34, section 13.2. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.35, section 13.2. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The layout, write rules and retention of the project store (13.1, ADR-033), and the job journal that lets the core service (ADR-041) account for every job after a crash (ADR-032). Where a project and its store are is 12.5.
 
@@ -22,7 +22,7 @@ The layout, write rules and retention of the project store (13.1, ADR-033), and 
 │   └── plans/<plan_hash>.json                            execution plans
 ├── snapshots/<drawing_id>/<snapshot_id>.json             Drawing Geometry Snapshots (11.5.1)
 ├── reports/<report_id>.json, <report_id>.meta.json
-├── jobs/<job_id>/job.json, journal.jsonl
+├── jobs/<job_id>/job.json, journal.jsonl, evidence.json (`plan` jobs, 8.9.6)
 └── backups/<drawing_id>/<timestamp>.SLDDRW               (ADR-046)
 ```
 
@@ -38,7 +38,7 @@ The layout, write rules and retention of the project store (13.1, ADR-033), and 
 | `reports/<report_id>.json` | The report (11.5.4), exactly as built; nothing is added to it |
 | `reports/<report_id>.meta.json` | `report_id`, `execution_id`, `drawing_id`, `snapshot_id`, `created_at`, `job_warnings` (8.4). Written once, before the report, and deleted with it |
 | `jobs/<job_id>/job.json` | `job_id`, `job_type`, `state`, `created_at`, `started_at`, `ended_at`, `request_id`, `arguments`, `project_root`, `drawing_id`, `fingerprint`, `progress`, `snapshot_id`, `report_id`, `error`, `warnings`, `documents` (`path`, `owned`, `state`: `known` or `unknown`), `next_op_seq`, and for `plan` jobs `part_result` (below) |
-| `parts/<part_key>.json` (part chain MVP) | `part_key`, `path`, `fingerprint`, `produced` (`true` for a part the system built), `graph` (the pinned `part:<id>@<revision>`), `job_id`, `updated_at`. Written only when a `plan` job reaches COMMITTED. `<part_key>` is `fp-<first 16 hex of the fingerprint>` (above). Additive to `schemas/store/v0.json` |
+| `parts/<part_key>.json` (part chain MVP) | `part_key`, `path`, `fingerprint`, `produced` (`true` for a part the system built), `graph` (the pinned `part:<id>@<revision>`), `job_id`, `updated_at`. Written only when a `plan` job reaches COMMITTED. `<part_key>` is `fp-<first 16 hex of the fingerprint>` (above). Additive to `schemas/store/v0.json`. From roadmap A3 it also holds `feature_ids` and `measured`, so reconciliation outlives the job folder (8.9.6) |
 | `part_result` in `job.json` (part chain MVP) | `path` (the target), `fingerprint`, `feature_ids` (node ID to `feature_id`, 6.5.3), `checks` (10.2.1) and `measured` (the converted `part.measure` values). Additive to `schemas/store/v0.json`; `get_execution_status` returns it (12.4.5) |
 
 **Plan key [Builder's call].** A file `derived/plans/<plan_hash>.json` is named by the hash of the plan's canonical form and by nothing else (6.7.4). The store writes it only if no file of that name exists, and a plan that already exists is reused.

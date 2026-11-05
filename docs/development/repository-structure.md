@@ -1,6 +1,6 @@
 # 17. Repository Architecture
 
-> Specification v1.34, section 17. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.35, section 17. Index and section map: [specifications/README.md](../specifications/README.md).
 
 Target structure for the new implementation (ADR-039). Python lives in `apps/mcp-server/`, `apps/core-service/` and `packages/` (ADR-034, ADR-041); C# lives only in `apps/execution-server/` (ADR-038); `schemas/` is the contract both sides are generated from (ADR-035).
 
@@ -12,7 +12,7 @@ sw-mcp/
 │   └── execution-server/              C#: ExecutionServer.sln (ADR-028, ADR-038)
 │       ├── ExecutionServer.AddIn/     ISwAddin, pipe host, dispatcher, events, diagnostics
 │       ├── ExecutionServer.Core/      IPC protocol (ADR-036), operation-ID ledger, units; no SOLIDWORKS refs
-│       ├── ExecutionServer.Adapters/  documents, sketches, features, geometry, assemblies, drawings, verification
+│       ├── ExecutionServer.Adapters/  handlers and observers: documents, parts, assemblies, drawings, native helpers. Never judges (ADR-063)
 │       ├── ExecutionServer.Tests/
 │       └── launcher/
 ├── packages/                          Python, one uv workspace member each
@@ -27,7 +27,7 @@ sw-mcp/
 ├── schemas/                           JSON Schema 2020-12 (ADR-035)
 │   ├── common/                        shared-core types, geometry-reference, errors (ADR-037)
 │   ├── part-feature-graph/ assembly-graph/ design-intent/ drawing-intent/ drawing-layout/ drawing-template/ bundle/
-│   ├── resolved-scheme/ drawing-geometry-snapshot/ execution-plan/ drawing-report/
+│   ├── resolved-scheme/ drawing-geometry-snapshot/ execution-plan/ execution-evidence/ drawing-report/
 │   ├── ipc/                           add-in and core-service messages (ADR-036, ADR-041)
 │   ├── mcp/                           one contract file per MCP tool (12.4.1)
 │   └── config/                        configuration schema (13.3.2)

@@ -1,6 +1,6 @@
 # 3. High-Level Architecture
 
-> Specification v1.34, section 3. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.35, section 3. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The layers below follow the core design principles ([1.3](../specifications/product-spec.md#13-core-design-principles)). Chiefly: the IR is the core of the system (12), the core is CAD-neutral and only the backend layer knows SOLIDWORKS (1), and execution is deterministic (3), verified (6) and recoverable (13).
 
@@ -73,10 +73,12 @@ flowchart TD
 | Geometry Resolver | Resolve references to CAD entities |
 | Drawing Planner | Derive the dimension scheme (into the Resolved Scheme, 11.10.1) and plan views and placement (into Drawing Layout IR) |
 | Execution Planner | Ordered, validated execution plans |
-| Execution Manager | Execution lifecycle and state |
-| Backend Adapter | Translate platform operations to native CAD |
-| Verification Engine | Check API, geometry, intent and drawing correctness |
+| Execution Manager | Execution lifecycle and state: the job layer in `cad-application` (8.8.5) |
+| Backend Adapter | Translate platform operations to native CAD and report what it observes (8.8, 8.9) |
+| Verification Engine | Derive expected values from the IR alone, and check API, geometry, intent and drawing correctness on observed state (10, ADR-063, ADR-064) |
 | Recovery Engine | Diagnose failures, choose safe recovery |
+
+The part chain through these components, as one contract set, is specified in [§22 IR](../specifications/ir-specification.md), [§23 Compiler Architecture](../specifications/compiler-architecture-specification.md) and [§8.9 Adapter Interface](../specifications/solidworks-adapter.md).
 
 ## 3.3 IR Modules and Task-Driven Composition
 

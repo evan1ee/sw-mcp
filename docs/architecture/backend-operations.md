@@ -1,6 +1,6 @@
 # 6.5 Backend Operations and Execution Plans, 6.6 Capability Profile
 
-> Specification v1.34, sections 6.5–6.6. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.35, sections 6.5–6.6. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The compiler (section 6) and the drawing pipeline (11.4) change SOLIDWORKS only through **backend operations**, sent in `ops.apply` batches over the add-in pipe (ADR-036). This vocabulary is the contract between the Python side and the C# adapters.
 
@@ -44,7 +44,7 @@ Operation groups and the increment that needs them. Each group's schemas are wri
 | Sheet format | `sheet_format.generate` (template `DrawingTemplate`, destination path) | 1b (ADR-055, K7 closed) |
 | Part model | `part.create` (template, working file), `sketch.create` (plane, entities, relations, dimensions, 5.7), `feature.create` (type, lowered parameters, pinned references), `feature.update`, `feature.suppress`, `feature.delete`, `body.delete`, `material.set` | 1c (create subset, ADR-029; the MVP subset below), 2 (rest) |
 | Part data | `custom_property.set`, `marked_for_drawing.set` — only with the explicit permission of ADR-022 | 1b, behind the permission option |
-| Undo | `undo.begin`, `undo.end`, `undo.rollback` (8.5) | 1c |
+| Undo | `undo.begin`, `undo.end`, `undo.rollback` (8.5) | P2 (8.5). Part jobs use the working-file rule instead (8.4.1, ADR-046) |
 
 **Part chain MVP subset [Builder's call].** The first part operations, specified by the [MVP design](../superpowers/specs/2026-11-05-part-chain-mvp-design.md) section 7. Their schemas are `schemas/ipc/ops/part.create.json`, `sketch.create.json` and `feature.create.json`.
 
