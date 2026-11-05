@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExecutionServer.Core.Ipc.Generated;
+using ExecutionServer.Core.Ownership;
 using Newtonsoft.Json.Linq;
 
 namespace ExecutionServer.Core.Ledger;
@@ -136,9 +137,12 @@ public sealed class OperationLedger
     /// <summary>Forgets a document's entries; called when the add-in sees the document destroyed.</summary>
     public void ForgetDocument(string document)
     {
+        var normalized = DocumentOwnershipTable.NormalizePath(document);
         lock (_gate)
         {
-            foreach (var entry in _entries.Where(e => string.Equals(e.Document, document, StringComparison.OrdinalIgnoreCase)).ToList())
+            foreach (var entry in _entries.Where(e =>
+                string.Equals(e.Document, document, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(DocumentOwnershipTable.NormalizePath(e.Document), normalized, StringComparison.OrdinalIgnoreCase)).ToList())
             {
                 _entries.Remove(entry);
                 _byId.Remove(entry.Id);

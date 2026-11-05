@@ -151,7 +151,17 @@ public class SwAddin : ISwAddin
             // 4. Pipe name and HelloResult configuration
             var pipeName = NamedPipeServer.GeneratePipeName(pid);
 
-            _ownershipTable = new DocumentOwnershipTable();
+            _ownershipTable = new DocumentOwnershipTable(path =>
+            {
+                try
+                {
+                    return _swApp?.GetOpenDocumentByName(path) != null;
+                }
+                catch
+                {
+                    return false;
+                }
+            });
             _router = CreateRouter(_swApp, _ownershipTable);
 
             var warnings = new List<string>();
@@ -185,7 +195,10 @@ public class SwAddin : ISwAddin
             _ledger = new OperationLedger();
 
             // 5a. Start DocumentEventMonitor
-            _eventMonitor = new SldWorksDocumentEventMonitor((method, payload) => _pipeServer?.ActiveSession?.Notify(method, payload));
+            _eventMonitor = new SldWorksDocumentEventMonitor(
+                (method, payload) => _pipeServer?.ActiveSession?.Notify(method, payload),
+                _ownershipTable,
+                _ledger);
             _eventMonitor.Attach(_swApp);
 
             var handler = new DefaultAddinCommandHandler(_swApp, _router, _eventMonitor, _settingsGuard);

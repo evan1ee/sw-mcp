@@ -51,8 +51,51 @@ public sealed class DocumentOwnershipTable
         public string? PreviousActive { get; }
     }
 
+    private readonly Func<string, bool>? _isDocumentOpen;
     private readonly object _gate = new object();
     private readonly List<OwnershipEntry> _entries = new List<OwnershipEntry>();
+
+    public event Action<string>? DocumentRecorded;
+
+    public DocumentOwnershipTable(Func<string, bool>? isDocumentOpen = null)
+    {
+        _isDocumentOpen = isDocumentOpen;
+    }
+
+    private OwnershipEntry? GetEntry(string normalizedPath, string? jobId)
+    {
+        var entry = _entries.FirstOrDefault(e =>
+            string.Equals(e.NormalizedPath, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
+            (jobId == null || string.Equals(e.JobId, jobId, StringComparison.Ordinal)));
+
+        if (entry != null && _isDocumentOpen != null && !_isDocumentOpen(entry.NormalizedPath))
+        {
+            _entries.RemoveAll(e => string.Equals(e.NormalizedPath, entry.NormalizedPath, StringComparison.OrdinalIgnoreCase));
+            return null;
+        }
+
+        return entry;
+    }
+
+    public bool IsTracked(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var normalized = NormalizePath(path);
+        lock (_gate)
+        {
+            return GetEntry(normalized, null) != null;
+        }
+    }
+
+    public bool HasEntry(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        var normalized = NormalizePath(path);
+        lock (_gate)
+        {
+            return _entries.Any(e => string.Equals(e.NormalizedPath, normalized, StringComparison.OrdinalIgnoreCase));
+        }
+    }
 
     public void Record(string path, string jobId, bool owned, string instanceId, string? previousActive)
     {
@@ -70,6 +113,8 @@ public sealed class DocumentOwnershipTable
                 string.Equals(e.JobId, jobId, StringComparison.Ordinal));
             _entries.Add(entry);
         }
+
+        DocumentRecorded?.Invoke(normalized);
     }
 
     public OwnershipDecision CheckSave(string path, string? targetPath, string? jobId)
@@ -90,9 +135,7 @@ public sealed class DocumentOwnershipTable
             OwnershipEntry? entry;
             lock (_gate)
             {
-                entry = _entries.FirstOrDefault(e =>
-                    string.Equals(e.NormalizedPath, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(e.JobId, jobId, StringComparison.Ordinal));
+                entry = GetEntry(normalizedPath, jobId);
             }
 
             if (entry == null || !entry.Owned)
@@ -138,9 +181,7 @@ public sealed class DocumentOwnershipTable
             OwnershipEntry? entry;
             lock (_gate)
             {
-                entry = _entries.FirstOrDefault(e =>
-                    string.Equals(e.NormalizedPath, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(e.JobId, jobId, StringComparison.Ordinal));
+                entry = GetEntry(normalizedPath, jobId);
             }
 
             if (entry == null || !entry.Owned)
@@ -159,9 +200,7 @@ public sealed class DocumentOwnershipTable
             OwnershipEntry? entry;
             lock (_gate)
             {
-                entry = _entries.FirstOrDefault(e =>
-                    string.Equals(e.NormalizedPath, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(e.JobId, jobId, StringComparison.Ordinal));
+                entry = GetEntry(normalizedPath, jobId);
             }
 
             if (entry != null && !entry.Owned)
@@ -185,10 +224,7 @@ public sealed class DocumentOwnershipTable
         var normalizedPath = NormalizePath(path);
         lock (_gate)
         {
-            var entry = _entries.FirstOrDefault(e =>
-                string.Equals(e.NormalizedPath, normalizedPath, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(e.JobId, jobId, StringComparison.Ordinal));
-
+            var entry = GetEntry(normalizedPath, jobId);
             return entry != null && entry.Owned ? entry.PreviousActive : null;
         }
     }
@@ -204,7 +240,7 @@ public sealed class DocumentOwnershipTable
         }
     }
 
-    private static bool IsPart(string path)
+    public static bool IsPart(string path)
     {
         var ext = Path.GetExtension(path);
         return string.Equals(ext, ".sldprt", StringComparison.OrdinalIgnoreCase);
