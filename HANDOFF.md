@@ -4,7 +4,7 @@ Last updated: 2026-11-05. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Current State
 
-- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. The owner approved the MVP [design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md). Progress on `feat/part-chain-mvp`, as of 2026-11-05 (not checked against the remote): Tasks 0 and 1 done ([spike](docs/superpowers/review/2026-11-05-part-chain-spike.md)); Task 2 committed with review fixes (`a71b510`); Tasks 3, 6 and 4 committed, up to `dfbdd00`; Task 5 committed as `af4ad47`, outside the adapter design session, which did not review it. The add-in has no part handlers yet (Tasks 7a, 7b, 8). Spike results that changed the design: no usable default template (new `part.template` setting), lookup by full path only, blind cut needs `Dir=true`, `FileCloseNotify` does not fire for API close (use `DestroyNotify2`). Two earlier spike runs ended with the owner's SOLIDWORKS exiting; the cause is unproven (the final run on a throwaway instance was clean). Never run live spikes against the owner's working session.
+- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. The owner approved the MVP [design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md). Progress on `feat/part-chain-mvp`, as of 2026-11-05: Tasks 0 and 1 done ([spike](docs/superpowers/review/2026-11-05-part-chain-spike.md)); Task 2 committed with review fixes (`a71b510`); Tasks 3 (`d8bc5f9`), 6 (`6bc1feb`), 4 (`dfbdd00`), and 5 (`af4ad47`) are committed and reviewed clean (`task-5-review.md`: Approved). The pure core pipeline is complete. The add-in has no part handlers yet (Tasks 7a, 7c, 7b, 8). Spike results that changed the design: no usable default template (new `part.template` setting), lookup by full path only, blind cut needs `Dir=true`, `FileCloseNotify` does not fire for API close (use `DestroyNotify2`). Two earlier spike runs ended with the owner's SOLIDWORKS exiting; the cause is unproven (the final run on a throwaway instance was clean). Never run live spikes against the owner's working session.
 - **Frozen drawing state:** Annotation and dimension placement increment implemented and exercised by a live test script (Spec §11.4, §11.5, §11.10, §11.10.1, §6.5.2). This work was called "Phase 1c" here, but roadmap §18 defines Phase 1c as IR-built parts; by §18 it is partial Phase 1b, and Phase 1a acceptance is not yet met. The live test passes against local SOLIDWORKS 2025 SP0.1 with 0 violations, **but that is not evidence of drawing correctness for D1, D2, D3 or D7**: the add-in reads no line or text geometry and reports a fixed border and title block ([architecture review](docs/superpowers/review/2026-11-05-architecture-review.md) F1 to F3).
 - **Architecture review:** completed 2026-11-05: [review](docs/superpowers/review/2026-11-05-architecture-review.md), [roadmap](docs/superpowers/review/2026-11-05-architecture-roadmap.md). The design and foundations are sound; the SOLIDWORKS adapters are prototype quality. Awaiting owner decisions (see Next Steps).
 - **SOLIDWORKS adapter design (Accepted by the owner, 2026-11-05; committed as `360005f`):** [8.8 architecture](docs/architecture/solidworks-adapter.md), [8.9 interface specification](docs/specifications/solidworks-adapter.md), ADR-058 to ADR-063, [roadmap](docs/plans/solidworks-adapter-roadmap.md). Documents only: no production code, schema or live run, so the code does not follow it yet.
@@ -12,12 +12,12 @@ Last updated: 2026-11-05. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 - **Branch:** `feat/part-chain-mvp`, from `feat/drawing-annotation-pipeline` at `961c629` (PR #12 merged to `main` at `eea9389`; the docs freeze commits are on that branch). Neither branch's newer commits are pushed.
 - **Verification Suite Evidence:**
   - `uv run python scripts/generate_contracts.py --check` passes cleanly (0 drift across C# and Python contracts).
-  - `uv run ruff check` passes. `uv run ruff format --check` passes (387 files, re-verified 2026-11-05 at `6dae76d`).
+  - `uv run ruff check` passes. `uv run ruff format --check` passes (420 files).
   - `uv run pyright` passes (0 errors, 0 warnings across all packages, apps, tests).
   - `uv run lint-imports` passes (5 contracts kept, 0 broken).
-  - `uv run pytest -m "not live"` passes (2,712 passed, 6 deselected in 38.3s).
-  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (241 passed, 0 failed in 1s).
-  - `dotnet build apps/execution-server/ExecutionServer.sln` succeeded when last run with SOLIDWORKS closed. Not re-verified on 2026-11-05: the running SOLIDWORKS locks the add-in DLLs (MSB3027). `pyright`, `lint-imports`, `pytest` (2,712 passed) and `dotnet test` (241 passed) were re-verified that day; the live suite was not re-run.
+  - `uv run pytest -m "not live"` passes (2,936 passed, 9 deselected in 44.1s).
+  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (271 passed, 0 failed in 1s).
+  - `dotnet build apps/execution-server/ExecutionServer.sln` fails with MSB3027: SOLIDWORKS (PID 6396) is locking `ExecutionServer.Adapters.dll` and `ExecutionServer.Core.dll`.
   - `uv run pytest tests/live/ -m live -v` passes (5 passed, 1 skipped in 8.7s):
     - `test_live_annotation_pipeline::test_live_annotation_and_dimension_pipeline`: PASSED (model items inserted, center marks added, dimensions auto-arranged, duplicates hidden, D1/D2/D3/D5/D7 pass with 0 failures)
     - `test_live_view_pipeline::test_live_view_planning_and_creation_pipeline`: PASSED (4 views placed, 0 check D7 violations)
@@ -91,8 +91,12 @@ Last updated: 2026-11-05. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 **Part chain MVP (current work, ADR-057):** the MVP runs from Claude over MCP to a verified `.SLDPRT`; first part: a 100 × 60 × 10 mm plate with four Ø8 mm through holes.
 
-1. Check whether Task 5 (`af4ad47`) has had its review.
-2. Follow the plan's order: add-in (Tasks 7a, 7c, 7b, 8), store and journal, `plan` job, MCP tools, runtime, live acceptance, then the run from Claude and the owner's sign-off.
+1. Ask the owner to close SOLIDWORKS so the locked DLLs are released and `ExecutionServer.sln` can be built without MSB3027.
+2. Follow the plan's order for the add-in and runtime: Tasks 7a, 7c, 7b, 8, 9a, 9b, 10, 11, 12, 13.
+   - Task 7a: Dispatch and ownership (`ExecutionServer.Core/Ownership`, `OperationRouter`, failed operations ledger per K17).
+   - Task 7c: Dispatcher and capability table (STA execution, `ControlSynchronizationContext`, capability table).
+   - Task 7b: Events and instance IDs (`DocumentEventMonitor`).
+   - Task 8: Part adapters (`PartCreationAdapter`, `SketchAdapter`, `FeatureAdapter`, `PartMeasureAdapter`).
 
 Do not continue drawing work, including the ADR-056 list below, until the owner lifts the freeze.
 
