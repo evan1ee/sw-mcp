@@ -11,6 +11,9 @@ using System.Threading;
 using ExecutionServer.Adapters.Documents;
 using ExecutionServer.Adapters.Drawings;
 using ExecutionServer.AddIn.Events;
+using ExecutionServer.AddIn.Diagnostics;
+using ExecutionServer.AddIn.Dispatch;
+using ExecutionServer.Core.Versions;
 using ExecutionServer.Core.Diagnostics;
 using ExecutionServer.Core.Dispatch;
 using ExecutionServer.Core.Ipc;
@@ -37,6 +40,7 @@ public class SwAddin : ISwAddin
     private ISldWorks? _swApp;
     private int _addinCookie;
     private NamedPipeServer? _pipeServer;
+    private ControlSynchronizationContext? _syncContext;
     private UIThreadDispatcher? _dispatcher;
     private string? _sessionFilePath;
     private OperationLedger? _ledger;
@@ -84,32 +88,57 @@ public class SwAddin : ISwAddin
 
         try
         {
-            try
+            var pid = Process.GetCurrentProcess().Id;
+            var apartmentState = Thread.CurrentThread.GetApartmentState();
+            var threadId = Thread.CurrentThread.ManagedThreadId;
+
+            // ADR-059: Must run on STA UI thread; refuse server startup if not
+            if (apartmentState != ApartmentState.STA)
             {
-                var localAppData = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData);
-                var logDir = Path.Combine(localAppData, "sw-mcp");
-                Directory.CreateDirectory(logDir);
-                File.AppendAllText(Path.Combine(logDir, "addin-load.log"), $"[{DateTime.UtcNow:O}] ConnectToSW started for PID {Process.GetCurrentProcess().Id}\n");
+                LogAddinError("ConnectToSW refused", new InvalidOperationException($"Thread is not STA ({apartmentState})"));
+                return false;
             }
-            catch {}
+
+            SessionProbe.LogSessionDiagnostics(pid, threadId, apartmentState, nameof(ControlSynchronizationContext));
+
             // 0. Recover any crashed settings from previous sessions
             SettingsGuard.RecoverAllCrashFiles(new Diagnostics.SldWorksSettingsTarget(_swApp));
             _settingsGuard = new SettingsGuard(new Diagnostics.SldWorksSettingsTarget(_swApp));
 
-            // 1. Capture UI-thread SynchronizationContext
-            var syncContext = SynchronizationContext.Current;
-            if (syncContext == null)
-            {
-                syncContext = new SynchronizationContext();
-                SynchronizationContext.SetSynchronizationContext(syncContext);
-            }
-            _dispatcher = new UIThreadDispatcher(syncContext);
+            // 1. Capture STA UI-thread ControlSynchronizationContext (spec 8.6.2, ADR-059)
+            _syncContext = new ControlSynchronizationContext();
+            _dispatcher = new UIThreadDispatcher(
+                _syncContext,
+                targetThreadId: _syncContext.UIThreadId,
+                onUnexpected: ex => LogAddinError("Dispatcher unhandled exception", ex));
 
-            // 2. Query SOLIDWORKS version info
-            var revision = _swApp.RevisionNumber() ?? "33.0.0";
-            var (version, sp) = ParseRevision(revision);
-            var isSupported = version == "2025";
-            var unsupportedMessage = isSupported ? string.Empty : $"SOLIDWORKS version {version} ({revision}) is unsupported; sw-mcp requires 2025.";
+            // 2. Query SOLIDWORKS version info & language via SessionProbe (ADR-045, ADR-062)
+            var swVersion = SessionProbe.ProbeVersion(_swApp, out var versionFailure);
+            var uiLanguage = SessionProbe.ProbeUiLanguage(_swApp, out var langFailure);
+
+            bool isSupported = true;
+            string unsupportedMessage = string.Empty;
+            CapabilityTable? table = null;
+
+            if (swVersion == null)
+            {
+                isSupported = false;
+                unsupportedMessage = $"Failed to read SOLIDWORKS version: {versionFailure}";
+            }
+            else if (uiLanguage == null)
+            {
+                isSupported = false;
+                unsupportedMessage = $"Failed to read SOLIDWORKS UI language: {langFailure}";
+            }
+            else
+            {
+                table = CapabilityTable.For(swVersion);
+                if (table.Support == VersionSupport.Unsupported)
+                {
+                    isSupported = false;
+                    unsupportedMessage = $"SOLIDWORKS version {swVersion.Version} ({swVersion.Revision}) is unsupported; sw-mcp requires 2025.";
+                }
+            }
 
             // 3. Generate 32-byte cryptographic session token (base64url)
             var tokenBytes = new byte[32];
@@ -120,11 +149,21 @@ public class SwAddin : ISwAddin
             var token = Convert.ToBase64String(tokenBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
             // 4. Pipe name and HelloResult configuration
-            var pid = Process.GetCurrentProcess().Id;
             var pipeName = NamedPipeServer.GeneratePipeName(pid);
 
             _ownershipTable = new DocumentOwnershipTable();
             _router = CreateRouter(_swApp, _ownershipTable);
+
+            var warnings = new List<string>();
+            var capabilities = new List<string>();
+            if (table != null)
+            {
+                capabilities.AddRange(table.Names);
+                if (table.Support == VersionSupport.NewerServicePack)
+                {
+                    warnings.Add($"SOLIDWORKS {swVersion!.Version} {swVersion.ServicePack} is newer than the tested service pack.");
+                }
+            }
 
             var helloResult = new HelloResult
             {
@@ -132,14 +171,14 @@ public class SwAddin : ISwAddin
                 AddinVersion = "0.1.0",
                 Solidworks = new SolidWorksInfo
                 {
-                    Version = version,
-                    ServicePack = sp,
-                    UiLanguage = "en-US"
+                    Version = swVersion?.Version ?? "unknown",
+                    ServicePack = swVersion?.ServicePack ?? "unknown",
+                    UiLanguage = uiLanguage ?? "unknown"
                 },
-                Capabilities = new List<string> { "drawing.snapshot", "ops.apply" },
+                Capabilities = capabilities,
                 Operations = _router.Operations.ToList(),
                 LicensedModules = new List<string>(),
-                Warnings = new List<string>()
+                Warnings = warnings
             };
 
             var sessionConfig = new SessionConfig(token, helloResult, isSupported, unsupportedMessage);
@@ -152,23 +191,17 @@ public class SwAddin : ISwAddin
             var handler = new DefaultAddinCommandHandler(_swApp, _router, _eventMonitor, _settingsGuard);
 
             // 5b. Start NamedPipeServer
-            _pipeServer = new NamedPipeServer(pipeName, sessionConfig, _ledger, handler, _dispatcher);
+            _pipeServer = new NamedPipeServer(pipeName, sessionConfig, _ledger, handler, _dispatcher,
+                onUnexpected: ex => LogAddinError("PipeServer unhandled exception", ex));
 
             // 6. Write session file to %LOCALAPPDATA%\sw-mcp\sessions\<pid>.json
-            WriteSessionFile(pid, pipeName, token, version, sp);
+            WriteSessionFile(pid, pipeName, token, swVersion?.Version ?? "unknown", swVersion?.ServicePack ?? "unknown");
 
             return true;
         }
         catch (Exception ex)
         {
-            try
-            {
-                var localAppData = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData);
-                var logDir = Path.Combine(localAppData, "sw-mcp");
-                Directory.CreateDirectory(logDir);
-                File.AppendAllText(Path.Combine(logDir, "addin-load.log"), $"[{DateTime.UtcNow:O}] ConnectToSW error: {ex}\n");
-            }
-            catch {}
+            LogAddinError("ConnectToSW error", ex);
             DisconnectFromSW();
             return false;
         }
@@ -240,26 +273,42 @@ public class SwAddin : ISwAddin
             _dispatcher = null;
         }
 
-        _ownershipTable = null;
-        _router = null;
-
-        // 3. Release SOLIDWORKS COM proxy per G1
-        if (_swApp != null)
+        if (_syncContext != null)
         {
             try
             {
-                Marshal.ReleaseComObject(_swApp);
+                _syncContext.Dispose();
             }
             catch
             {
             }
-            _swApp = null;
+            _syncContext = null;
         }
+
+        _ownershipTable = null;
+        _router = null;
+
+        // 3. Retain wrapper per ADR-059 and G1 (never release ISldWorks)
+        _swApp = null;
 
         GC.Collect();
         GC.WaitForPendingFinalizers();
 
         return true;
+    }
+
+    private static void LogAddinError(string context, Exception ex)
+    {
+        try
+        {
+            var localAppData = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData);
+            var logDir = Path.Combine(localAppData, "sw-mcp");
+            Directory.CreateDirectory(logDir);
+            File.AppendAllText(Path.Combine(logDir, "addin-load.log"), $"[{DateTime.UtcNow:O}] {context}: {ex}\n");
+        }
+        catch
+        {
+        }
     }
 
     private void WriteSessionFile(int pid, string pipeName, string token, string version, string sp)
@@ -285,30 +334,6 @@ public class SwAddin : ISwAddin
         };
 
         File.WriteAllText(_sessionFilePath, sessionObj.ToString(Formatting.Indented), new UTF8Encoding(false));
-    }
-
-    private static (string version, string sp) ParseRevision(string revision)
-    {
-        // SOLIDWORKS 2025 is internal version 33.x
-        // format usually "33.0.0" (SP0) or "33.3.0" (SP3.0)
-        var parts = revision.Split('.');
-        string version = "2025";
-        string sp = "SP0.0";
-
-        if (parts.Length > 0 && int.TryParse(parts[0], out var major))
-        {
-            if (major == 33) version = "2025";
-            else if (major == 32) version = "2024";
-            else if (major == 34) version = "2026";
-            else version = (1992 + major).ToString();
-        }
-
-        if (parts.Length > 1 && int.TryParse(parts[1], out var spNum))
-        {
-            sp = $"SP{spNum}.0";
-        }
-
-        return (version, sp);
     }
 
     [ComRegisterFunction]

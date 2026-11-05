@@ -9,6 +9,28 @@ namespace ExecutionServer.Core.Ipc;
 // The command half of the session: queue, UI-thread run loop, cancel (spec 8.7).
 public sealed partial class IpcSession
 {
+    public bool HasQueuedCommands
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _queue.Count > 0;
+            }
+        }
+    }
+
+    public int QueuedCount
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _queue.Count;
+            }
+        }
+    }
+
     /// <summary>
     /// UI thread: runs one queued command to completion. Returns false if there is none, or if one is
     /// already running. A command already taken finishes even if the session closes meanwhile.
