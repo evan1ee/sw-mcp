@@ -1,0 +1,19 @@
+[
+  {
+    "node_id": "ext1",
+    "type": "extrude",
+    "profile": "f73",
+    "end_condition": {
+      "type": "blind",
+      "depth": 10.0
+    }
+  },
+  {
+    "node_id": "cut1",
+    "type": "cut_extrude",
+    "profile": "f80",
+    "end_condition": {
+      "type": "through_all_both"
+    }
+  }
+]

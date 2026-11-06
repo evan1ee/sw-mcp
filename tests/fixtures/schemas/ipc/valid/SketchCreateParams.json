@@ -1,0 +1,13 @@
+[
+  {
+    "node_id": "sk1",
+    "plane": "plane:front",
+    "entities": [
+      {
+        "type": "line",
+        "start": [0.0, 0.0],
+        "end": [10.0, 10.0]
+      }
+    ]
+  }
+]

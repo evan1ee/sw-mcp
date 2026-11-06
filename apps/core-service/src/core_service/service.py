@@ -38,19 +38,22 @@ _JOIN_S: Final = 5.0
 
 
 class CoreService:
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         engine: JobEngine,
         registry: ToolRegistry,
         stores: StoreSet,
         ids: IdSource,
         log: EventLog,
+        *,
+        settings: Settings | None = None,
     ) -> None:
         self._engine = engine
         self._registry = registry
         self._stores = stores
         self._ids = ids
         self._log = log
+        self._settings = settings or Settings()
         self._stopping = threading.Event()
         self._stop_guard = threading.Lock()
         self._stopped = False
@@ -59,6 +62,10 @@ class CoreService:
     @property
     def registry(self) -> ToolRegistry:
         return self._registry
+
+    @property
+    def settings(self) -> Settings:
+        return self._settings
 
     @classmethod
     def start(  # noqa: PLR0913 - the injectable parts; defaults are the real ones
@@ -93,7 +100,14 @@ class CoreService:
         engine.recover_all()
         reconciling.arm(engine)
         context = ToolContext(engine, stores, fs, clock, config.settings, project, log)
-        service = cls(engine, build_registry(context), stores, ids, log)
+        service = cls(
+            engine,
+            build_registry(context),
+            stores,
+            ids,
+            log,
+            settings=config.settings,
+        )
         service._worker.start()
         return service
 

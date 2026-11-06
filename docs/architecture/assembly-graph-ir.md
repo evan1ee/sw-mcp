@@ -1,6 +1,6 @@
 # 5.6 Assembly Graph IR (optional module)
 
-> Specification v1.28, section 5.6. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, section 5.6. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## Purpose
 
@@ -12,7 +12,7 @@ The Assembly Graph IR describes how parts go together and move: component hierar
 | --- | --- |
 | document | Document header (3.4.5), assembly name |
 | components | Keyed by component ID (3.4.1): part (`DocumentRef` to a Part Feature Graph, `part:<id>`, or to a nested Assembly Graph, `assembly:<id>`; an existing part on disk is first read into the store as a read-only graph, 13.1), configuration, placement (`fixed`, `float`, or an initial transform), suppression |
-| hierarchy | Subassemblies: nested Assembly Graph documents, each marked rigid or flexible |
+| hierarchy | Subassemblies: nested Assembly Graph documents, each marked rigid or flexible. The bundle rule in 3.4.5 allows only one `assembly` document today: register K25 |
 | mates | Keyed by mate ID: type (standard: coincident, concentric, distance, angle, parallel, perpendicular, tangent, lock; mechanical: gear, rack-and-pinion, screw, cam, slot, hinge, limit distance/angle), two or more `targets` (component ID plus a `GeometryRef` resolved in that component's part graph, 3.4.2 rule 1, or an interface), alignment (aligned / anti-aligned), values |
 | interfaces | Named connection points of a component (e.g. `piston.rod_end`), mapped to the part's geometry and optionally to Design Intent functional features. Mates may target interfaces instead of raw geometry, so they survive part edits better |
 | motion | Drivers (motor, spring, force, gravity), limits and motion-study settings |

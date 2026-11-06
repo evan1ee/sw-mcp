@@ -4,7 +4,7 @@ import threading
 from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Final
+from typing import Final, cast
 
 from cad_ir.core.json_types import JsonValue
 from cad_ir.generated.ipc import (
@@ -99,6 +99,8 @@ class FakeBackend:
         session: HelloResult,
         *,
         snapshot: JsonValue = None,
+        measurement: JsonValue | Callable[[str], JsonValue] = None,
+        op_results: Mapping[str, JsonValue] | None = None,
         open_owned: bool = True,
         block: threading.Event | None = None,
         before: Callable[[str], None] | None = None,
@@ -108,12 +110,15 @@ class FakeBackend:
         self.before = before
         self.after = after
         self._snapshot: JsonValue = {} if snapshot is None else snapshot
+        self._measurement = measurement
+        self._op_results = op_results
         self._open_owned = open_owned
         self._block = block
         self._completed: list[str] = []
         self._cancelled = threading.Event()
         self.calls: list[RecordedCall] = []
         self.snapshot_started = threading.Event()
+        self.closed = False
 
     @property
     def session(self) -> HelloResult:
@@ -136,6 +141,18 @@ class FakeBackend:
         self._run_hook(self.after, "snapshot_drawing")
         return self._snapshot
 
+    def measure_part(self, document: str, *, meta: Meta | None = None) -> JsonValue:
+        self.calls.append(RecordedCall("measure_part", meta, (document,)))
+        self._run_hook(self.before, "measure_part")
+        if self._cancelled.is_set():
+            raise BackendCallError("EXEC_CANCELLED", "The command was cancelled.")
+        self._run_hook(self.after, "measure_part")
+        if callable(self._measurement):
+            return self._measurement(document)
+        if isinstance(self._measurement, dict) and document in self._measurement:
+            return cast(JsonValue, self._measurement[document])
+        return self._measurement
+
     @staticmethod
     def _run_hook(hook: Callable[[str], None] | None, name: str) -> None:
         if hook is not None:
@@ -151,7 +168,11 @@ class FakeBackend:
             for operation in group.operations:
                 self._completed.append(operation.operation_id)
                 result: JsonValue = {}
-                if operation.op == "document.open":
+                if self._op_results is not None and operation.operation_id in self._op_results:
+                    result = self._op_results[operation.operation_id]
+                elif self._op_results is not None and operation.op in self._op_results:
+                    result = self._op_results[operation.op]
+                elif operation.op == "document.open":
                     result = {"owned": self._open_owned}
                 elif operation.op == "document.close":
                     result = {"closed": True}
@@ -170,6 +191,9 @@ class FakeBackend:
         if self._block is not None:
             self._block.set()
         return True
+
+    def close(self) -> None:
+        self.closed = True
 
 
 class FakeBackendProvider:

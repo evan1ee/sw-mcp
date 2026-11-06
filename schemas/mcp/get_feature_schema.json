@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/mcp/get_feature_schema.json",
+  "name": "get_feature_schema",
+  "description": "Return the compact JSON Schema and minimal example for one or more Part Feature Graph node types. Call list_feature_types first to see available types.",
+  "toolset": "core",
+  "phase": "1c",
+  "kind": "store",
+  "mutates": false,
+  "input": {
+    "type": "object",
+    "properties": {
+      "types": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 16,
+        "uniqueItems": true,
+        "items": { "type": "string", "minLength": 1 }
+      }
+    },
+    "required": ["types"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "schemas": {
+        "type": "object",
+        "propertyNames": { "enum": ["sketch", "extrude", "cut_extrude"] },
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "schema": { "type": "object" },
+            "example": { "type": "object" }
+          },
+          "required": ["schema", "example"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["schemas"],
+    "additionalProperties": false
+  },
+  "errors": ["IR_SCHEMA_INVALID"],
+  "examples": [
+    {
+      "arguments": { "types": ["extrude"] },
+      "response": {
+        "ok": true,
+        "data": {
+          "schemas": {
+            "extrude": {
+              "schema": {
+                "type": "object",
+                "required": ["type", "profile", "end_condition"],
+                "properties": {
+                  "type": { "const": "extrude" },
+                  "profile": { "type": "string" },
+                  "end_condition": { "type": "object" }
+                }
+              },
+              "example": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": { "type": "blind", "depth": 10 }
+              }
+            }
+          }
+        },
+        "error": null,
+        "ids": { "request_id": "req_00000000000000000000000001" }
+      }
+    },
+    {
+      "arguments": { "types": ["fillet"] },
+      "response": {
+        "ok": false,
+        "data": null,
+        "error": {
+          "code": "IR_SCHEMA_INVALID",
+          "message": "Unknown feature type: 'fillet'.",
+          "retryable": "after_fix",
+          "details": {
+            "unknown_types": ["fillet"],
+            "supported_types": ["sketch", "extrude", "cut_extrude"]
+          }
+        },
+        "ids": { "request_id": "req_00000000000000000000000002" }
+      }
+    }
+  ]
+}

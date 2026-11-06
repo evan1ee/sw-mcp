@@ -6,6 +6,7 @@ import threading
 from dataclasses import replace
 from typing import Final, Self
 
+from cad_ir.core.canonical import canonical_bytes
 from cad_ir.core.json_types import JsonValue
 
 from cad_application.ports import Clock, FileSystem, Lock, LockHeld
@@ -18,11 +19,17 @@ from cad_application.store.codec import (
     get_obj,
     get_str,
 )
-from cad_application.store.errors import StoreError, locked
+from cad_application.store.errors import StoreError, corrupt, locked
 from cad_application.store.job_files import JobFiles
 from cad_application.store.job_records import JobRecord
 from cad_application.store.journal_records import JournalRecord
-from cad_application.store.records import DrawingMatch, DrawingRecord, JobWarning, ReportMeta
+from cad_application.store.records import (
+    DrawingMatch,
+    DrawingRecord,
+    JobWarning,
+    PartRecord,
+    ReportMeta,
+)
 
 STORE_VERSION: Final = "0.1"
 GITIGNORE: Final = (
@@ -287,6 +294,129 @@ class FileStore:
 
     def has_report(self, report_id: str) -> bool:
         return self._fs.stat(self.path("reports", f"{report_id}{_META_SUFFIX}")) is not None
+
+    # --- plans, part revisions and records ----------------------------------------------
+
+    def put_plan(self, plan_hash: str, plan: JsonValue) -> bool:
+        with self._guard:
+            folder = self.path("derived", "plans")
+            self._fs.make_dirs(folder)
+            # The hash is "sha256:<hex>"; a colon is not allowed in a Windows file name.
+            digest = plan_hash.rpartition(":")[2]
+            target = self.path("derived", "plans", f"{digest}.json")
+            if self._fs.stat(target) is not None:
+                return False
+            self._fs.write_atomic(target, encode(plan))
+            return True
+
+    def put_part_revision(
+        self, ref: str, doc: JsonValue, expected_revision: int | None
+    ) -> str | StoreError:
+        with self._guard:
+            raw = ref.removeprefix("part:")
+            doc_id = raw.partition("@")[0]
+            if not doc_id or ntpath.basename(doc_id) != doc_id:
+                return corrupt("invalid_document_id", f"modules/part/{doc_id}")
+            folder = self.path("modules", "part", doc_id)
+            self._fs.make_dirs(folder)
+            names = [n for n in self._fs.list_dir(folder) if n.endswith(".json")]
+            revs = [
+                int(n.removesuffix(".json")) for n in names if n.removesuffix(".json").isdigit()
+            ]
+            if not revs:
+                to_write = dict(doc) if isinstance(doc, dict) else doc
+                if isinstance(to_write, dict):
+                    to_write["revision"] = 1
+                target = self.path("modules", "part", doc_id, "1.json")
+                self._fs.write_atomic(target, encode(to_write))
+                return f"part:{doc_id}@1"
+
+            latest = max(revs)
+            file_name = f"modules\\part\\{doc_id}\\{latest}.json"
+            latest_path = self.path(file_name)
+            latest_doc = decode_json(self._fs.read_bytes(latest_path), file_name)
+            if isinstance(latest_doc, StoreError):
+                return latest_doc
+
+            doc_clean = (
+                {k: v for k, v in doc.items() if k != "revision"} if isinstance(doc, dict) else doc
+            )
+            latest_clean = (
+                {k: v for k, v in latest_doc.items() if k != "revision"}
+                if isinstance(latest_doc, dict)
+                else latest_doc
+            )
+            if canonical_bytes(doc_clean) == canonical_bytes(latest_clean):
+                return f"part:{doc_id}@{latest}"
+
+            if expected_revision != latest:
+                return StoreError(
+                    "REV_CONFLICT",
+                    f"Expected revision {expected_revision} but latest revision is {latest}.",
+                    {"latest": latest, "expected": expected_revision},
+                )
+
+            new_rev = latest + 1
+            to_write = dict(doc) if isinstance(doc, dict) else doc
+            if isinstance(to_write, dict):
+                to_write["revision"] = new_rev
+            self._fs.write_atomic(
+                self.path("modules", "part", doc_id, f"{new_rev}.json"), encode(to_write)
+            )
+            return f"part:{doc_id}@{new_rev}"
+
+    def get_part_revision(self, ref: str) -> JsonValue | StoreError | None:
+        with self._guard:
+            raw = ref.removeprefix("part:")
+            if "@" in raw:
+                doc_id, _, rev_str = raw.partition("@")
+                if not rev_str.isdigit():
+                    return None
+                rev = int(rev_str)
+            else:
+                doc_id = raw
+                rev = None
+
+            if not doc_id or ntpath.basename(doc_id) != doc_id:
+                return None
+
+            folder = self.path("modules", "part", doc_id)
+            if self._fs.stat(folder) is None:
+                return None
+
+            if rev is None:
+                names = [n for n in self._fs.list_dir(folder) if n.endswith(".json")]
+                revs = [
+                    int(n.removesuffix(".json")) for n in names if n.removesuffix(".json").isdigit()
+                ]
+                if not revs:
+                    return None
+                rev = max(revs)
+
+            file_name = f"modules\\part\\{doc_id}\\{rev}.json"
+            target_path = self.path(file_name)
+            if self._fs.stat(target_path) is None:
+                return None
+            return decode_json(self._fs.read_bytes(target_path), file_name)
+
+    def put_part_record(self, record: PartRecord) -> None:
+        with self._guard:
+            folder = self.path("parts")
+            self._fs.make_dirs(folder)
+            self._fs.write_atomic(
+                self.path("parts", f"{record.part_key}.json"), encode(record.to_json())
+            )
+
+    def get_part_record(self, part_key: str) -> PartRecord | StoreError | None:
+        file = f"parts\\{part_key}.json"
+        path = self.path(file)
+        with self._guard:
+            if self._fs.stat(path) is None:
+                return None
+            loaded = decode_record(self._fs.read_bytes(path), "PartRecord", file)
+            if isinstance(loaded, StoreError):
+                return loaded
+            return PartRecord.from_json(loaded)
 
     # --- jobs and journal ----------------------------------------------------------------
 

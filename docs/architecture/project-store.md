@@ -1,6 +1,6 @@
 # 13.2 Project Store and Job Journal
 
-> Specification v1.28, section 13.2. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, section 13.2. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The layout, write rules and retention of the project store (13.1, ADR-033), and the job journal that lets the core service (ADR-041) account for every job after a crash (ADR-032). Where a project and its store are is 12.5.
 
@@ -22,7 +22,7 @@ The layout, write rules and retention of the project store (13.1, ADR-033), and 
 │   └── plans/<plan_hash>.json                            execution plans
 ├── snapshots/<drawing_id>/<snapshot_id>.json             Drawing Geometry Snapshots (11.5.1)
 ├── reports/<report_id>.json, <report_id>.meta.json
-├── jobs/<job_id>/job.json, journal.jsonl
+├── jobs/<job_id>/job.json, journal.jsonl, evidence.json (`plan` jobs, 8.9.6)
 └── backups/<drawing_id>/<timestamp>.SLDDRW               (ADR-046)
 ```
 
@@ -37,7 +37,11 @@ The layout, write rules and retention of the project store (13.1, ADR-033), and 
 | `drawings/<drawing_id>.json` | `drawing_id`, `path`, `fingerprint`, `produced` (`false` for a drawing the system did not make), `drawing_intent` (null in Phase 1a), `latest_snapshot_id`, `latest_report_id`, `updated_at` |
 | `reports/<report_id>.json` | The report (11.5.4), exactly as built; nothing is added to it |
 | `reports/<report_id>.meta.json` | `report_id`, `execution_id`, `drawing_id`, `snapshot_id`, `created_at`, `job_warnings` (8.4). Written once, before the report, and deleted with it |
-| `jobs/<job_id>/job.json` | `job_id`, `job_type`, `state`, `created_at`, `started_at`, `ended_at`, `request_id`, `arguments`, `project_root`, `drawing_id`, `fingerprint`, `progress`, `snapshot_id`, `report_id`, `error`, `warnings`, `documents` (`path`, `owned`, `state`: `known` or `unknown`), `next_op_seq` |
+| `jobs/<job_id>/job.json` | `job_id`, `job_type`, `state`, `created_at`, `started_at`, `ended_at`, `request_id`, `arguments`, `project_root`, `drawing_id`, `fingerprint`, `progress`, `snapshot_id`, `report_id`, `error`, `warnings`, `documents` (`path`, `owned`, `state`: `known` or `unknown`), `next_op_seq`, and for `plan` jobs `part_result` (below) |
+| `parts/<part_key>.json` (part chain MVP) | `part_key`, `path`, `fingerprint`, `produced` (`true` for a part the system built), `graph` (the pinned `part:<id>@<revision>`), `job_id`, `updated_at`. Written only when a `plan` job reaches COMMITTED. `<part_key>` is `fp-<first 16 hex of the fingerprint>` (above). Additive to `schemas/store/v0.json`. From roadmap A3 it also holds `feature_ids` and `measured`, so reconciliation outlives the job folder (8.9.6) |
+| `part_result` in `job.json` (part chain MVP) | `path` (the target), `fingerprint`, `feature_ids` (node ID to `feature_id`, 6.5.3), `checks` (10.2.1) and `measured` (the converted `part.measure` values). Additive to `schemas/store/v0.json`; `get_execution_status` returns it (12.4.5) |
+
+**Plan key [Builder's call].** A file `derived/plans/<plan_hash>.json` is named by the hash of the plan's canonical form and by nothing else (6.7.4). The store writes it only if no file of that name exists, and a plan that already exists is reused.
 
 **Matching a drawing** that has no drawing ID property (13.1): a record with the same path is the drawing, and its fingerprint is updated; otherwise a single record with the same fingerprint is the drawing moved, and its path is updated; otherwise a new record is made. Two or more fingerprint matches make a new record and a job warning (`drawing_match_ambiguous`).
 
@@ -67,8 +71,11 @@ Each job has `jobs/<job_id>/job.json` (current state, replaced atomically) and `
 | `state` | On every lifecycle transition (8.4) | `from` (null for the first), `to`, `reason`, and `error` (ADR-037 object) when `to` is FAILED or ABORTED |
 | `batch_sent` | Before an `ops.apply` batch is sent | `batch_seq`, `operation_ids`, `documents` |
 | `op_result` | For each operation result received | `operation_id`, `ok`, `error_code`, and `recovered: true` when learned after a crash |
+| `op_verified` | After an operation's contract is judged (10.2.2) | `operation_id`, `node`, `feature_id`, `observation`, `checks`, `status` |
 | `snapshot` | After a read-back | `snapshot_id`, `sheet` |
-| `document` | When the job opens, saves or closes a document (ADR-046) | `path`, `action`, `owned` |
+| `document` | When the job opens, creates, saves or closes a document (ADR-046) | `path`, `action` (`open`, `create`, `save`, `close`), `owned` |
+| `publish_intent` | Before a `plan` job renames its working file to the target (8.4.1) | `path`, `fingerprint` |
+| `published` | After that rename succeeded (8.4.1) | `path`, `fingerprint` |
 | `note` | Diagnostics worth keeping | `message` |
 
 - A `batch_sent` record is flushed to disk **before** the batch goes to the add-in. Without that record, nothing can have been sent.
@@ -76,11 +83,13 @@ Each job has `jobs/<job_id>/job.json` (current state, replaced atomically) and `
 
 **After a crash** (Phase 1 behavior; recovery proper is P2, 8.5):
 1. The new core reads every `job.json` that is not in a final state (COMMITTED, ABORTED, FAILED).
-2. On reconnecting to the add-in, it asks for the operation IDs the add-in completed (`session.completed_operations`, ADR-036) and records them as `op_result` with `recovered: true`.
+2. On reconnecting to the add-in, it asks for the operation IDs the add-in completed (`session.completed_operations`, ADR-036) and records them as `op_result` with `recovered: true`. Entries in `failed_operations` (8.7) are recorded the same way, with `ok: false` and their `error_code`.
 3. It marks each such job FAILED with `EXEC_INTERRUPTED`, lists the documents it touched as "state unknown" in the job record, and never resumes or resends anything.
 4. Queued jobs that never started are marked ABORTED with `EXEC_INTERRUPTED`.
 
 **In Phase 1a [Builder's call].** `check_drawing` writes `state`, `batch_sent` and `op_result` (for its `document.open` and `document.close`, 8.7), `document` (`action`: `open` or `close`, with `owned`), `snapshot` and `note`. Steps 1, 3 and 4 run when the store opens, after the order rule in 13.2.2. In step 3, "documents it touched" are those with a `document` `open` record and no `close` record; they become `documents` entries with `state: unknown`. Step 2 runs on the first backend connection after that: only operation IDs that appear in the job's `batch_sent` records and have no `op_result` are recorded. A crash leaves no job running: a job in VALIDATED, EXECUTING or VERIFYING is FAILED, one in PLANNED is ABORTED.
+
+**In the `plan` job (part chain MVP) [Builder's call].** The job writes `state`, `batch_sent`, `op_result`, `op_verified`, `document`, `publish_intent`, `published` and `note` (including the reuse of an existing plan, 6.7.4). A `document` `create` record is written before `part.create` is sent, so the working part counts as touched, with `state: unknown`, even if the core died during `part.create`. Recovery never resumes a `plan` job. If a job has a `publish_intent` record and no `published` record, recovery compares the target file's fingerprint with the recorded one. On a match the job stays FAILED with `EXEC_INTERRUPTED` and gains the warning `published_unconfirmed`, which names the file; the file is never adopted silently, and no part record is written. On a mismatch, or no file, the job is FAILED with `EXEC_INTERRUPTED` and no warning. The journal reader's action mapping and the store schema change together, because an unknown `document` action would otherwise be read as `open`.
 
 **Edge cases [Builder's call]** (register J18).
 - Recovery runs once per store per core start, whenever the store is first opened: at start for every listed store, and on the first `open_for` of a store that was not listed (a new store, or one missing from an unreadable list). No job of a store is visible through `status` before its recovery has run.

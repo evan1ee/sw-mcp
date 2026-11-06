@@ -1,31 +1,37 @@
 # Handoff
 
-Last updated: 2026-11-05. Rules for this file: [AGENTS.md section 5](AGENTS.md#5-session-handoff).
+Last updated: 2026-11-06. Rules for this file: [AGENTS.md section 5](AGENTS.md#5-session-handoff).
 
 ## Current State
 
-- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. No part-chain code exists yet, and the MVP design is not written.
+- **Sketch on a cap face (2026-11-06, spec v1.37, PR 14):** a hole in the top face builds in code: `sketch.plane` may be `<extrude>.end_face` or `.start_face` ([ADR-070](docs/adr/ADR-070-sketch-on-extrude-cap-face.md), [face spike](docs/superpowers/review/2026-11-06-face-sketch-spike.md), [plan](docs/superpowers/plans/2026-11-06-face-reference-sketches.md)). Python and C# unit tests pass. **Verified live (2026-11-06, SOLIDWORKS 2025 SP0.0, after rebuilding the add-in):** `tests/live/test_live_part_chain.py::test_blind_hole_in_top_face` passed in 14.9 s: the job reached `COMMITTED` and every check passed. Only that one live test was run on the new build; the other 13 were not re-run.
+
+- **Agent IR authoring (2026-11-06, PR 14, spec v1.36):** an MCP client can now turn a user's request into a valid graph with `get_authoring_guide`, the server `instructions`, better validator messages and an evaluation set. Unsupported requests are refused, never approximated (owner decision). Plan: [agent IR authoring](docs/superpowers/plans/2026-11-06-agent-ir-authoring.md). Not verified: no LLM was run against the evaluation set. `.mcp.json` now registers the `sw-mcp` server (`uv run --directory <repo> sw-mcp-mcp`; the path is absolute to this machine), and `get_authoring_guide` is listed by a fresh session.
+
+- **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. The owner approved the MVP [design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md). **The part chain MVP is done and signed off by the owner on 2026-11-06** (details in [section 18](docs/specifications/roadmap.md#current-focus-the-part-chain-adr-057)). Tasks 0 to 13 are complete on `feat/part-chain-mvp`. The sign-off run found and fixed three defects (`cd70b87`, `32f4905`).
 - **Frozen drawing state:** Annotation and dimension placement increment implemented and exercised by a live test script (Spec §11.4, §11.5, §11.10, §11.10.1, §6.5.2). This work was called "Phase 1c" here, but roadmap §18 defines Phase 1c as IR-built parts; by §18 it is partial Phase 1b, and Phase 1a acceptance is not yet met. The live test passes against local SOLIDWORKS 2025 SP0.1 with 0 violations, **but that is not evidence of drawing correctness for D1, D2, D3 or D7**: the add-in reads no line or text geometry and reports a fixed border and title block ([architecture review](docs/superpowers/review/2026-11-05-architecture-review.md) F1 to F3).
-- **Architecture review:** completed 2026-11-05: [review](docs/superpowers/review/2026-11-05-architecture-review.md), [roadmap](docs/superpowers/review/2026-11-05-architecture-roadmap.md). The design and foundations are sound; the SOLIDWORKS adapters are prototype quality. Awaiting owner decisions (see Next Steps).
-- **Spec:** v1.28 across all topic files in `docs/`. Section 18 now carries the Phase 1 work order (M0 to M11). Section 11.10 (Drawing Intent IR) and Section 11.10.1 (Resolved Scheme IR) normative schemas defined. Section 6.5.2 updated for 6 IPC annotation operations: `model_items.insert`, `dimensions.auto_arrange`, `center_mark.add`, `dimension.hide`, `dimension.show`, `dimension.move`. 5 open decisions remain: K3 (title block locators), J11 (draft-view switched indicator), K8 (snapshot keys), K9 (identity) and K10 (orchestrator form). Catalogue has 40 codes.
-- **Branch:** `feat/drawing-annotation-pipeline` (PR #12 merged to `main` at `eea9389`; subsequent docs freeze commits on this branch).
+- **Architecture review:** completed 2026-11-05: [review](docs/superpowers/review/2026-11-05-architecture-review.md), [roadmap](docs/superpowers/review/2026-11-05-architecture-roadmap.md). The design and foundations are sound; the SOLIDWORKS adapters are prototype quality.
+- **SOLIDWORKS adapter design (Accepted by the owner, 2026-11-05; committed as `360005f`):** [8.8 architecture](docs/architecture/solidworks-adapter.md), [8.9 interface specification](docs/specifications/solidworks-adapter.md), ADR-058 to ADR-063, [roadmap](docs/plans/solidworks-adapter-roadmap.md).
+- **Verifiable compilation gap analysis (2026-11-05, at `0222b15`):** [review](docs/superpowers/review/2026-11-05-verifiable-compilation-gap-analysis.md). The owner accepted [ADR-064](docs/adr/ADR-064-per-operation-verification-contracts.md) on 2026-11-05 and decided K22 (a feature warning blocks a commit in the MVP). V14 settled in `026229f`: the plan hash includes the pinned revision (6.7.4). Wrong verdicts V5, V6 and V7 are fixed in `98a3c31`.
+- **Roadmap A0 is done (spec v1.34):** schemas for evidence, contracts, `observation`, `document.rebuild`, `op_verified` and two new error codes.
+- **Architecture reference (spec v1.35, 2026-11-05; documents only, awaiting the owner):** [§22 IR](docs/specifications/ir-specification.md) and [§23 Compiler](docs/specifications/compiler-architecture-specification.md) are new and Proposed. The adapter was extended in place, in [8.9.11 to 8.9.14](docs/specifications/solidworks-adapter.md). The rest of `docs/architecture/` was aligned, with wording fixes listed in the [changelog](docs/specifications/CHANGELOG.md). ADR-065 to ADR-069 are Proposed and not applied. K23 to K28 are new in the [register](docs/specifications/open-decisions.md), which now has 21 open items. API facts came from reflecting the installed 2025 interop and reading its installed help; nothing was run, so those rows are marked ◐.
+- **Spec:** v1.35 across all topic files in `docs/`. Section 18 now carries the current focus with the MVP's stages, and the paused Phase 1 work order (M0 to M11).
+- **Branch:** `feat/part-chain-mvp`.
 - **Verification Suite Evidence:**
   - `uv run python scripts/generate_contracts.py --check` passes cleanly (0 drift across C# and Python contracts).
-  - `uv run ruff check` passes. `uv run ruff format --check` passes (387 files, re-verified 2026-11-05 at `6dae76d`).
+  - `uv run ruff check` passes. `uv run ruff format --check` passes (436 files).
   - `uv run pyright` passes (0 errors, 0 warnings across all packages, apps, tests).
   - `uv run lint-imports` passes (5 contracts kept, 0 broken).
-  - `uv run pytest -m "not live"` passes (2,712 passed, 6 deselected in 38.3s).
-  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (241 passed, 0 failed in 1s).
-  - `dotnet build apps/execution-server/ExecutionServer.sln` succeeded when last run with SOLIDWORKS closed. Not re-verified on 2026-11-05: the running SOLIDWORKS locks the add-in DLLs (MSB3027). `pyright`, `lint-imports`, `pytest` (2,712 passed) and `dotnet test` (241 passed) were re-verified that day; the live suite was not re-run.
-  - `uv run pytest tests/live/ -m live -v` passes (5 passed, 1 skipped in 8.7s):
-    - `test_live_annotation_pipeline::test_live_annotation_and_dimension_pipeline`: PASSED (model items inserted, center marks added, dimensions auto-arranged, duplicates hidden, D1/D2/D3/D5/D7 pass with 0 failures)
-    - `test_live_view_pipeline::test_live_view_planning_and_creation_pipeline`: PASSED (4 views placed, 0 check D7 violations)
-    - `test_live_sheet_format::test_live_sheet_format_generate_and_drawing_create`: PASSED
-    - `test_live_smoke::test_live_session_discovery`: PASSED
-    - `test_live_smoke::test_live_session_handshake`: PASSED
-    - `test_live_smoke::test_live_drawing_snapshot`: SKIPPED (standalone snapshot test requiring external file)
+  - `uv run pytest` passes (3,369 passed, 31 deselected, re-run 2026-11-06); ruff, pyright and lint-imports clean.
+  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (340 passed, 0 failed, 0 skipped in 1s).
+  - `dotnet build apps/execution-server/ExecutionServer.sln` passes cleanly (0 warnings, 0 errors in 3.2s).
+  - `uv run pytest tests/live/ -m live -v` baseline: 5 passed, 1 skipped.
 
 ## Changes Made
+
+- **Sketch on a cap face:** `cad_ir/part_feature_graph/faces.py` (frames, `in_base_frame`); validator `_check_face_planes`; lowering emits `face` on `sketch.create` and `host` on a cut's `feature.create` (stage `feature_lowering` 0.3.0, golden plan provenance updated); `expected_geometry` places a face cut; `resolve_node_refs` in `plan_job.py`; C# `FaceSignature.cs` (CAD-free, 8 tests), `CapFaceSketch.cs`, `FeatureLookup.cs`, and the blind direction by host in `FeatureAdapter`. The spike program has a `face` mode (`tests/live/spikes/PartChainSpike/FaceSpike.cs`). Guide and evaluation set updated (12 prompts: 9 build, 3 refuse).
+
+- **Agent IR authoring:** `cad_application/authoring_guide.py` and the `get_authoring_guide` tool (`schemas/mcp/get_authoring_guide.json`); `INSTRUCTIONS` in `mcp_server/server/app.py`; fix hints in five `semantic.py` messages; `cad_application/authoring_eval/` (11 prompts: 8 build, 3 refuse; checker; references) scored by `scripts/score_part_ir.py`. It is a tool and not an MCP resource because the front-end may import no `cad_*` package. Review fixes on the branch: separate sketch loops are rejected (`_is_connected` in `semantic.py`), `AnnotationPlacementAdapter` no longer releases `IModelDoc2` (G1), `SketchAdapter.CreateSketch` closes a half-built sketch on failure.
 
 - **Specification & Contracts (Task 1):**
   - Added JSON Schemas (2020-12):
@@ -82,14 +88,34 @@ Last updated: 2026-11-05. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
   - **Added in Revision 2:** full check of the pipeline review (review section 7.1): 20 contradictions with the spec, ADRs or itself, 5 unevidenced claims, 4 stale descriptions. That file was not edited. Its direction is sound, but it is not a verified baseline; do not implement from it until corrected.
   - **Spec cleanup after the review (O2 decided by the owner):** reverted the §6.5.3 and §8.4 edits and logged K8, K9 and K10 in `docs/specifications/open-decisions.md`.
 - **Spec v1.28 (section 18 rewrite, at the owner's request):** `docs/specifications/roadmap.md` restructured for readability, with the review roadmap's M0 to M11 order added as the Phase 1 work order. Phase scope, acceptance criteria and A1 to A17 are unchanged. O1, O5 and O6 stay open, and the order remains a recommendation until O1 is decided.
+- **Part chain MVP design and plan (v1.29):** written on `feat/part-chain-mvp`, with a builder check on the design, then revised after the [pre-implementation review](docs/superpowers/review/2026-11-05-part-chain-mvp-pre-implementation-review.md) (CONDITIONAL GO; F1 to F24 applied). No code changed, and SOLIDWORKS behaviour is unverified.
+
+- **Store, Journal and Recovery Rules (Task 9a, committed as `b995c2a`):**
+  - Updated `schemas/store/v0.json` with `PublishIntentRecord`, `PublishedRecord`, `PartRecord`, `DocumentRecord.action` containing `create`, and `JobRecord.part_result`. Regenerated schemas (`cad_ir.generated.schemas`).
+  - Added schema test fixtures under `tests/fixtures/schemas/store/{valid,invalid}/`.
+  - Implemented `DocumentAction` with `"create"`, `_action()` strict validation, `OpVerifiedRecord`, `PublishIntentRecord`, `PublishedRecord` in `journal_records.py`.
+  - Added `part_result` to `JobRecord` (`job_records.py`), ensuring v0 backwards compatibility.
+  - Implemented `PartRecord` in `cad_application/store/records.py`.
+  - Added `FileSystem.rename_new` to `ports.py`, `MemoryFileSystem`, and `OsFileSystem` (`MoveFileExW` on Windows with `MOVEFILE_WRITE_THROUGH = 0x8` and write-through, no replacement).
+  - Extended `paths.authorize` for `expect="new_file"` checking suffix, parent directory existence, target non-existence (`AUTH_SOURCE_WRITE_NOT_ALLOWED`), and PDM vault rejection (`AUTH_SOURCE_WRITE_NOT_ALLOWED`).
+  - Added `put_plan` (returns `False` on reuse), `put_part_revision` (spec 3.4.5 revision 1, canonical byte reuse, `REV_CONFLICT`), `get_part_revision`, and `put_part_record` to `FileStore`.
+  - Updated `journal.recover` to mark created documents unknown after crashes and compare target fingerprints on unconfirmed publish intent (`JobWarning("published_unconfirmed", ...)`).
+  - Added comprehensive test suites: `test_part_store.py`, `test_rename_new.py`, `test_new_file_authorize` in `test_paths.py`, and `test_part_recovery.py`.
+  - Reviewed and verified clean (APPROVED). Committed as `b995c2a`.
 
 ## Next Steps
 
-**Part chain MVP (current work, ADR-057):**
+- **Re-run the rest of the live part chain tests** on the rebuilt add-in (`-k test_ -m live`, owner's call: they drive the open instance), and a start-face hole, which no live test covers yet.
+- **K29:** extend the face spike to parts built on `plane:top` and `plane:right`.
 
-1. Settle the first part. Proposed, not yet confirmed: a 100 × 60 × 10 mm plate with four Ø8 mm through holes, expected volume about 57,989.38 mm³.
-2. Write the MVP design in `docs/superpowers/specs/`, covering what "verified" requires (proposed: 10.2 layers 1 and 2, measured from SOLIDWORKS, still valid after save and reopen), saving a new part (6.5.2 and ADR-046 limit this today) and failure handling (ADR-046 relies on undo, and A6 is unproven).
-3. Plan and build: Part Feature Graph schema and model, compiler, Execution Plan schema, `sketch.create` and `feature.create`, the `plan` job, and verification.
+- **Run the evaluation set against a real agent:** `uv run python scripts/score_part_ir.py --prompts`, collect the graphs (null for a refusal) into a file, score it, and record the pass rate here. Then re-run the `block_centre_hole` case live (SOLIDWORKS running, the owner starts it); the job for it failed with `BACKEND_LOST` because SOLIDWORKS was closed.
+- **Later, separate spec and ADR:** sketches on a face (`<node>.end_face`, K23, K26, K28), blind holes from a face, arcs and patterns. The authoring guide lists them as unsupported until then.
+
+**Part chain MVP (current work, ADR-057):** the MVP runs from Claude over MCP to a verified `.SLDPRT`; first part: a 100 × 60 × 10 mm plate with four Ø8 mm through holes.
+
+Current order:
+- Tasks 0 to 13: complete. Next: the owner decides what follows (merge the branch, lift the freeze, more feature types).
+- The MVP covers only `sketch`, `extrude` and `cut_extrude`; other features are refused by validation.
 
 Do not continue drawing work, including the ADR-056 list below, until the owner lifts the freeze.
 
@@ -127,6 +153,14 @@ Do not continue drawing work, including the ADR-056 list below, until the owner 
 
 ## Known Issues
 
+- **Rebuild with SOLIDWORKS closed:** the add-in DLLs are locked while it runs, so a build while it is open does not update the loaded add-in.
+- **Face frames measured on `plane:front` only (K29):** other base planes may fail safely with `REF_SIGNATURE_MISMATCH`. `side_faces`, edges and faces of cuts stay unsupported.
+
+- **Authoring guide limits are hand-written** (`_RULES`, `_UNSUPPORTED` in `authoring_guide.py`); tests check that the examples validate and that planes and node types match the code, not that every rule sentence matches the validator.
+- **Blind cut direction from the far face is not expressible:** a blind cut starts at its sketch plane. The guide tells the agent to refuse a hole "in the top face" with a depth.
+
+- **Part chain, found in the sign-off run (fixed):** tool schemas carried unresolved `$ref`s (clients sent `graph` as a string); plan files were named `sha256:<hex>`, and the colon fails on Windows from the second job in a store; the `features` check counted the template's default tree. Not covered by earlier tests: the in-memory filesystem accepts colons, and live tests used a fresh store per job.
+- **Part chain, open:** the recorded transcript `plan_plate_recorded.jsonl` is synthetic (`C:\Work` paths), not a recording of real SOLIDWORKS. If the core is restarted, the `sw-mcp-mcp` front-end keeps a dead connection and must be restarted too. The owner opened only the first plate in SOLIDWORKS. `known-stores.json` and `D:\CAD\scratch` hold test leftovers.
 - **Use `check_drawing` on scratch copies only:** the frozen code can close an engineer's open drawing (F4, F5). The fix is not scheduled while drawings are frozen, unless the part chain needs the shared part of it.
 - **K3 remains open:** Reading title-block fields back from owner's templates requires inspecting `standards/iso/templates/` in SOLIDWORKS to define locators in §13.3.4.
 - **J11 remains open:** Snapshot does not yet report whether a draft-quality view was switched to high quality; awaiting interactive inspection.

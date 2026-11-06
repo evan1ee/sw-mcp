@@ -178,3 +178,30 @@ def test_job_folder_without_job_json_is_an_orphan() -> None:
     result = recover(reopened, clock)
     assert result.orphans == (job.job_id,)
     assert result.interrupted == ()
+
+
+def test_recovery_records_failed_operations() -> None:
+    store, fs, clock, ids = _env()
+    job = _job_in(store, ids, clock, "EXECUTING")
+    op1, op2 = f"{job.job_id}:1", f"{job.job_id}:2"
+    store.append(job.job_id, BatchSentRecord(TS, job.job_id, 1, (op1, op2), (PATH_A,)))
+    reopened = _restart(store, fs, clock)
+    result = recover(reopened, clock)
+    assert result.pending_operation_ids == {job.job_id: (op1, op2)}
+
+    # op1 succeeded, op2 failed with applied effect
+    completed = [op1]
+    failed = [{"operation_id": op2, "code": "BACKEND_REBUILD_ERROR", "effect": "applied"}]
+    recorded = record_completed_operations(reopened, result, completed, failed=failed)
+    assert set(recorded) == {op1, op2}
+
+    results = [r for r in _journal(reopened, job.job_id) if isinstance(r, OpResultRecord)]
+    assert len(results) == 2  # noqa: PLR2004
+    by_op = {r.operation_id: r for r in results}
+    assert by_op[op1].ok is True
+    assert by_op[op1].recovered is True
+    assert by_op[op1].error_code is None
+
+    assert by_op[op2].ok is False
+    assert by_op[op2].recovered is True
+    assert by_op[op2].error_code == "BACKEND_REBUILD_ERROR"

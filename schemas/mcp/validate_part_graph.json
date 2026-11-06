@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/mcp/validate_part_graph.json",
+  "name": "validate_part_graph",
+  "description": "Validate a Part Feature Graph against schema and semantic rules without SOLIDWORKS. Returns validity, issues, topological build_order and expected geometry computed from the IR.",
+  "toolset": "core",
+  "phase": "1c",
+  "kind": "store",
+  "mutates": false,
+  "input": {
+    "type": "object",
+    "properties": {
+      "graph": { "$ref": "../part-feature-graph/v0.json" }
+    },
+    "required": ["graph"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "valid": { "type": "boolean" },
+      "issues": {
+        "type": "array",
+        "items": { "$ref": "../common/v0.json#/$defs/ValidationIssue" }
+      },
+      "build_order": {
+        "anyOf": [
+          { "type": "array", "items": { "$ref": "../common/v0.json#/$defs/ItemId" } },
+          { "type": "null" }
+        ]
+      },
+      "expected": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "solid_body_count": { "$ref": "../common/v0.json#/$defs/Count" },
+              "bbox_mm": {
+                "type": "object",
+                "properties": {
+                  "min": {
+                    "type": "array",
+                    "items": { "type": "number" },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "max": {
+                    "type": "array",
+                    "items": { "type": "number" },
+                    "minItems": 3,
+                    "maxItems": 3
+                  }
+                },
+                "required": ["min", "max"],
+                "additionalProperties": false
+              },
+              "volume_mm3": { "type": "number" },
+              "surface_area_mm2": { "type": "number" },
+              "center_of_mass_mm": {
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "cylinders": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "point": {
+                      "type": "array",
+                      "items": { "type": "number" },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "direction": {
+                      "type": "array",
+                      "items": { "type": "number" },
+                      "minItems": 3,
+                      "maxItems": 3
+                    },
+                    "radius": { "type": "number" }
+                  },
+                  "required": ["point", "direction", "radius"],
+                  "additionalProperties": false
+                }
+              },
+              "features": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "node_id": { "$ref": "../common/v0.json#/$defs/ItemId" },
+                    "type": { "type": "string" }
+                  },
+                  "required": ["node_id", "type"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "solid_body_count",
+              "bbox_mm",
+              "volume_mm3",
+              "surface_area_mm2",
+              "center_of_mass_mm",
+              "cylinders",
+              "features"
+            ],
+            "additionalProperties": false
+          },
+          { "type": "null" }
+        ]
+      }
+    },
+    "required": ["valid", "issues", "build_order", "expected"],
+    "additionalProperties": false
+  },
+  "errors": ["IR_SCHEMA_INVALID"],
+  "examples": [
+    {
+      "arguments": {
+        "graph": {
+          "module": "part",
+          "id": "plate_4h",
+          "schema_version": "0.1",
+          "units": "mm",
+          "origin": "built",
+          "nodes": {
+            "sketch_base": {
+              "type": "sketch",
+              "plane": "plane:front",
+              "entities": {
+                "l1": { "type": "line", "start": [-50, -30], "end": [50, -30] },
+                "l2": { "type": "line", "start": [50, -30], "end": [50, 30] },
+                "l3": { "type": "line", "start": [50, 30], "end": [-50, 30] },
+                "l4": { "type": "line", "start": [-50, 30], "end": [-50, -30] }
+              }
+            },
+            "extrude_base": {
+              "type": "extrude",
+              "dependencies": ["sketch_base"],
+              "profile": "sketch_base",
+              "end_condition": { "type": "blind", "depth": 10 }
+            }
+          }
+        }
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "valid": true,
+          "issues": [],
+          "build_order": ["sketch_base", "extrude_base"],
+          "expected": {
+            "solid_body_count": 1,
+            "bbox_mm": { "min": [-50.0, -30.0, 0.0], "max": [50.0, 30.0, 10.0] },
+            "volume_mm3": 60000.0,
+            "surface_area_mm2": 15200.0,
+            "center_of_mass_mm": [0.0, 0.0, 5.0],
+            "cylinders": [],
+            "features": [
+              { "node_id": "sketch_base", "type": "sketch" },
+              { "node_id": "extrude_base", "type": "extrude" }
+            ]
+          }
+        },
+        "error": null,
+        "ids": { "request_id": "req_00000000000000000000000001" }
+      }
+    },
+    {
+      "arguments": {
+        "graph": {
+          "module": "part",
+          "id": "bad",
+          "schema_version": "0.1",
+          "units": "in",
+          "origin": "built",
+          "nodes": {}
+        }
+      },
+      "response": {
+        "ok": false,
+        "data": null,
+        "error": {
+          "code": "IR_SCHEMA_INVALID",
+          "message": "The arguments do not satisfy the tool's input schema.",
+          "retryable": "after_fix",
+          "details": {
+            "issues": [
+              {
+                "code": "IR_SCHEMA_INVALID",
+                "pointer": "/graph/units",
+                "message": "'mm' was expected"
+              }
+            ]
+          }
+        },
+        "ids": { "request_id": "req_00000000000000000000000002" }
+      }
+    }
+  ]
+}

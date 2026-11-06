@@ -1,6 +1,6 @@
 # 13. Data Management and Persistence
 
-> Specification v1.28, section 13. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, section 13. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The system persists enough to reproduce, inspect and recover sessions.
 
@@ -25,4 +25,4 @@ File layout, write rules, the job journal and retention are in 13.2; configurati
 
 **Lost or stale state.** If a drawing's store entry is missing (the SLDDRW was copied elsewhere) or its last as-built snapshot is gone, pins cannot be detected (11.11). The pipeline then treats every existing annotation as pinned, never as movable, and reports that it did so. Engineer edits are never lost because state was lost.
 
-**Concurrent updates.** Every `update_*` and `apply_*` tool takes the `expected_revision` of the module it changes. A mismatch is rejected with the current revision; nothing is merged silently.
+**Concurrent updates.** Every `update_*` and `apply_*` tool takes the `expected_revision` of the module it changes, apart from the `apply_part_graph` exception in 3.4.5. A mismatch is rejected with the current revision; nothing is merged silently.

@@ -1,0 +1,18 @@
+[
+  {
+    "feature": "f11",
+    "role": "end_face",
+    "normal": [0.0, 0.0, 1.0],
+    "offset_mm": 10.0,
+    "x_axis": [1.0, 0.0, 0.0],
+    "y_axis": [0.0, 1.0, 0.0]
+  },
+  {
+    "feature": "extrude_base",
+    "role": "start_face",
+    "normal": [0.0, 0.0, -1.0],
+    "offset_mm": 0.0,
+    "x_axis": [-1.0, 0.0, 0.0],
+    "y_axis": [0.0, 1.0, 0.0]
+  }
+]

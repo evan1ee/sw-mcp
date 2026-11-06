@@ -1,6 +1,6 @@
 # 9. Incremental Compilation and Synchronization (P2)
 
-> Specification v1.28, section 9. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, section 9. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 9.1 Purpose
 
@@ -17,3 +17,5 @@ Detects added and removed features, modified parameters, changed dependencies an
 Distinguishes intended IR state, last compiled state, last executed state and actual CAD document state. Detects external edits made in SOLIDWORKS through the add-in's document events (8.2) and, for edits made while the add-in was not running, by comparing the feature tree and rebuild state with the last executed state. On divergence, it reports it and requires synchronization before unsafe updates.
 
 When a model changes, its drawings are re-checked (section 11.7).
+
+Detecting divergence is the pure `reconcile` of [8.9.9](../specifications/solidworks-adapter.md#899-reconciliation-contract), with its limits in 8.8.9. Change classes and a recommended order for incremental plans are [23.8](../specifications/compiler-architecture-specification.md#238-incremental-compilation) (Proposed).

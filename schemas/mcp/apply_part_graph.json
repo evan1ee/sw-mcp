@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/mcp/apply_part_graph.json",
+  "name": "apply_part_graph",
+  "description": "Validate a Part Feature Graph, store its revision and queue a plan job to build and verify the .SLDPRT part. Poll get_execution_status with wait_ms to follow the build and read part_result.",
+  "toolset": "core",
+  "phase": "1c",
+  "kind": "job",
+  "mutates": true,
+  "input": {
+    "type": "object",
+    "properties": {
+      "graph": { "$ref": "../part-feature-graph/v0.json" },
+      "target_path": { "type": "string", "minLength": 1, "maxLength": 32767 },
+      "expected_revision": { "$ref": "../common/v0.json#/$defs/Revision" }
+    },
+    "required": ["graph", "target_path"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "execution_id": { "$ref": "../store/v0.json#/$defs/JobId" },
+      "queued_position": { "$ref": "../common/v0.json#/$defs/Count" },
+      "document": { "$ref": "../common/v0.json#/$defs/DocumentRef" }
+    },
+    "required": ["execution_id", "queued_position", "document"],
+    "additionalProperties": false
+  },
+  "errors": [
+    "IR_SCHEMA_INVALID",
+    "IR_RULE_VIOLATED",
+    "IR_REFERENCE_UNRESOLVED",
+    "IR_CYCLE",
+    "REV_CONFLICT",
+    "AUTH_PATH_DENIED",
+    "AUTH_SOURCE_WRITE_NOT_ALLOWED",
+    "FILE_NOT_FOUND",
+    "CONFIG_INVALID",
+    "STORE_LOCKED",
+    "STORE_CORRUPT",
+    "STORE_UNAVAILABLE"
+  ],
+  "examples": [
+    {
+      "arguments": {
+        "graph": {
+          "module": "part",
+          "id": "plate_4h",
+          "schema_version": "0.1",
+          "units": "mm",
+          "origin": "built",
+          "nodes": {
+            "sketch_base": {
+              "type": "sketch",
+              "plane": "plane:front",
+              "entities": {
+                "l1": { "type": "line", "start": [-50, -30], "end": [50, -30] },
+                "l2": { "type": "line", "start": [50, -30], "end": [50, 30] },
+                "l3": { "type": "line", "start": [50, 30], "end": [-50, 30] },
+                "l4": { "type": "line", "start": [-50, 30], "end": [-50, -30] }
+              }
+            },
+            "extrude_base": {
+              "type": "extrude",
+              "dependencies": ["sketch_base"],
+              "profile": "sketch_base",
+              "end_condition": { "type": "blind", "depth": 10 }
+            }
+          }
+        },
+        "target_path": "C:\\Work\\plate.SLDPRT"
+      },
+      "response": {
+        "ok": true,
+        "data": {
+          "execution_id": "job_00000000000000000000000001",
+          "queued_position": 0,
+          "document": "part:plate_4h@1"
+        },
+        "error": null,
+        "ids": {
+          "request_id": "req_00000000000000000000000001",
+          "execution_id": "job_00000000000000000000000001"
+        }
+      }
+    },
+    {
+      "arguments": {
+        "graph": {
+          "module": "part",
+          "id": "plate_4h",
+          "schema_version": "0.1",
+          "units": "mm",
+          "origin": "built",
+          "nodes": {
+            "sketch_base": {
+              "type": "sketch",
+              "plane": "plane:front",
+              "entities": {
+                "l1": { "type": "line", "start": [-50, -30], "end": [50, -30] },
+                "l2": { "type": "line", "start": [50, -30], "end": [50, 30] },
+                "l3": { "type": "line", "start": [50, 30], "end": [-50, 30] },
+                "l4": { "type": "line", "start": [-50, 30], "end": [-50, -30] }
+              }
+            },
+            "extrude_base": {
+              "type": "extrude",
+              "dependencies": ["sketch_base"],
+              "profile": "sketch_base",
+              "end_condition": { "type": "blind", "depth": 10 }
+            }
+          }
+        },
+        "target_path": "D:\\Other\\plate.SLDPRT"
+      },
+      "response": {
+        "ok": false,
+        "data": null,
+        "error": {
+          "code": "AUTH_PATH_DENIED",
+          "message": "The path is outside every folder in access.allowed_roots.",
+          "retryable": "never",
+          "details": { "reason": "outside_roots" }
+        },
+        "ids": { "request_id": "req_00000000000000000000000002" }
+      }
+    }
+  ]
+}

@@ -187,3 +187,48 @@ def test_message_does_not_echo_env_values() -> None:
     no_roots = authorize("C:\\Work\\a.slddrw", _settings(roots=()), _fs())
     assert isinstance(no_roots, ToolError)
     assert "access.allowed_roots" in no_roots.message
+
+
+def test_new_file_authorize() -> None:
+    fs = _fs()
+
+    # 1. Missing parent folder
+    missing_parent = authorize(
+        "C:\\Work\\missing_dir\\part.sldprt", _settings(), fs, expect="new_file"
+    )
+    assert isinstance(missing_parent, ToolError)
+    assert missing_parent.code == "FILE_NOT_FOUND"
+    assert missing_parent.details == {"reason": "missing_parent"}
+
+    # 2. Existing file
+    existing = authorize("C:\\Work\\a.slddrw", _settings(), fs, expect="new_file")
+    assert isinstance(existing, ToolError)
+    assert existing.code == "AUTH_SOURCE_WRITE_NOT_ALLOWED"
+    assert existing.details == {"reason": "file_exists"}
+
+    # 3. Vault
+    fs.make_dirs("C:\\Vault")
+    vault_settings = _settings(roots=("C:\\Work", "C:\\Vault"), vaults=("C:\\Vault",))
+    in_vault = authorize("C:\\Vault\\new.sldprt", vault_settings, fs, expect="new_file")
+    assert isinstance(in_vault, ToolError)
+    assert in_vault.code == "AUTH_SOURCE_WRITE_NOT_ALLOWED"
+    assert in_vault.details == {"reason": "in_vault"}
+
+    # 4. Suffix mismatch
+    bad_suffix = authorize(
+        "C:\\Work\\new.txt", _settings(), fs, expect="new_file", suffix=".sldprt"
+    )
+    assert isinstance(bad_suffix, ToolError)
+    assert bad_suffix.code == "IR_SCHEMA_INVALID"
+    assert bad_suffix.details == {"reason": "suffix"}
+
+    # 5. Success
+    ok = authorize("C:\\Work\\new.sldprt", _settings(), fs, expect="new_file", suffix=".sldprt")
+    assert isinstance(ok, Authorized)
+    assert ok.path == "C:\\Work\\new.sldprt"
+
+    # 6. Existing expect behavior unchanged
+    as_file = authorize("C:\\Work\\a.slddrw", _settings(), fs, expect="file")
+    assert isinstance(as_file, Authorized)
+    as_dir = authorize("C:\\Work", _settings(), fs, expect="dir")
+    assert isinstance(as_dir, Authorized)

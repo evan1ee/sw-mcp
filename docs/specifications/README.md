@@ -2,7 +2,7 @@
 
 ## Product & Technical Specification
 
-**Document Version:** 1.28
+**Document Version:** 1.37
 **Date:** November 5, 2026
 **Status:** Proposed Architecture (refined after owner interview, two SOLIDWORKS reviews, an architecture review and a development-readiness review)
 **Reference Implementation:** SolidPilot — a behavioral reference only. This system is implemented independently: no SolidPilot code is copied into it. The reference may be studied for behavior, tool contracts and lessons learned, and its observable behavior may be matched. Everywhere else, this document calls it "the reference implementation".
@@ -40,6 +40,10 @@ The specification is split across `docs/` by topic. Section numbers are unchange
 | 19 | Key Architectural Decisions | [adr/README.md](../adr/README.md) |
 | 20 | Definition of Done (production-ready release) | [specifications/product-spec.md](../specifications/product-spec.md) |
 | 21 | Final Product Definition | [specifications/product-spec.md](../specifications/product-spec.md) |
+| 22 | CAD IR Specification (Proposed) | [specifications/ir-specification.md](../specifications/ir-specification.md) |
+| 23 | Compiler Architecture Specification (Proposed) | [specifications/compiler-architecture-specification.md](../specifications/compiler-architecture-specification.md) |
+
+Sections 22 and 23 gather the IR and the compiler into one reference, and add what the topic sections leave open. They do not replace those sections, which stay authoritative where they already decide. The owner of each shared contract is in [23.13](compiler-architecture-specification.md#2313-cross-specification-contracts).
 
 Subsections that live in their own file:
 
@@ -52,6 +56,8 @@ Subsections that live in their own file:
 | 6.5–6.6 | Backend Operations and Execution Plans; Capability Profile | [architecture/backend-operations.md](../architecture/backend-operations.md) |
 | 6.7 | Compiler Stage Contract | [architecture/cad-compiler.md](../architecture/cad-compiler.md#67-stage-contract) |
 | 8.6 | Add-in Runtime | [architecture/addin-runtime.md](../architecture/addin-runtime.md) |
+| 8.8 | SOLIDWORKS Adapter Architecture | [architecture/solidworks-adapter.md](../architecture/solidworks-adapter.md) |
+| 8.9 | SOLIDWORKS Adapter Interface Specification | [specifications/solidworks-adapter.md](../specifications/solidworks-adapter.md) |
 | 11.10 | Drawing Intent IR | [architecture/drawing-intent-ir.md](../architecture/drawing-intent-ir.md) |
 | 11.11 | Drawing Layout IR | [architecture/drawing-layout-ir.md](../architecture/drawing-layout-ir.md) |
 | 11.12 | Drawing Template IR | [architecture/drawing-template-ir.md](../architecture/drawing-template-ir.md) |

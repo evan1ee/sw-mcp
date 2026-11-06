@@ -107,3 +107,37 @@ class DrawingMatch:
 
     record: DrawingRecord | None
     warning: JobWarning | None
+
+
+@dataclass(frozen=True, slots=True)
+class PartRecord:
+    part_key: str
+    path: str
+    fingerprint: str
+    produced: bool
+    graph: str
+    job_id: str
+    updated_at: str
+
+    def to_json(self) -> Obj:
+        return {
+            "part_key": self.part_key,
+            "path": self.path,
+            "fingerprint": self.fingerprint,
+            "produced": self.produced,
+            "graph": self.graph,
+            "job_id": self.job_id,
+            "updated_at": self.updated_at,
+        }
+
+    @staticmethod
+    def from_json(obj: Obj) -> "PartRecord":
+        return PartRecord(
+            part_key=get_str(obj, "part_key"),
+            path=get_str(obj, "path"),
+            fingerprint=get_str(obj, "fingerprint"),
+            produced=get_bool(obj, "produced"),
+            graph=get_str(obj, "graph"),
+            job_id=get_str(obj, "job_id"),
+            updated_at=get_str(obj, "updated_at"),
+        )

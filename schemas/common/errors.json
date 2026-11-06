@@ -203,6 +203,21 @@
       "const": "STORE_UNAVAILABLE",
       "description": "A project store file cannot be read or written.",
       "x-retryable": "after_fix"
+    },
+    {
+      "const": "PART_VERIFICATION_FAILED",
+      "description": "One or more part verification checks failed.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "BACKEND_OPERATION_FAILED",
+      "description": "A native call failed or its read-back disagreed; details.effect says whether the document may have changed.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "FEATURE_VERIFICATION_FAILED",
+      "description": "A built feature failed its verification contract; details.node and details.checks name it.",
+      "x-retryable": "after_fix"
     }
   ]
 }

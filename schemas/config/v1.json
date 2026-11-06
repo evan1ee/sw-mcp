@@ -69,6 +69,13 @@
       },
       "additionalProperties": false
     },
+    "part": {
+      "type": "object",
+      "properties": {
+        "template": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "logging": {
       "type": "object",
       "properties": {

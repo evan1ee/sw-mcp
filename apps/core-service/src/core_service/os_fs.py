@@ -13,6 +13,19 @@ import secrets
 import threading
 from typing import Final
 
+if os.name == "nt":
+    import ctypes
+    from ctypes import wintypes
+
+    _MOVEFILE_WRITE_THROUGH: Final = 0x8
+    _ERROR_FILE_EXISTS: Final = 80
+    _ERROR_ALREADY_EXISTS: Final = 183
+
+    _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    _MoveFileExW = _kernel32.MoveFileExW
+    _MoveFileExW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD]
+    _MoveFileExW.restype = wintypes.BOOL
+
 from cad_application.ports import FileStat, Lock, LockHeld
 
 _EXTENDED: Final = "\\\\?\\"
@@ -89,6 +102,17 @@ class OsFileSystem:
 
     def write_new(self, path: str, data: bytes) -> None:
         self._write(path, data, must_be_new=True)
+
+    def rename_new(self, source: str, target: str) -> None:
+        if os.name == "nt":
+            success = _MoveFileExW(source, target, _MOVEFILE_WRITE_THROUGH)
+            if not success:
+                err = ctypes.get_last_error()
+                if err in (_ERROR_FILE_EXISTS, _ERROR_ALREADY_EXISTS):
+                    raise FileExistsError(f"Target file already exists: {target}")
+                raise ctypes.WinError(err)
+        else:
+            os.rename(source, target)
 
     def append_line(self, path: str, line: str) -> None:
         with open(path, "ab") as handle:

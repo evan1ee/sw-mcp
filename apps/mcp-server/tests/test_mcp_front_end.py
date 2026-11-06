@@ -1,18 +1,22 @@
-"""Tests for the core named-pipe host and MCP front-end (ADR-041)."""
+"""Tests for the core named-pipe host and MCP SDK front-end (ADR-034, ADR-041, ADR-044, 12.3)."""
 
-import json
+import ctypes
+import os
 import sys
 import time
 from pathlib import Path
 from typing import Any, cast
 
+import anyio
 import pytest
 from core_service.providers import ReplayBackendProvider
 from core_service.server.pipe_host import PipeHost
 from core_service.service import CoreService
 from core_service.testing import ServiceRig
-from mcp_server.client import CorePipeClient
-from mcp_server.server import McpServer
+from mcp import ClientSession, MCPError, types
+from mcp.client.stdio import StdioServerParameters, stdio_client
+from mcp_server.client import CorePipeClient, CorePipeError
+from mcp_server.server import create_mcp_server
 
 pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows named pipes only")
 
@@ -27,9 +31,10 @@ def running_service_and_host(tmp_path: Path):
 
     project, drawing = ServiceRig.prepare(tmp_path)
     provider = ReplayBackendProvider.from_file(str(IPC / "check_drawing_borrowed.jsonl"))
+    env = ServiceRig.environment(tmp_path)
     service = CoreService.start(
         install_root=INSTALL_ROOT,
-        environ=ServiceRig.environment(tmp_path),
+        environ=env,
         provider=provider,
     )
     assert isinstance(service, CoreService)
@@ -44,83 +49,180 @@ def running_service_and_host(tmp_path: Path):
     host.start()
 
     try:
-        yield service, host, pipe_name, token, drawing, project
+        yield service, host, pipe_name, token, drawing, project, env
     finally:
         host.stop()
         service.stop()
 
 
-def test_core_pipe_host_receives_tool_call(running_service_and_host: Any) -> None:
-    _, _, pipe_name, token, _, _ = running_service_and_host
+def _unwrap_exception_group(exc: BaseException) -> BaseException:
+    cur: BaseException = exc
+    while isinstance(cur, BaseExceptionGroup):
+        sub = cast("tuple[BaseException, ...]", cur.exceptions)
+        if len(sub) != 1:
+            break
+        cur = sub[0]
+    return cast("BaseException", cur)
 
+
+async def _with_mcp_session(pipe_name: str, token: str, fn: Any) -> Any:
     client = CorePipeClient(pipe_name=pipe_name, token=token)
     client.connect()
+    server = create_mcp_server(client)
+    s2c_send, s2c_recv = anyio.create_memory_object_stream[Any](10)
+    c2s_send, c2s_recv = anyio.create_memory_object_stream[Any](10)
+    out: Any = None
     try:
-        envelope = client.call_tool(
-            "get_execution_status",
-            {"execution_id": "job_01000000000000000000000000"},
-        )
-        assert isinstance(envelope, dict)
-        assert envelope.get("ok") is False
-        assert envelope.get("error", {}).get("code") == "EXEC_NOT_FOUND"
+        try:
+            async with anyio.create_task_group() as tg:
+                tg.start_soon(
+                    server.run,
+                    c2s_recv,
+                    s2c_send,
+                    server.create_initialization_options(),
+                )
+                async with ClientSession(s2c_recv, c2s_send) as session:
+                    await session.initialize()
+                    out = await fn(session)
+                tg.cancel_scope.cancel()
+        except BaseExceptionGroup as eg:
+            raise _unwrap_exception_group(eg) from None
+        return out
     finally:
         client.close()
 
 
-def test_mcp_front_end_lists_tools(running_service_and_host: Any) -> None:
-    _, _, pipe_name, token, _, _ = running_service_and_host
+def test_call_maps_result(running_service_and_host: Any) -> None:
+    _, _, pipe_name, token, _, _, _ = running_service_and_host
 
-    server = McpServer(pipe_name=pipe_name, token=token)
-    server.connect()
+    async def _run(session: ClientSession) -> tuple[types.CallToolResult, types.CallToolResult]:
+        ok_res = await session.call_tool("list_feature_types", {})
+        fail_res = await session.call_tool(
+            "get_execution_status",
+            {"execution_id": "job_01000000000000000000000000"},
+        )
+        return ok_res, fail_res
+
+    ok_res, fail_res = anyio.run(_with_mcp_session, pipe_name, token, _run)
+
+    ok_wire = ok_res.model_dump(by_alias=True, exclude_none=True)
+    assert ok_res.is_error is False
+    assert len(ok_res.content) == 1
+    assert isinstance(ok_res.content[0], types.TextContent)
+    assert ok_res.content[0].text
+    assert not ok_res.content[0].text.lstrip().startswith("{")
+    ok_sc: object = ok_res.structured_content
+    assert isinstance(ok_sc, dict)
+    ok_struct = cast("dict[str, Any]", ok_sc)
+    assert ok_struct.get("ok") is True
+    assert isinstance(ok_struct.get("data"), dict)
+    assert ok_wire.get("structuredContent") == ok_struct
+
+    fail_wire = fail_res.model_dump(by_alias=True, exclude_none=True)
+    assert fail_res.is_error is True
+    assert fail_wire.get("isError") is True
+    assert len(fail_res.content) == 1
+    assert isinstance(fail_res.content[0], types.TextContent)
+    assert fail_res.content[0].text
+    fail_sc: object = fail_res.structured_content
+    assert isinstance(fail_sc, dict)
+    fail_struct = cast("dict[str, Any]", fail_sc)
+    assert fail_struct.get("ok") is False
+    assert fail_wire.get("structuredContent") == fail_struct
+    err_obj = fail_struct.get("error")
+    assert isinstance(err_obj, dict)
+    err_dict = cast("dict[str, Any]", err_obj)
+    assert err_dict.get("code") == "EXEC_NOT_FOUND"
+
+
+def test_unknown_tool_protocol_error(running_service_and_host: Any) -> None:
+    _, _, pipe_name, token, _, _, _ = running_service_and_host
+
+    async def _run(session: ClientSession) -> None:
+        await session.call_tool("unknown_tool_xyz", {})
+
+    with pytest.raises(MCPError) as exc_info:
+        anyio.run(_with_mcp_session, pipe_name, token, _run)
+    assert exc_info.value.error.code == -32602  # noqa: PLR2004
+
+
+def test_bad_token_closed(running_service_and_host: Any) -> None:
+    _, _, pipe_name, token, _, _, _ = running_service_and_host
+
+    bad_client = CorePipeClient(pipe_name=pipe_name, token="wrong-secret-token", auto_start=False)
     try:
-        req: dict[str, Any] = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/list",
-            "params": {},
-        }
-        res = server.handle_message(req)
-        assert res is not None
-        assert res.get("id") == 1
-        tools = res.get("result", {}).get("tools", [])
-        tool_names = [t["name"] for t in tools]
-        assert "check_drawing" in tool_names
-        assert "get_drawing_report" in tool_names
-        assert "get_execution_status" in tool_names
-        assert "cancel_execution" in tool_names
+        with pytest.raises((ConnectionError, OSError, CorePipeError)):
+            bad_client.connect()
     finally:
-        server.close()
+        bad_client.close()
 
-
-def test_mcp_front_end_forwards_tool_call(running_service_and_host: Any) -> None:
-    _, _, pipe_name, token, drawing, _project = running_service_and_host
-
-    server = McpServer(pipe_name=pipe_name, token=token)
-    server.connect()
-    call_id = 2
+    good_client = CorePipeClient(pipe_name=pipe_name, token=token, auto_start=False)
+    good_client.connect()
     try:
-        req: dict[str, Any] = {
-            "jsonrpc": "2.0",
-            "id": call_id,
-            "method": "tools/call",
-            "params": {
-                "name": "check_drawing",
-                "arguments": {
-                    "path": drawing,
+        tools = good_client.list_tools()
+        assert len(tools) > 0
+    finally:
+        good_client.close()
+
+
+def test_stdio_utf8(running_service_and_host: Any) -> None:
+    _, _, _, _, _, _, rig_env = running_service_and_host
+    kernel32 = ctypes.windll.kernel32
+    orig_in_cp = kernel32.GetConsoleCP()
+    orig_out_cp = kernel32.GetConsoleOutputCP()
+
+    chinese_key = "草图_法兰盘_测试件"
+    child_env = {
+        **os.environ,
+        **rig_env,
+        "PYTHONIOENCODING": "cp936",
+    }
+
+    async def _run_stdio() -> types.CallToolResult:
+        params = StdioServerParameters(
+            command=sys.executable,
+            args=["-m", "mcp_server"],
+            env=child_env,
+        )
+        async with (
+            stdio_client(params) as (read_stream, write_stream),
+            ClientSession(read_stream, write_stream) as session,
+        ):
+            await session.initialize()
+            return await session.call_tool(
+                "validate_part_graph",
+                {
+                    "graph": {
+                        "module": "part",
+                        "id": "plate_4h",
+                        "schema_version": "0.1",
+                        "units": "mm",
+                        "origin": "built",
+                        "nodes": {
+                            chinese_key: {
+                                "type": "sketch",
+                                "plane": "plane:front",
+                                "entities": {},
+                            }
+                        },
+                    }
                 },
-            },
-        }
-        res = server.handle_message(req)
-        assert res is not None
-        assert res.get("id") == call_id
-        content = res.get("result", {}).get("content", [])
-        assert len(content) > 0
-        envelope_obj: object = json.loads(content[0]["text"])
-        assert isinstance(envelope_obj, dict)
-        envelope = cast(dict[str, Any], envelope_obj)
-        assert envelope.get("ok") is True
-        data = envelope.get("data")
-        assert isinstance(data, dict)
-        assert "execution_id" in data
+            )
+
+    try:
+        kernel32.SetConsoleCP(936)
+        kernel32.SetConsoleOutputCP(936)
+        res = anyio.run(_run_stdio)
     finally:
-        server.close()
+        if orig_in_cp:
+            kernel32.SetConsoleCP(orig_in_cp)
+        if orig_out_cp:
+            kernel32.SetConsoleOutputCP(orig_out_cp)
+
+    assert res.is_error is True
+    res_sc: object = res.structured_content
+    assert isinstance(res_sc, dict)
+    res_struct = cast("dict[str, Any]", res_sc)
+    assert res_struct.get("ok") is False
+    serialized = str(res_struct)
+    assert chinese_key in serialized

@@ -1,0 +1,17 @@
+{
+  "version": "0.1.0",
+  "features": {
+    "sketch": {
+      "dependencies": [],
+      "realizes": []
+    },
+    "extrude": {
+      "dependencies": [],
+      "realizes": []
+    },
+    "cut_extrude": {
+      "dependencies": [],
+      "realizes": []
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # 6. CAD Compiler
 
-> Specification v1.28, section 6. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, section 6. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 6.1 Purpose
 
@@ -30,7 +30,9 @@ flowchart TD
 | Graph Analyzer | Cycles, topological order, upstream/downstream sets, affected sets, modification analysis |
 | Geometry Resolver | Semantic and persistent references, signature matching, confidence, ambiguity. Decides in Python over facts the add-in gathers in one call (ADR-049) |
 | Feature Lowering | Map to backend operations (6.5), apply explicit defaults (5.7.6), translate coordinates, reject what the capability profile lacks (6.6) |
-| Execution Planner | Ordered operations, preconditions, postconditions, verification points, operation IDs; produces the Execution Plan of 6.5.3 |
+| Execution Planner | Ordered operations, postcondition names, verification points, operation IDs; produces the Execution Plan of 6.5.3. Preconditions are not plan content: they are enforced at lowering and at the handler's Admit stage (23.4.1, 8.8.6) |
+
+The whole path from IR to a verified result, including how this section relates to verification, is [§23](../specifications/compiler-architecture-specification.md). Verification planning is deliberately not one of these stages (ADR-064).
 
 ## 6.4 Determinism
 
@@ -71,8 +73,8 @@ run(input, context) → { output | null, diagnostics[], needs[] }
 ### 6.7.4 Determinism and caching
 
 - **Same input, same plan.** The same pinned bundle with the same context produces a byte-identical canonical plan (3.4.4). The determinism tests (15.6) compile twice, in the same process and in a fresh one, and compare the plan hashes.
-- **Caching.** Plans are stored under the hash of the pinned bundle plus the context hash (13.2.1). A compilation whose key exists reuses the stored plan, and the reuse is visible in the plan's provenance and the job journal.
-- **Stage versions.** Each stage has its own version string. A change to a stage's logic or rules bumps it, which changes the context hash, so cached plans from the old logic are not reused.
+- **Plan key and reuse [Builder's call].** A plan is stored under the content hash of its canonical form, `<plan_hash>` (3.4.4, 13.2.1); there is no second key. A plan's `bundle` records the pinned `<id>@<revision>` of each document (6.5.3), so a plan states exactly what it was built from (owner decision, 2026-11-05). Two revisions of identical content therefore give the same `operations` but different plan hashes, and their plans are stored separately. This is rare and costs only storage, because identical content normally reuses its revision (3.4.5). A job that compiles a plan whose hash already exists in the store writes nothing and reuses the stored plan; the reuse is recorded as a `note` in the job journal. Stage versions are part of the plan's provenance, so a change to a stage's logic that changes the plan gives a new hash and is never confused with an old plan.
+- **Stage versions.** Each stage has its own version string. A change to a stage's logic or rules bumps it, and the versions are recorded in the plan's provenance (6.5.3).
 - **Time.** The compiler targets less than 500 ms for a typical bundle, excluding the time spent gathering candidates (16).
 
 Incremental compilation (section 9, P2) reuses these stages, starting from the Graph Analyzer's affected sets.

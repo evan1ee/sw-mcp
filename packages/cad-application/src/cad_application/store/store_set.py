@@ -40,6 +40,10 @@ class StoreSet:
     def set_on_first_open(self, hook: Callable[[FileStore, str], object]) -> None:
         self._on_first_open = hook
 
+    @property
+    def fs(self) -> FileSystem:
+        return self._fs
+
     def open_for(self, authorized: Authorized) -> FileStore | StoreError:
         with self._guard:
             key = ntpath.normcase(authorized.store_dir)

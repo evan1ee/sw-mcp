@@ -44,7 +44,8 @@ def test_defaults_match_13_3_3() -> None:
     settings = _settings()
     assert settings.allowed_roots == ()
     assert settings.pdm_vault_roots == ()
-    assert settings.toolsets == ("core", "drawing")
+    assert settings.toolsets == ("core",)
+    assert settings.part_template == ""
     assert settings.idle_shutdown_min == 30  # noqa: PLR2004
     assert settings.job_retention_days == 7  # noqa: PLR2004
     assert settings.solidworks_session == "auto"
@@ -208,3 +209,34 @@ def test_settings_are_frozen_and_complete() -> None:
     except AttributeError:
         return
     raise AssertionError("Settings must be frozen")
+
+
+def test_part_template_setting() -> None:
+    assert _settings().part_template == ""
+
+    user = _user(
+        'config_version = "1.0"\n[part]\ntemplate = "C:\\\\Templates\\\\does_not_exist.prtdot"\n'
+    )
+    assert _settings(user).part_template == "C:\\Templates\\does_not_exist.prtdot"
+
+    project = _project('config_version = "1.0"\n[part]\ntemplate = "D:\\\\Evil\\\\part.prtdot"\n')
+    env = parse_env_layer({"SWMCP_PART__TEMPLATE": '"E:\\\\Evil\\\\part.prtdot"'})
+    merged = _settings(user, project, env)
+    assert merged.part_template == "C:\\Templates\\does_not_exist.prtdot"
+    joined = "\n".join(merged.warnings)
+    assert "part.template" in joined
+    assert "D:" not in joined
+    assert "E:" not in joined
+    assert len(merged.warnings) == 2  # noqa: PLR2004
+
+    for bad in (
+        "relative\\part.prtdot",
+        "C:\\Templates\\part.sldprt",
+        "~\\part.prtdot",
+        "%APPDATA%\\part.prtdot",
+        "\\\\?\\C:\\Templates\\part.prtdot",
+    ):
+        escaped = bad.replace("\\", "\\\\")
+        err = _error(_user(f'config_version = "1.0"\n[part]\ntemplate = "{escaped}"\n'))
+        assert err.code == "CONFIG_INVALID"
+        assert err.key == "part.template"

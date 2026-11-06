@@ -2,15 +2,16 @@
 
 Documentation for the AI-native Parametric CAD System: an MCP server and SOLIDWORKS execution engine that lets AI agents build parametric models and production drawings through a deterministic, verified pipeline.
 
-The [specification](specifications/README.md) (v1.24) is split across these folders by topic. Section numbers are kept, so a reference such as "see 11.5" resolves through the [section map](specifications/README.md#how-this-specification-is-organized).
+The [specification](specifications/README.md) (v1.37) is split across these folders by topic. Section numbers are kept, so a reference such as "see 11.5" resolves through the [section map](specifications/README.md#how-this-specification-is-organized).
 
 ```
 docs/
 ├── specifications/   what the product is and when it ships
 ├── architecture/     how the system works, one file per component or IR module
 ├── api/              the MCP tool surface agents call
-├── adr/              architecture decision records, ADR-001 … ADR-055
+├── adr/              architecture decision records, ADR-001 … ADR-069
 ├── development/      repository layout and testing
+├── plans/            cross-cutting implementation roadmaps
 ```
 
 ## Reading order
@@ -30,6 +31,9 @@ docs/
 | [roadmap.md](specifications/roadmap.md) | §18 Phases 0–5, assumption register, Phase 1 work order |
 | [CHANGELOG.md](specifications/CHANGELOG.md) | What changed in each specification version |
 | [open-decisions.md](specifications/open-decisions.md) | Register of decisions found missing before implementation, where each is now recorded, and the place to log new gaps |
+| [ir-specification.md](specifications/ir-specification.md) | §22 CAD IR: document, geometry, sketch, feature and reference models, graph, expressions, validation (Proposed) |
+| [compiler-architecture-specification.md](specifications/compiler-architecture-specification.md) | §23 Compiler: verifiable compilation, stages, plan, backend interface, determinism, errors, incremental, verification, cross-specification contracts (Proposed) |
+| [solidworks-adapter.md](specifications/solidworks-adapter.md) | §8.9 SOLIDWORKS adapter interface specification, including the API capability mapping (8.9.11) and reference resolution (8.9.12) |
 
 ## Architecture
 
@@ -52,6 +56,7 @@ docs/
 | [geometry-references.md](architecture/geometry-references.md) | §7 Semantic geometry references |
 | [execution-engine.md](architecture/execution-engine.md) | §8 SOLIDWORKS add-in, COM rules, job lifecycle; §8.7 IPC messages |
 | [addin-runtime.md](architecture/addin-runtime.md) | §8.6 Add-in loading, session discovery, threading, time limits, settings guard |
+| [solidworks-adapter.md](architecture/solidworks-adapter.md) | §8.8 SOLIDWORKS adapter architecture |
 | [incremental-sync.md](architecture/incremental-sync.md) | §9 Graph diff and state synchronization |
 | [verification-engine.md](architecture/verification-engine.md) | §10 Verification layers |
 | [production-drawings.md](architecture/production-drawings.md) | §11.1–11.9 Drawing pipeline, checks D1–D10, benchmark |

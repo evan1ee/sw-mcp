@@ -21,6 +21,7 @@ TEMPLATE_ID = "https://sw-mcp.invalid/schemas/drawing-template/v0.json"
 LAYOUT_ID = "https://sw-mcp.invalid/schemas/drawing-layout/v0.json"
 INTENT_ID = "https://sw-mcp.invalid/schemas/drawing-intent/v0.json"
 SCHEME_ID = "https://sw-mcp.invalid/schemas/resolved-scheme/v0.json"
+PART_GRAPH_ID = "https://sw-mcp.invalid/schemas/part-feature-graph/v0.json"
 
 type Json = Any
 
@@ -526,3 +527,74 @@ def test_scheme_valid_accepted(path: Path) -> None:
 @pytest.mark.parametrize("path", _scheme_cases("invalid"))
 def test_scheme_invalid_rejected(path: Path) -> None:
     assert _issues(_load(path), SCHEME_ID) != []
+
+
+def _part_cases(kind: str) -> list[Json]:
+    return [
+        pytest.param(path, id=path.stem)
+        for path in sorted((FIXTURES_DIR / "part-feature-graph" / kind).glob("*.json"))
+    ]
+
+
+def test_part_fixtures_exist_for_both_kinds() -> None:
+    valid = {p.stem for p in (FIXTURES_DIR / "part-feature-graph" / "valid").glob("*.json")}
+    invalid = {p.stem for p in (FIXTURES_DIR / "part-feature-graph" / "invalid").glob("*.json")}
+    assert {"plate_4h"} <= valid
+    assert {
+        "unknown_field",
+        "blind_needs_depth",
+        "through_all_has_depth",
+        "wrong_module",
+        "wrong_units",
+    } <= invalid
+
+
+@pytest.mark.parametrize("path", _part_cases("valid"))
+def test_part_valid_accepted(path: Path) -> None:
+    assert _issues(_load(path), PART_GRAPH_ID) == []
+
+
+@pytest.mark.parametrize("path", _part_cases("invalid"))
+def test_part_invalid_rejected(path: Path) -> None:
+    assert _issues(_load(path), PART_GRAPH_ID) != []
+
+
+EVIDENCE_ID = "https://sw-mcp.invalid/schemas/execution-evidence/v0.json"
+
+
+def _evidence_cases(kind: str) -> list[Json]:
+    return [
+        pytest.param(path, id=path.stem)
+        for path in sorted((FIXTURES_DIR / "execution-evidence" / kind).glob("*.json"))
+    ]
+
+
+def test_evidence_fixtures_cover_the_named_rules() -> None:
+    """Each rule of 8.9.6 and ADR-064 has a fixture that breaks it."""
+    valid = {p.stem for p in (FIXTURES_DIR / "execution-evidence" / "valid").glob("*.json")}
+    invalid = {p.stem for p in (FIXTURES_DIR / "execution-evidence" / "invalid").glob("*.json")}
+    assert {"committed_plate", "failed_feature_contract", "recovered_after_crash"} <= valid
+    assert {
+        "wrong_schema_version",
+        "unknown_top_level_key",
+        "committed_with_failure_class",
+        "committed_not_verified",
+        "committed_not_published",
+        "not_evaluated_without_reason",
+        "not_evaluated_with_unknown_reason",
+        "not_applicable_without_reason",
+        "passed_with_reason",
+        "blocked_by_on_a_sent_operation",
+        "contract_unknown_level",
+        "contract_check_without_required",
+    } <= invalid
+
+
+@pytest.mark.parametrize("path", _evidence_cases("valid"))
+def test_evidence_valid_accepted(path: Path) -> None:
+    assert _issues(_load(path), EVIDENCE_ID) == []
+
+
+@pytest.mark.parametrize("path", _evidence_cases("invalid"))
+def test_evidence_invalid_rejected(path: Path) -> None:
+    assert _issues(_load(path), EVIDENCE_ID) != []

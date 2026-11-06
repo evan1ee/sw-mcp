@@ -1,6 +1,6 @@
 # 11.10 Drawing Intent IR (P0)
 
-> Specification v1.28, section 11.10. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, section 11.10. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The Drawing Intent IR is optional for tasks in general and required for every drawing task (section 3.3). It says what the drawing specifies: dimensions, tolerances, GD&T, datums and surface finish. Material, process, treatment and part metadata come from the Design Intent IR when one is attached (4.3). Otherwise they come from the part's SOLIDWORKS material and custom properties, overridden by `context` (3.3 rule 4). With PMI output (P2, 11.4), the same Drawing Intent IR is emitted as 3D annotations in the part.
 

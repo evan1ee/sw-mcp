@@ -1,7 +1,11 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using ExecutionServer.Core.Ipc;
+using ExecutionServer.Core.Ipc.Generated;
 using ExecutionServer.Core.Ledger;
+using ExecutionServer.Tests.Support;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
@@ -94,5 +98,139 @@ public sealed class OperationLedgerTests
                 .Select(id => int.Parse(id.Substring(id.IndexOf(':') + 1))).ToList();
             Assert.Equal(mine.OrderBy(x => x).ToList(), mine);
         }
+    }
+
+    [Fact]
+    public void FailureWithEffectApplied_IsRecorded()
+    {
+        var ledger = new OperationLedger();
+        var handler = new ScriptedHandler();
+        handler.OnExecute = (doc, op, ct) =>
+            throw new IpcException(ErrorCodes.BACKEND_REBUILD_ERROR, "rebuild failed", new JObject { ["effect"] = "applied" });
+
+        var applyParams = Rpc.OpsParams("doc.sldprt", "j1:1").ToObject<OpsApplyParams>()!;
+        var result = OpsBatchRunner.Run(applyParams, ledger, handler, CancellationToken.None);
+
+        Assert.Equal(ErrorCodes.BACKEND_REBUILD_ERROR, result.Outcomes[0].Error?.Code);
+        Assert.Empty(ledger.CompletedIds());
+        var failed = ledger.FailedOperations();
+        Assert.Single(failed);
+        Assert.Equal("j1:1", failed[0].OperationId);
+        Assert.Equal(ErrorCodes.BACKEND_REBUILD_ERROR, failed[0].Code);
+        Assert.Equal("applied", failed[0].Effect);
+    }
+
+    [Fact]
+    public void FailureWithEffectUnknown_IsRecorded()
+    {
+        var ledger = new OperationLedger();
+        var handler = new ScriptedHandler();
+        handler.OnExecute = (doc, op, ct) =>
+            throw new IpcException(ErrorCodes.BACKEND_REBUILD_ERROR, "rebuild failed", new JObject { ["effect"] = "unknown" });
+
+        var applyParams = Rpc.OpsParams("doc.sldprt", "j1:1").ToObject<OpsApplyParams>()!;
+        var result = OpsBatchRunner.Run(applyParams, ledger, handler, CancellationToken.None);
+
+        Assert.Empty(ledger.CompletedIds());
+        var failed = ledger.FailedOperations();
+        Assert.Single(failed);
+        Assert.Equal("j1:1", failed[0].OperationId);
+        Assert.Equal("unknown", failed[0].Effect);
+    }
+
+    [Fact]
+    public void FailureWithEffectNone_IsNotRecorded()
+    {
+        var ledger = new OperationLedger();
+        var handler = new ScriptedHandler();
+        handler.OnExecute = (doc, op, ct) =>
+            throw new IpcException(ErrorCodes.AUTH_PATH_DENIED, "denied", new JObject { ["effect"] = "none" });
+
+        var applyParams = Rpc.OpsParams("doc.sldprt", "j1:1").ToObject<OpsApplyParams>()!;
+        OpsBatchRunner.Run(applyParams, ledger, handler, CancellationToken.None);
+
+        Assert.Empty(ledger.CompletedIds());
+        Assert.Empty(ledger.FailedOperations());
+    }
+
+    [Fact]
+    public void FailureWithoutEffect_IsNotRecorded()
+    {
+        var ledger = new OperationLedger();
+        var handler = new ScriptedHandler();
+        // Frozen drawing flow: no details / no effect
+        handler.OnExecute = (doc, op, ct) =>
+            throw new IpcException(ErrorCodes.AUTH_PATH_DENIED, "denied");
+
+        var applyParams = Rpc.OpsParams("doc.sldprt", "j1:1").ToObject<OpsApplyParams>()!;
+        OpsBatchRunner.Run(applyParams, ledger, handler, CancellationToken.None);
+
+        Assert.Empty(ledger.CompletedIds());
+        Assert.Empty(ledger.FailedOperations());
+    }
+
+    [Fact]
+    public void UnexpectedException_IsRecordedAsUnknown()
+    {
+        var ledger = new OperationLedger();
+        var handler = new ScriptedHandler();
+        handler.OnExecute = (doc, op, ct) =>
+            throw new InvalidOperationException("unexpected crash");
+
+        var applyParams = Rpc.OpsParams("doc.sldprt", "j1:1").ToObject<OpsApplyParams>()!;
+        Assert.Throws<InvalidOperationException>(() =>
+            OpsBatchRunner.Run(applyParams, ledger, handler, CancellationToken.None));
+
+        Assert.Empty(ledger.CompletedIds());
+        var failed = ledger.FailedOperations();
+        Assert.Single(failed);
+        Assert.Equal("j1:1", failed[0].OperationId);
+        Assert.Equal("-32603", failed[0].Code);
+        Assert.Equal("unknown", failed[0].Effect);
+    }
+
+    [Fact]
+    public void RepeatOfRecordedFailure_ReturnsDuplicateWithOriginalError_AndDoesNotRun()
+    {
+        var ledger = new OperationLedger();
+        var calls = 0;
+        var handler = new ScriptedHandler();
+        handler.OnExecute = (doc, op, ct) =>
+        {
+            calls++;
+            throw new IpcException(ErrorCodes.BACKEND_REBUILD_ERROR, "rebuild failed", new JObject { ["effect"] = "applied" });
+        };
+
+        var applyParams = Rpc.OpsParams("doc.sldprt", "j1:1").ToObject<OpsApplyParams>()!;
+        OpsBatchRunner.Run(applyParams, ledger, handler, CancellationToken.None);
+        Assert.Equal(1, calls);
+
+        // Run again with the same operation ID
+        var repeatResult = OpsBatchRunner.Run(applyParams, ledger, handler, CancellationToken.None);
+        Assert.Equal(1, calls); // Did not run!
+        Assert.Single(repeatResult.Outcomes);
+        var outcome = repeatResult.Outcomes[0];
+        Assert.Null(outcome.Result);
+        Assert.NotNull(outcome.Error);
+        Assert.Equal(ErrorCodes.DUPLICATE_OPERATION, outcome.Error.Code);
+        Assert.NotNull(outcome.Error.Details);
+        var originalErr = outcome.Error.Details["original_error"];
+        Assert.NotNull(originalErr);
+        Assert.Equal(ErrorCodes.BACKEND_REBUILD_ERROR, originalErr["code"]?.ToString());
+    }
+
+    [Fact]
+    public void RecordedFailure_NotInOperationIds_ListedInFailedOperations()
+    {
+        var ledger = new OperationLedger();
+        ledger.Record("doc.sldprt", "j1:1", new JObject { ["ok"] = true });
+        ledger.RecordFailure("doc.sldprt", "j1:2", ErrorCodes.BACKEND_REBUILD_ERROR, "applied", null);
+
+        Assert.Equal(new[] { "j1:1" }, ledger.CompletedIds());
+        var failed = ledger.FailedOperations();
+        Assert.Single(failed);
+        Assert.Equal("j1:2", failed[0].OperationId);
+        Assert.Equal(ErrorCodes.BACKEND_REBUILD_ERROR, failed[0].Code);
+        Assert.Equal("applied", failed[0].Effect);
     }
 }

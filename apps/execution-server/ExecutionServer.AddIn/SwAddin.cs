@@ -2,19 +2,26 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using ExecutionServer.Adapters.Documents;
+using ExecutionServer.Adapters.Drawings;
+using ExecutionServer.Adapters.Parts;
+using ExecutionServer.AddIn.Events;
+using ExecutionServer.AddIn.Diagnostics;
+using ExecutionServer.AddIn.Dispatch;
+using ExecutionServer.Core.Versions;
 using ExecutionServer.Core.Diagnostics;
 using ExecutionServer.Core.Dispatch;
-using ExecutionServer.AddIn.Events;
-using ExecutionServer.Core.Pipe;
 using ExecutionServer.Core.Ipc;
 using ExecutionServer.Core.Ipc.Generated;
 using ExecutionServer.Core.Ledger;
-using ExecutionServer.Adapters.Drawings;
+using ExecutionServer.Core.Ownership;
+using ExecutionServer.Core.Pipe;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -34,9 +41,12 @@ public class SwAddin : ISwAddin
     private ISldWorks? _swApp;
     private int _addinCookie;
     private NamedPipeServer? _pipeServer;
+    private ControlSynchronizationContext? _syncContext;
     private UIThreadDispatcher? _dispatcher;
     private string? _sessionFilePath;
     private OperationLedger? _ledger;
+    private DocumentOwnershipTable? _ownershipTable;
+    private OperationRouter? _router;
     private SldWorksDocumentEventMonitor? _eventMonitor;
     private SettingsGuard? _settingsGuard;
 
@@ -79,32 +89,57 @@ public class SwAddin : ISwAddin
 
         try
         {
-            try
+            var pid = Process.GetCurrentProcess().Id;
+            var apartmentState = Thread.CurrentThread.GetApartmentState();
+            var threadId = Thread.CurrentThread.ManagedThreadId;
+
+            // ADR-059: Must run on STA UI thread; refuse server startup if not
+            if (apartmentState != ApartmentState.STA)
             {
-                var localAppData = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData);
-                var logDir = Path.Combine(localAppData, "sw-mcp");
-                Directory.CreateDirectory(logDir);
-                File.AppendAllText(Path.Combine(logDir, "addin-load.log"), $"[{DateTime.UtcNow:O}] ConnectToSW started for PID {Process.GetCurrentProcess().Id}\n");
+                LogAddinError("ConnectToSW refused", new InvalidOperationException($"Thread is not STA ({apartmentState})"));
+                return false;
             }
-            catch {}
+
+            SessionProbe.LogSessionDiagnostics(pid, threadId, apartmentState, nameof(ControlSynchronizationContext));
+
             // 0. Recover any crashed settings from previous sessions
             SettingsGuard.RecoverAllCrashFiles(new Diagnostics.SldWorksSettingsTarget(_swApp));
             _settingsGuard = new SettingsGuard(new Diagnostics.SldWorksSettingsTarget(_swApp));
 
-            // 1. Capture UI-thread SynchronizationContext
-            var syncContext = SynchronizationContext.Current;
-            if (syncContext == null)
-            {
-                syncContext = new SynchronizationContext();
-                SynchronizationContext.SetSynchronizationContext(syncContext);
-            }
-            _dispatcher = new UIThreadDispatcher(syncContext);
+            // 1. Capture STA UI-thread ControlSynchronizationContext (spec 8.6.2, ADR-059)
+            _syncContext = new ControlSynchronizationContext();
+            _dispatcher = new UIThreadDispatcher(
+                _syncContext,
+                targetThreadId: _syncContext.UIThreadId,
+                onUnexpected: ex => LogAddinError("Dispatcher unhandled exception", ex));
 
-            // 2. Query SOLIDWORKS version info
-            var revision = _swApp.RevisionNumber() ?? "33.0.0";
-            var (version, sp) = ParseRevision(revision);
-            var isSupported = version == "2025";
-            var unsupportedMessage = isSupported ? string.Empty : $"SOLIDWORKS version {version} ({revision}) is unsupported; sw-mcp requires 2025.";
+            // 2. Query SOLIDWORKS version info & language via SessionProbe (ADR-045, ADR-062)
+            var swVersion = SessionProbe.ProbeVersion(_swApp, out var versionFailure);
+            var uiLanguage = SessionProbe.ProbeUiLanguage(_swApp, out var langFailure);
+
+            bool isSupported = true;
+            string unsupportedMessage = string.Empty;
+            CapabilityTable? table = null;
+
+            if (swVersion == null)
+            {
+                isSupported = false;
+                unsupportedMessage = $"Failed to read SOLIDWORKS version: {versionFailure}";
+            }
+            else if (uiLanguage == null)
+            {
+                isSupported = false;
+                unsupportedMessage = $"Failed to read SOLIDWORKS UI language: {langFailure}";
+            }
+            else
+            {
+                table = CapabilityTable.For(swVersion);
+                if (table.Support == VersionSupport.Unsupported)
+                {
+                    isSupported = false;
+                    unsupportedMessage = $"SOLIDWORKS version {swVersion.Version} ({swVersion.Revision}) is unsupported; sw-mcp requires 2025.";
+                }
+            }
 
             // 3. Generate 32-byte cryptographic session token (base64url)
             var tokenBytes = new byte[32];
@@ -115,8 +150,31 @@ public class SwAddin : ISwAddin
             var token = Convert.ToBase64String(tokenBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
             // 4. Pipe name and HelloResult configuration
-            var pid = Process.GetCurrentProcess().Id;
             var pipeName = NamedPipeServer.GeneratePipeName(pid);
+
+            _ownershipTable = new DocumentOwnershipTable(path =>
+            {
+                try
+                {
+                    return _swApp?.GetOpenDocumentByName(path) != null;
+                }
+                catch
+                {
+                    return false;
+                }
+            });
+            _router = CreateRouter(_swApp, _ownershipTable);
+
+            var warnings = new List<string>();
+            var capabilities = new List<string>();
+            if (table != null)
+            {
+                capabilities.AddRange(table.Names);
+                if (table.Support == VersionSupport.NewerServicePack)
+                {
+                    warnings.Add($"SOLIDWORKS {swVersion!.Version} {swVersion.ServicePack} is newer than the tested service pack.");
+                }
+            }
 
             var helloResult = new HelloResult
             {
@@ -124,58 +182,40 @@ public class SwAddin : ISwAddin
                 AddinVersion = "0.1.0",
                 Solidworks = new SolidWorksInfo
                 {
-                    Version = version,
-                    ServicePack = sp,
-                    UiLanguage = "en-US"
+                    Version = swVersion?.Version ?? "unknown",
+                    ServicePack = swVersion?.ServicePack ?? "unknown",
+                    UiLanguage = uiLanguage ?? "unknown"
                 },
-                Capabilities = new List<string> { "drawing.snapshot", "ops.apply" },
-                Operations = new List<OperationInfo>
-                {
-                    new OperationInfo { Op = "document.open", SchemaVersion = "0.1" },
-                    new OperationInfo { Op = "document.close", SchemaVersion = "0.1" },
-                    new OperationInfo { Op = "sheet_format.generate", SchemaVersion = "0.1" },
-                    new OperationInfo { Op = "drawing.create", SchemaVersion = "0.1" },
-                    new OperationInfo { Op = "view.create", SchemaVersion = "0.1" },
-                    new OperationInfo { Op = "view.update", SchemaVersion = "0.1" },
-                    new OperationInfo { Op = "model_items.insert", SchemaVersion = "0.1" },
-                    new OperationInfo { Op = "dimensions.auto_arrange", SchemaVersion = "0.1" },
-                    new OperationInfo { Op = "center_mark.add", SchemaVersion = "0.1" },
-                    new OperationInfo { Op = "dimension.hide", SchemaVersion = "0.1" },
-                    new OperationInfo { Op = "dimension.show", SchemaVersion = "0.1" },
-                    new OperationInfo { Op = "dimension.move", SchemaVersion = "0.1" },
-                    new OperationInfo { Op = "document.save", SchemaVersion = "0.1" }
-                },
+                Capabilities = capabilities,
+                Operations = _router.Operations.ToList(),
                 LicensedModules = new List<string>(),
-                Warnings = new List<string>()
+                Warnings = warnings
             };
 
             var sessionConfig = new SessionConfig(token, helloResult, isSupported, unsupportedMessage);
             _ledger = new OperationLedger();
 
             // 5a. Start DocumentEventMonitor
-            _eventMonitor = new SldWorksDocumentEventMonitor((method, payload) => _pipeServer?.ActiveSession?.Notify(method, payload));
+            _eventMonitor = new SldWorksDocumentEventMonitor(
+                (method, payload) => _pipeServer?.ActiveSession?.Notify(method, payload),
+                _ownershipTable,
+                _ledger);
             _eventMonitor.Attach(_swApp);
 
-            var handler = new DefaultAddinCommandHandler(_swApp, _eventMonitor, _settingsGuard);
+            var handler = new DefaultAddinCommandHandler(_swApp, _router, _ownershipTable, _eventMonitor, _settingsGuard);
 
             // 5b. Start NamedPipeServer
-            _pipeServer = new NamedPipeServer(pipeName, sessionConfig, _ledger, handler, _dispatcher);
+            _pipeServer = new NamedPipeServer(pipeName, sessionConfig, _ledger, handler, _dispatcher,
+                onUnexpected: ex => LogAddinError("PipeServer unhandled exception", ex));
 
             // 6. Write session file to %LOCALAPPDATA%\sw-mcp\sessions\<pid>.json
-            WriteSessionFile(pid, pipeName, token, version, sp);
+            WriteSessionFile(pid, pipeName, token, swVersion?.Version ?? "unknown", swVersion?.ServicePack ?? "unknown");
 
             return true;
         }
         catch (Exception ex)
         {
-            try
-            {
-                var localAppData = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData);
-                var logDir = Path.Combine(localAppData, "sw-mcp");
-                Directory.CreateDirectory(logDir);
-                File.AppendAllText(Path.Combine(logDir, "addin-load.log"), $"[{DateTime.UtcNow:O}] ConnectToSW error: {ex}\n");
-            }
-            catch {}
+            LogAddinError("ConnectToSW error", ex);
             DisconnectFromSW();
             return false;
         }
@@ -247,23 +287,42 @@ public class SwAddin : ISwAddin
             _dispatcher = null;
         }
 
-        // 3. Release SOLIDWORKS COM proxy per G1
-        if (_swApp != null)
+        if (_syncContext != null)
         {
             try
             {
-                Marshal.ReleaseComObject(_swApp);
+                _syncContext.Dispose();
             }
             catch
             {
             }
-            _swApp = null;
+            _syncContext = null;
         }
+
+        _ownershipTable = null;
+        _router = null;
+
+        // 3. Retain wrapper per ADR-059 and G1 (never release ISldWorks)
+        _swApp = null;
 
         GC.Collect();
         GC.WaitForPendingFinalizers();
 
         return true;
+    }
+
+    private static void LogAddinError(string context, Exception ex)
+    {
+        try
+        {
+            var localAppData = System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData);
+            var logDir = Path.Combine(localAppData, "sw-mcp");
+            Directory.CreateDirectory(logDir);
+            File.AppendAllText(Path.Combine(logDir, "addin-load.log"), $"[{DateTime.UtcNow:O}] {context}: {ex}\n");
+        }
+        catch
+        {
+        }
     }
 
     private void WriteSessionFile(int pid, string pipeName, string token, string version, string sp)
@@ -289,30 +348,6 @@ public class SwAddin : ISwAddin
         };
 
         File.WriteAllText(_sessionFilePath, sessionObj.ToString(Formatting.Indented), new UTF8Encoding(false));
-    }
-
-    private static (string version, string sp) ParseRevision(string revision)
-    {
-        // SOLIDWORKS 2025 is internal version 33.x
-        // format usually "33.0.0" (SP0) or "33.3.0" (SP3.0)
-        var parts = revision.Split('.');
-        string version = "2025";
-        string sp = "SP0.0";
-
-        if (parts.Length > 0 && int.TryParse(parts[0], out var major))
-        {
-            if (major == 33) version = "2025";
-            else if (major == 32) version = "2024";
-            else if (major == 34) version = "2026";
-            else version = (1992 + major).ToString();
-        }
-
-        if (parts.Length > 1 && int.TryParse(parts[1], out var spNum))
-        {
-            sp = $"SP{spNum}.0";
-        }
-
-        return (version, sp);
     }
 
     [ComRegisterFunction]
@@ -350,22 +385,209 @@ public class SwAddin : ISwAddin
         }
     }
 
+    private static OperationRouter CreateRouter(ISldWorks sw, DocumentOwnershipTable ownership)
+    {
+        var router = new OperationRouter();
+        var docOps = new DocumentOps(sw, ownership);
+
+        router.Register("document.open", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<DocumentOpenParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for document.open");
+            var res = docOps.Open(doc, p!, ExtractJobId(op), ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("document.close", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<DocumentCloseParams>()
+                : new DocumentCloseParams();
+            var res = docOps.Close(doc, p ?? new DocumentCloseParams(), ExtractJobId(op), ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("sheet_format.generate", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<SheetFormatGenerateParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for sheet_format.generate");
+            var res = new SheetFormatGenerator(sw).Generate(p!, ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("drawing.create", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<DrawingCreateParams>()
+                : new DrawingCreateParams();
+            var res = new DrawingCreationAdapter(sw).CreateDrawing(p ?? new DrawingCreateParams(), ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("view.create", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<ViewCreateParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for view.create");
+            var res = new ViewCreationAdapter(sw).CreateView(p!, ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("view.update", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<ViewUpdateParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for view.update");
+            var res = new ViewCreationAdapter(sw).UpdateView(p!, ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("model_items.insert", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<ModelItemsInsertParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for model_items.insert");
+            var res = new AnnotationPlacementAdapter(sw).InsertModelItems(p!, ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("dimensions.auto_arrange", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<DimensionsAutoArrangeParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for dimensions.auto_arrange");
+            var res = new AnnotationPlacementAdapter(sw).AutoArrangeDimensions(p!, ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("center_mark.add", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<CenterMarkAddParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for center_mark.add");
+            var res = new AnnotationPlacementAdapter(sw).AutoInsertCenterMarks(p!, ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("dimension.hide", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<DimensionHideParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for dimension.hide");
+            var res = new AnnotationPlacementAdapter(sw).HideDimension(p!, ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("dimension.show", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<DimensionShowParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for dimension.show");
+            var res = new AnnotationPlacementAdapter(sw).ShowDimension(p!, ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("dimension.move", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<DimensionMoveParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for dimension.move");
+            var res = new AnnotationPlacementAdapter(sw).MoveDimension(p!, ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("document.save", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<DocumentSaveParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for document.save");
+            var res = docOps.Save(doc, p!, ExtractJobId(op), ct);
+            return JObject.FromObject(res);
+        });
+
+        var partCreation = new PartCreationAdapter(sw, ownership);
+        var sketchAdapter = new SketchAdapter(sw);
+        var featureAdapter = new FeatureAdapter(sw);
+
+        router.Register("part.create", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<PartCreateParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for part.create");
+            var res = partCreation.CreatePart(doc, p!, ExtractJobId(op), ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("sketch.create", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<SketchCreateParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for sketch.create");
+            var res = sketchAdapter.CreateSketch(doc, p!, ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("feature.create", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<FeatureCreateParams>()
+                : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for feature.create");
+            var res = featureAdapter.CreateFeature(doc, p!, ct);
+            return JObject.FromObject(res);
+        });
+
+        router.Register("document.rebuild", (doc, op, ct) =>
+        {
+            var p = op.Params is JObject pObj
+                ? pObj.ToObject<DocumentRebuildParams>()
+                : new DocumentRebuildParams();
+            var res = featureAdapter.Rebuild(doc, p ?? new DocumentRebuildParams(), ct);
+            return JObject.FromObject(res);
+        });
+
+        return router;
+    }
+
+    private static string? ExtractJobId(Operation op)
+    {
+        if (op == null) return null;
+        if (op.Params is JObject pObj && pObj["_meta"]?["job_id"] is JValue jv)
+        {
+            var id = jv.Value<string>();
+            if (!string.IsNullOrEmpty(id)) return id;
+        }
+        if (!string.IsNullOrEmpty(op.OperationId))
+        {
+            var colonIdx = op.OperationId.IndexOf(':');
+            return colonIdx > 0 ? op.OperationId.Substring(0, colonIdx) : op.OperationId;
+        }
+        return null;
+    }
+
     private sealed class DefaultAddinCommandHandler : ICommandHandler
     {
         private readonly ISldWorks _sw;
+        private readonly OperationRouter _router;
         private readonly ExecutionServer.Core.Events.DocumentEventMonitor? _eventMonitor;
         private readonly SettingsGuard? _settingsGuard;
-        private readonly Adapters.Drawings.DrawingSnapshotAdapter _snapshotAdapter;
+        private readonly DrawingSnapshotAdapter _snapshotAdapter;
+        private readonly PartMeasureAdapter _partMeasureAdapter;
 
         public DefaultAddinCommandHandler(
             ISldWorks sw,
+            OperationRouter router,
+            DocumentOwnershipTable? ownershipTable = null,
             ExecutionServer.Core.Events.DocumentEventMonitor? eventMonitor = null,
             SettingsGuard? settingsGuard = null)
         {
-            _sw = sw;
+            _sw = sw ?? throw new ArgumentNullException(nameof(sw));
+            _router = router ?? throw new ArgumentNullException(nameof(router));
             _eventMonitor = eventMonitor;
             _settingsGuard = settingsGuard;
-            _snapshotAdapter = new Adapters.Drawings.DrawingSnapshotAdapter(sw);
+            _snapshotAdapter = new DrawingSnapshotAdapter(sw);
+            _partMeasureAdapter = new PartMeasureAdapter(sw, ownershipTable);
         }
 
         public JToken Snapshot(SnapshotParams p, CancellationToken ct)
@@ -388,160 +610,36 @@ public class SwAddin : ISwAddin
             }
         }
 
+        public JToken MeasurePart(PartMeasureParams p, CancellationToken ct)
+        {
+            if (_eventMonitor != null)
+            {
+                _eventMonitor.CurrentJobId = p.Meta?.JobId;
+            }
+            try
+            {
+                var res = _partMeasureAdapter.Measure(p, ct);
+                return JObject.FromObject(res);
+            }
+            finally
+            {
+                if (_eventMonitor != null)
+                {
+                    _eventMonitor.CurrentJobId = null;
+                }
+                _settingsGuard?.RestoreAll();
+            }
+        }
+
         public JToken Execute(string document, Operation op, CancellationToken ct)
         {
             if (_eventMonitor != null)
             {
-                string? jobId = null;
-                if (op.Params is JObject pObj && pObj["_meta"]?["job_id"] is JValue jv)
-                {
-                    jobId = jv.Value<string>();
-                }
-                if (string.IsNullOrEmpty(jobId) && !string.IsNullOrEmpty(op.OperationId))
-                {
-                    var colonIdx = op.OperationId.IndexOf(':');
-                    jobId = colonIdx > 0 ? op.OperationId.Substring(0, colonIdx) : op.OperationId;
-                }
-                _eventMonitor.CurrentJobId = jobId;
+                _eventMonitor.CurrentJobId = ExtractJobId(op);
             }
             try
             {
-                if (op.Op == "document.open")
-                {
-                    int errors = 0;
-                    int warnings = 0;
-                    var docType = (int)SolidWorks.Interop.swconst.swDocumentTypes_e.swDocDRAWING;
-                    if (document.EndsWith(".sldprt", StringComparison.OrdinalIgnoreCase))
-                    {
-                        docType = (int)SolidWorks.Interop.swconst.swDocumentTypes_e.swDocPART;
-                    }
-                    else if (document.EndsWith(".sldasm", StringComparison.OrdinalIgnoreCase))
-                    {
-                        docType = (int)SolidWorks.Interop.swconst.swDocumentTypes_e.swDocASSEMBLY;
-                    }
-
-                    var modelDoc = _sw.OpenDoc6(
-                        document,
-                        docType,
-                        (int)SolidWorks.Interop.swconst.swOpenDocOptions_e.swOpenDocOptions_Silent,
-                        "",
-                        ref errors,
-                        ref warnings);
-                    if (modelDoc == null)
-                    {
-                        throw new IpcException(ErrorCodes.FILE_NOT_FOUND, $"Failed to open document '{document}', errors: {errors}");
-                    }
-                    Marshal.ReleaseComObject(modelDoc);
-                    return new JObject { ["owned"] = true };
-                }
-
-                if (op.Op == "document.close")
-                {
-                    var title = Path.GetFileName(document);
-                    _sw.CloseDoc(title);
-                    return new JObject { ["closed"] = true };
-                }
-
-                if (op.Op == "sheet_format.generate")
-                {
-                    var p = op.Params is JObject pObj
-                        ? pObj.ToObject<SheetFormatGenerateParams>()
-                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for sheet_format.generate");
-                    var res = new SheetFormatGenerator(_sw).Generate(p!, ct);
-                    return JObject.FromObject(res);
-                }
-
-                if (op.Op == "drawing.create")
-                {
-                    var p = op.Params is JObject pObj
-                        ? pObj.ToObject<DrawingCreateParams>()
-                        : new DrawingCreateParams();
-                    var res = new DrawingCreationAdapter(_sw).CreateDrawing(p ?? new DrawingCreateParams(), ct);
-                    return JObject.FromObject(res);
-                }
-
-                if (op.Op == "view.create")
-                {
-                    var p = op.Params is JObject pObj
-                        ? pObj.ToObject<ViewCreateParams>()
-                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for view.create");
-                    var res = new Adapters.Drawings.ViewCreationAdapter(_sw).CreateView(p!, ct);
-                    return JObject.FromObject(res);
-                }
-
-                if (op.Op == "view.update")
-                {
-                    var p = op.Params is JObject pObj
-                        ? pObj.ToObject<ViewUpdateParams>()
-                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for view.update");
-                    var res = new Adapters.Drawings.ViewCreationAdapter(_sw).UpdateView(p!, ct);
-                    return JObject.FromObject(res);
-                }
-
-                if (op.Op == "model_items.insert")
-                {
-                    var p = op.Params is JObject pObj
-                        ? pObj.ToObject<ModelItemsInsertParams>()
-                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for model_items.insert");
-                    var res = new Adapters.Drawings.AnnotationPlacementAdapter(_sw).InsertModelItems(p!, ct);
-                    return JObject.FromObject(res);
-                }
-
-                if (op.Op == "dimensions.auto_arrange")
-                {
-                    var p = op.Params is JObject pObj
-                        ? pObj.ToObject<DimensionsAutoArrangeParams>()
-                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for dimensions.auto_arrange");
-                    var res = new Adapters.Drawings.AnnotationPlacementAdapter(_sw).AutoArrangeDimensions(p!, ct);
-                    return JObject.FromObject(res);
-                }
-
-                if (op.Op == "center_mark.add")
-                {
-                    var p = op.Params is JObject pObj
-                        ? pObj.ToObject<CenterMarkAddParams>()
-                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for center_mark.add");
-                    var res = new Adapters.Drawings.AnnotationPlacementAdapter(_sw).AutoInsertCenterMarks(p!, ct);
-                    return JObject.FromObject(res);
-                }
-
-                if (op.Op == "dimension.hide")
-                {
-                    var p = op.Params is JObject pObj
-                        ? pObj.ToObject<DimensionHideParams>()
-                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for dimension.hide");
-                    var res = new Adapters.Drawings.AnnotationPlacementAdapter(_sw).HideDimension(p!, ct);
-                    return JObject.FromObject(res);
-                }
-
-                if (op.Op == "dimension.show")
-                {
-                    var p = op.Params is JObject pObj
-                        ? pObj.ToObject<DimensionShowParams>()
-                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for dimension.show");
-                    var res = new Adapters.Drawings.AnnotationPlacementAdapter(_sw).ShowDimension(p!, ct);
-                    return JObject.FromObject(res);
-                }
-
-                if (op.Op == "dimension.move")
-                {
-                    var p = op.Params is JObject pObj
-                        ? pObj.ToObject<DimensionMoveParams>()
-                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for dimension.move");
-                    var res = new Adapters.Drawings.AnnotationPlacementAdapter(_sw).MoveDimension(p!, ct);
-                    return JObject.FromObject(res);
-                }
-
-                if (op.Op == "document.save")
-                {
-                    var p = op.Params is JObject pObj
-                        ? pObj.ToObject<DocumentSaveParams>()
-                        : throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Invalid params for document.save");
-                    var res = new DrawingCreationAdapter(_sw).SaveDocument(p!, ct);
-                    return JObject.FromObject(res);
-                }
-
-                return new JObject { ["op"] = op.Op, ["operation_id"] = op.OperationId, ["status"] = "applied" };
+                return _router.Route(document, op, ct);
             }
             finally
             {

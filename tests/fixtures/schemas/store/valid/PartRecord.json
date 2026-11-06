@@ -1,0 +1,11 @@
+[
+  {
+    "part_key": "fp-abababababababab",
+    "path": "C:\\w\\a.SLDPRT",
+    "fingerprint": "sha256:abababababababababababababababababababababababababababababababab",
+    "produced": true,
+    "graph": "part:bracket@1",
+    "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+    "updated_at": "2026-11-04T09:30:15.123Z"
+  }
+]

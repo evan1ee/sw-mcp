@@ -5,17 +5,107 @@ annotation derivation is the one function of 12.4.1, tested on every contract fi
 """
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Final
+from typing import Final, cast
+from urllib.parse import urljoin
 
 from cad_ir.core.json_types import JsonValue
 from cad_ir.generated.schemas import SCHEMAS
 
 MCP_PREFIX: Final = "https://sw-mcp.invalid/schemas/mcp/"
+_COMMON_ID: Final = "https://sw-mcp.invalid/schemas/common/v0.json"
 _META_PREFIX: Final = MCP_PREFIX + "contract/"
 _DESTRUCTIVE: Final = frozenset({"delete_feature", "close_cad_file"})
 _IDEMPOTENT_KINDS: Final = frozenset({"store", "cad-read"})
+# Document-level keywords that must not survive inlining: a client rejects two schemas with one $id.
+_DOCUMENT_KEYS: Final = frozenset({"$id", "$schema", "$defs"})
+
+
+def _resolve_refs(node: JsonValue, base_uri: str) -> JsonValue:
+    if isinstance(node, dict):
+        ref = node.get("$ref")
+        if isinstance(ref, str):
+            full = urljoin(base_uri, ref)
+            doc_uri, _, frag = full.partition("#")
+            target_doc = SCHEMAS.get(doc_uri)
+            if isinstance(target_doc, dict):
+                target: JsonValue = target_doc
+                if frag:
+                    for part in frag.lstrip("/").split("/"):
+                        if isinstance(target, dict):
+                            target = target.get(part)
+                if isinstance(target, dict):
+                    merged: dict[str, JsonValue] = {
+                        key: value for key, value in target.items() if key not in _DOCUMENT_KEYS
+                    }
+                    for key, value in node.items():
+                        if key != "$ref":
+                            merged[key] = value
+                    return _resolve_refs(merged, doc_uri)
+        return {key: _resolve_refs(value, base_uri) for key, value in node.items()}
+    if isinstance(node, list):
+        return [_resolve_refs(item, base_uri) for item in node]
+    return node
+
+
+def _envelope_output_schema(
+    output_node: Mapping[str, JsonValue],
+    schema_id: str,
+    errors: tuple[str, ...],
+) -> dict[str, JsonValue]:
+    resolved_output = cast("dict[str, JsonValue]", _resolve_refs(dict(output_node), schema_id))
+    common_doc = SCHEMAS.get(_COMMON_ID)
+    assert isinstance(common_doc, dict)
+    defs = common_doc.get("$defs")
+    assert isinstance(defs, dict)
+    envelope_def = defs.get("Envelope")
+    assert isinstance(envelope_def, dict)
+    env_props = envelope_def.get("properties")
+    assert isinstance(env_props, dict)
+    ids_schema = _resolve_refs(env_props.get("ids"), _COMMON_ID)
+    code_schema: dict[str, JsonValue] = (
+        {"type": "string", "enum": list(errors)} if errors else {"type": "string"}
+    )
+    error_schema: dict[str, JsonValue] = {
+        "type": "object",
+        "required": ["code", "message", "retryable"],
+        "additionalProperties": False,
+        "properties": {
+            "code": code_schema,
+            "message": {"type": "string"},
+            "retryable": {"enum": ["never", "after_fix", "safe"]},
+            "details": {"type": "object"},
+        },
+    }
+    return {
+        "type": "object",
+        "required": ["ok", "data", "error", "ids"],
+        "additionalProperties": False,
+        "properties": {
+            "ok": {"type": "boolean"},
+            "data": {"anyOf": [resolved_output, {"type": "null"}]},
+            "error": {"anyOf": [error_schema, {"type": "null"}]},
+            "ids": ids_schema,
+        },
+        "if": {"properties": {"ok": {"const": True}}},
+        "then": {
+            "properties": {
+                "data": resolved_output,
+                "error": {"type": "null"},
+            }
+        },
+        "else": {
+            "properties": {
+                "data": {"type": "null"},
+                "error": error_schema,
+            }
+        },
+    }
+
+
+def _empty_schema() -> dict[str, JsonValue]:
+    return {}
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +127,8 @@ class ToolContract:
     examples: tuple[Example, ...]
     deprecated: bool = False
     replacement: str | None = None
+    input_schema: dict[str, JsonValue] = field(default_factory=_empty_schema)
+    output_schema: dict[str, JsonValue] = field(default_factory=_empty_schema)
 
     @property
     def input_ref(self) -> str:
@@ -55,21 +147,46 @@ class ToolContract:
             "openWorldHint": False,
         }
 
+    def tool_definition(self) -> dict[str, JsonValue]:
+        """Full MCP tool definition for ``tools/list`` (12.3, 12.4.1)."""
+        return {
+            "name": self.name,
+            "description": self.description,
+            "inputSchema": self.input_schema,
+            "outputSchema": self.output_schema,
+            "annotations": dict(self.annotations()),
+        }
+
     @staticmethod
     def from_json(doc: Mapping[str, JsonValue]) -> "ToolContract":
         """A contract from its JSON; the file is checked against the meta-schema elsewhere."""
+        schema_id = _text(doc, "$id")
+        errors = tuple(str(code) for code in _items(doc, "errors"))
+        raw_input = doc.get("input")
+        raw_output = doc.get("output")
+        input_schema = cast(
+            "dict[str, JsonValue]",
+            _resolve_refs(
+                dict(raw_input) if isinstance(raw_input, dict) else {"type": "object"}, schema_id
+            ),
+        )
+        output_node: dict[str, JsonValue] = (
+            dict(raw_output) if isinstance(raw_output, dict) else {"type": "object"}
+        )
         return ToolContract(
-            schema_id=_text(doc, "$id"),
+            schema_id=schema_id,
             name=_text(doc, "name"),
             description=_text(doc, "description"),
             toolset=_text(doc, "toolset"),
             phase=_text(doc, "phase"),
             kind=_text(doc, "kind"),
             mutates=doc.get("mutates") is True,
-            errors=tuple(str(code) for code in _items(doc, "errors")),
+            errors=errors,
             examples=tuple(_example(item) for item in _items(doc, "examples")),
             deprecated=doc.get("deprecated") is True,
             replacement=_optional_text(doc, "replacement"),
+            input_schema=input_schema,
+            output_schema=_envelope_output_schema(output_node, schema_id, errors),
         )
 
 

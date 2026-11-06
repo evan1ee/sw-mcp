@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/part-feature-graph/features/extrude.json",
+  "title": "Extrude Feature Node (spec 5.7)",
+  "type": "object",
+  "required": [
+    "type",
+    "profile",
+    "end_condition"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "const": "extrude"
+    },
+    "profile": {
+      "$ref": "../../common/v0.json#/$defs/ItemId"
+    },
+    "end_condition": {
+      "$ref": "../v0.json#/$defs/EndConditionBlind"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "realizes": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    }
+  },
+  "examples": [
+    {
+      "type": "extrude",
+      "dependencies": [
+        "sketch_base"
+      ],
+      "profile": "sketch_base",
+      "end_condition": {
+        "type": "blind",
+        "depth": 10
+      }
+    }
+  ]
+}

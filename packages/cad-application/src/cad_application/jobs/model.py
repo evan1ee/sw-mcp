@@ -19,6 +19,16 @@ class CheckDrawingSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class PlanSpec:
+    """What a ``plan`` job asks for (spec 8.4)."""
+
+    authorized: Authorized
+    target_path: str
+    ref: str
+    template: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class JobView:
     """An immutable copy of a job's state; nothing outside the engine sees mutable state."""
 
@@ -76,24 +86,48 @@ class JobStop(Exception):  # noqa: N818 - control flow that ends a job, not an e
 
 
 def new_job_record(
-    job_id: str, request_id: str, spec: CheckDrawingSpec, created_at: str
+    job_id: str, request_id: str, spec: CheckDrawingSpec | PlanSpec, created_at: str
 ) -> JobRecord:
-    """The PLANNED record of a ``check_drawing`` job (13.2.1)."""
-    arguments: dict[str, JsonValue] = {"path": spec.authorized.path}
-    if spec.sheets is not None:
-        arguments["sheets"] = list(spec.sheets)
+    """The PLANNED record of a job (13.2.1)."""
+    if isinstance(spec, CheckDrawingSpec):
+        arguments: dict[str, JsonValue] = {"path": spec.authorized.path}
+        if spec.sheets is not None:
+            arguments["sheets"] = list(spec.sheets)
+        return JobRecord(
+            job_id=job_id,
+            job_type="check_drawing",
+            state="PLANNED",
+            created_at=created_at,
+            started_at=None,
+            ended_at=None,
+            request_id=request_id,
+            arguments=arguments,
+            project_root=spec.authorized.project_root,
+            drawing_id=None,
+            fingerprint=spec.fingerprint,
+            progress=None,
+            snapshot_id=None,
+            report_id=None,
+            error=None,
+            warnings=(),
+            documents=(),
+            next_op_seq=1,
+        )
+    args: dict[str, JsonValue] = {"target_path": spec.target_path, "ref": spec.ref}
+    if spec.template is not None:
+        args["template"] = spec.template
     return JobRecord(
         job_id=job_id,
-        job_type="check_drawing",
+        job_type="plan",
         state="PLANNED",
         created_at=created_at,
         started_at=None,
         ended_at=None,
         request_id=request_id,
-        arguments=arguments,
+        arguments=args,
         project_root=spec.authorized.project_root,
         drawing_id=None,
-        fingerprint=spec.fingerprint,
+        fingerprint=None,
         progress=None,
         snapshot_id=None,
         report_id=None,

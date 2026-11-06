@@ -1,6 +1,6 @@
 # 6.5 Backend Operations and Execution Plans, 6.6 Capability Profile
 
-> Specification v1.28, sections 6.5–6.6. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, sections 6.5–6.6. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The compiler (section 6) and the drawing pipeline (11.4) change SOLIDWORKS only through **backend operations**, sent in `ops.apply` batches over the add-in pipe (ADR-036). This vocabulary is the contract between the Python side and the C# adapters.
 
@@ -34,7 +34,7 @@ Operation groups and the increment that needs them. Each group's schemas are wri
 
 | Group | Operations | Needed by |
 | --- | --- | --- |
-| Document | `document.open` (path, read-only, fully resolved, configuration), `document.activate`, `document.save` (only drawings and exports, ADR-046), `document.close`, `document.rebuild` | 1a (open, close), 1b (rest) |
+| Document | `document.open` (path, read-only, fully resolved, configuration), `document.activate`, `document.save` (drawings and exports, and a part the job itself created, ADR-046), `document.close`, `document.rebuild` | 1a (open, close), 1b (rest) |
 | Read-back | Not operations: the `drawing.snapshot` and `features.read` commands (ADR-036) and `geometry.candidates` (ADR-049) | 1a, 1b |
 | Drawing structure | `drawing.create` (template, sheet format, size), `sheet.add`, `sheet.update`, `view.create` (type, parent, orientation, configuration, scale, position, modifiers, 11.11), `view.update`, `view.delete` | 1b |
 | Dimensions | `model_items.insert` (view, source `model` or `dimxpert`, eliminate duplicates), `dimension.hide`, `dimension.show`, `dimension.add_reference` (view, measured entities, kind, text position), `dimension.set_tolerance`, `dimension.set_parentheses`, `dimension.move` (text position, side, offset) | 1b |
@@ -42,9 +42,25 @@ Operation groups and the increment that needs them. Each group's schemas are wri
 | Drawing data | `drawing_property.set` (title-block values written to the drawing, 11.1), `drawing.link_store` (the drawing ID property, 13.1) | 1b |
 | Export | `export.pdf`, `export.dxf` (to a temporary path; the core renames, ADR-046) | 1b |
 | Sheet format | `sheet_format.generate` (template `DrawingTemplate`, destination path) | 1b (ADR-055, K7 closed) |
-| Part model | `sketch.create` (plane, entities, relations, dimensions, 5.7), `feature.create` (type, lowered parameters, pinned references), `feature.update`, `feature.suppress`, `feature.delete`, `body.delete`, `material.set` | 1c (create subset, ADR-029), 2 (rest) |
+| Part model | `part.create` (template, working file), `sketch.create` (plane, entities, relations, dimensions, 5.7), `feature.create` (type, lowered parameters, pinned references), `feature.update`, `feature.suppress`, `feature.delete`, `body.delete`, `material.set` | 1c (create subset, ADR-029; the MVP subset below), 2 (rest) |
 | Part data | `custom_property.set`, `marked_for_drawing.set` — only with the explicit permission of ADR-022 | 1b, behind the permission option |
-| Undo | `undo.begin`, `undo.end`, `undo.rollback` (8.5) | 1c |
+| Undo | `undo.begin`, `undo.end`, `undo.rollback` (8.5) | P2 (8.5). Part jobs use the working-file rule instead (8.4.1, ADR-046) |
+
+**Part chain MVP subset [Builder's call].** The first part operations, specified by the [MVP design](../superpowers/specs/2026-11-05-part-chain-mvp-design.md) section 7. Their schemas are `schemas/ipc/ops/part.create.json`, `sketch.create.json` and `feature.create.json`.
+
+| Operation | `params` | `result` |
+| --- | --- | --- |
+| `part.create` | `template`: the full path of a `.prtdot` (see below). The batch's `document` is the working file path, which must not exist | `native_id`, `path`, `instance_id`, `previous_active`, `template` (`path`, `sha256`) |
+| `sketch.create` | `node_id`, `plane` (`plane:front`, `plane:top` or `plane:right`), `entities` (`line`: `start`, `end`; `circle`: `center`, `diameter`; lengths in millimetres, 2D sketch coordinates, 5.7.4) | `native_id`, `feature_id`, `entity_count` |
+| `feature.create` | `node_id`, `type` (`extrude` or `cut_extrude`), `profile` (the `feature_id` of the sketch), `end_condition` (`blind` with `depth`, or `through_all_both` for a cut) | `native_id`, `feature_id`, `status` |
+
+- **Standard planes are role references.** `plane:front`, `plane:top` and `plane:right` name roles, not pinned persistent IDs. This is a stated exception to 6.5.1's rule that geometry is given only as pinned IDs. The add-in maps each role to the native plane by order and checks its normal (5.7.4).
+- **Profile.** `feature.create`'s `profile` is the sketch's `feature_id`, `f<IFeature.GetID()>` (5.3.6). The job binds it (6.5.3).
+- **The document is addressed by its full path only.** `GetOpenDocumentByName` finds a document by full path and returns null for a title or an unsaved document.
+- **Template.** `part.create` never uses SOLIDWORKS's own default-template preference, which can name a file that does not exist (`~BLANK_PART_TEMPLATE.prtdot`). The caller gives `template`; the core fills it from the configuration key `part.template` (13.3) when the caller names none, and fails with a catalogued error naming that setting when neither exists (8.4). The add-in fails with `FILE_NOT_FOUND` and `details.setting: part.template` when the file is missing. There is no fallback to an installed template. The template is only read.
+- **Existing files.** `part.create` and `document.save` refuse a path where a file already exists, with `AUTH_SOURCE_WRITE_NOT_ALLOWED`. `SaveAs4` with the silent option overwrites without warning, so the add-in must not rely on it to refuse.
+- **Failure.** A feature call that returns null fails with `BACKEND_REBUILD_ERROR`. The add-in's translator sets `Dir=true` for a blind cut (5.7.4). Neither the plan nor the wire carries a direction (8.9.3 rule 4, ADR-064).
+- **Ownership.** The add-in records the working part as owned by the requesting job, and refuses `document.save` and `document.close` on a `.SLDPRT` the requesting job does not own (ADR-046).
 
 ## 6.5.3 Execution Plan
 
@@ -57,10 +73,11 @@ The compiler's output for a bundle (6.2). Stored under `derived/plans/` (13.2) a
 | `provenance` | Compiler version, capability-profile hash (6.6), part fingerprints, recorded geometry candidates (ADR-049) |
 | `defaults` | Every default the compiler filled, by node and parameter (5.7) |
 | `operations` | Keyed by plan-local ID (ADR-048). Each has `sequence` (integer, the execution order), `document`, `op`, `params`, `source` (the IR item it implements), `depends_on` (plan-local IDs) and `postconditions` |
-| `verification_points` | Plan-local IDs after which API verification runs (10.2 layer 1) |
+| `verification_points` | Plan-local IDs where the optional T2 checks may run (10.2.2). Every operation is judged, whether or not it is listed here |
 
-- **Postconditions** are checks the add-in or core runs after an operation: `feature_exists`, `feature_status_ok`, `rebuild_ok`, `entity_count`, `parameter_equals` (within the 3.4.3 quantum). A failed postcondition fails the operation.
-- **Batches.** The core sends the operations in `sequence` order, cutting a batch at every verification point and after at most 100 operations. Each batch is journalled before it is sent (13.2.3).
+- **Postconditions** name the checks that apply to an operation: `feature_exists`, `feature_status_ok`, `rebuild_ok`, `entity_count`, `parameter_equals` (within the 3.4.3 quantum). The plan holds names only, never expected values. Those come from the contract that `cad-verification` derives from the graph, and the core judges them from the operation's observation (10.2.2, ADR-064). A failed required check ends the job.
+- **Batches.** The core sends the operations in `sequence` order, cutting a batch at every verification point and after at most 100 operations. Each batch is journalled before it is sent (13.2.3). A `plan` job sends each operation as its own batch **[Builder's call]**, so an earlier result is always available to bind a later operation.
+- **Symbols [Builder's call].** A plan must be byte-identical for the same input, but a working file path and SOLIDWORKS feature IDs exist only at run time. So a plan holds symbols and the job binds them when it sends an operation: an operation's `document` of `$working` becomes the working file path, and a `profile` that is a sketch's node ID becomes the `feature_id` returned for that node. The job keeps the node ID to `feature_id` map in its `part_result` (12.4.5). `template` is absent from the plan and filled in by the job (6.5.2).
 - **Operation IDs.** A plan's IDs are plan-local, so one plan can be executed by several jobs. At execution, the job turns each into `<job_id>:<sequence>`.
 - **The drawing pipeline does not compile a plan up front.** Each pipeline step (11.4) emits batches of the same operations, journalled the same way, and its report records them.
 

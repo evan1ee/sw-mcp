@@ -22,8 +22,23 @@ Run on 2026-11-05. `apps/`, `packages/`, `schemas/`, `tests/` and `scripts/` had
 
 **Not re-run at the freeze:**
 
-- **Live suite:** `HANDOFF.md` records an earlier pass (5 passed, 1 skipped) against SOLIDWORKS 2025 SP0.1.
+- **Live suite:** `HANDOFF.md` records an earlier pass (5 passed, 1 skipped) against SOLIDWORKS 2025 SP0.1. Re-run afterwards: see the baseline below.
 - **`dotnet build` of the solution:** the running SOLIDWORKS locks the add-in DLLs.
+
+## Live baseline (part chain Task 0)
+
+Run on 2026-11-05 with `uv run pytest tests/live/ -m live -v`, at commit `a324757` (no differences to `apps/`, `packages/`, `schemas/`, `tests/`, `scripts/` since `eea9389`). The add-in in use was the build of 2026-11-05 08:20 (`sw-mcp.AddIn.dll`, `bin/x64/Debug/net48`); it was not rebuilt for this run. The running SLDWORKS.exe reports file version 33.0.0.5050 (SOLIDWORKS 2025).
+
+Result: **5 passed, 1 skipped in 35.41s**, matching the earlier record.
+
+| Test | Result |
+| --- | --- |
+| `test_live_annotation_pipeline::test_live_annotation_and_dimension_pipeline` | Passed |
+| `test_live_sheet_format::test_live_sheet_format_generate_and_drawing_create` | Passed |
+| `test_live_smoke::test_live_session_discovery` | Passed |
+| `test_live_smoke::test_live_session_handshake` | Passed |
+| `test_live_smoke::test_live_drawing_snapshot` | Skipped (needs an external file) |
+| `test_live_view_pipeline::test_live_view_planning_and_creation_pipeline` | Passed |
 
 ## What is frozen
 

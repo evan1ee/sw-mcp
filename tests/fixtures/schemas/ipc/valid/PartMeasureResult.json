@@ -1,0 +1,35 @@
+[
+  {
+    "path": "C:\\parts\\plate.SLDPRT",
+    "instance_id": "inst-1",
+    "solid_body_count": 1,
+    "bbox_m": {
+      "min": [-0.05, -0.03, 0.0],
+      "max": [0.05, 0.03, 0.01]
+    },
+    "volume_m3": 5.798938e-05,
+    "surface_area_m2": 0.015803,
+    "center_of_mass_m": [0.0, 0.0, 0.005],
+    "cylinders_m": [
+      {
+        "point": [-0.04, -0.02, 0.0],
+        "direction": [0.0, 0.0, 1.0],
+        "radius": 0.004
+      }
+    ],
+    "rebuild": {
+      "ok": true,
+      "errors": []
+    },
+    "features": [
+      {
+        "feature_id": "f73",
+        "native_id": 73,
+        "type": "ProfileFeature",
+        "status": "ok"
+      }
+    ],
+    "dirty": false,
+    "read_only": false
+  }
+]

@@ -5,24 +5,32 @@ thread. Waiting goes through the ``Clock`` port, so long-polls run without real 
 The lock is never held across a ``Backend`` call.
 """
 
+import hashlib
+import ntpath
 import threading
+import traceback
 from collections import deque
 from collections.abc import Callable, Mapping
+from typing import Any
 
 from cad_drawing.checks import TitleBlockMapping
 from cad_ir.generated.error_codes import ErrorCode
 from cad_ir.generated.ipc import Meta
 
 from cad_application.config.settings import Settings
-from cad_application.jobs.check_drawing import RunContext, run
+from cad_application.jobs.check_drawing import RunContext as DrawingRunContext
+from cad_application.jobs.check_drawing import run as run_drawing
 from cad_application.jobs.handle import JobEntry, JobHandle
 from cad_application.jobs.model import (
     CheckDrawingSpec,
     JobView,
+    PlanSpec,
     UnknownJobError,
     error_object,
     new_job_record,
 )
+from cad_application.jobs.plan_job import RunContext as PlanRunContext
+from cad_application.jobs.plan_job import run as run_plan
 from cad_application.ports import Backend, BackendProvider, Clock, EventLog, IdSource, Store
 from cad_application.store.errors import StoreError
 from cad_application.store.job_records import JobRecord
@@ -60,7 +68,7 @@ class JobEngine:
 
     # --- requests from any thread ------------------------------------------------------
 
-    def submit(self, spec: CheckDrawingSpec, request_id: str) -> JobView | StoreError:
+    def submit(self, spec: CheckDrawingSpec | PlanSpec, request_id: str) -> JobView | StoreError:
         store = self._stores.open_for(spec.authorized)
         if isinstance(store, StoreError):
             return store
@@ -95,13 +103,14 @@ class JobEngine:
                 return self._wait_locked(entry, deadline)
         return self._known_view(job_id), False
 
-    def cancel(self, job_id: str) -> JobView:
+    def cancel(self, job_id: str, *, keep_partial: bool = False) -> JobView:
         """A queued job is ABORTED at once; a running one gets its cancel flag under the lock
         and ``Backend.cancel()`` outside it (8.4, ADR-053). Raises ``UnknownJobError``."""
         with self._cond:
             entry = self._entries.get(job_id)
             if entry is not None and not entry.record.is_final:
                 entry.cancel_requested = True
+                entry.keep_partial = keep_partial
                 if job_id in self._queue:
                     self._queue.remove(job_id)
                     self._abort_queued(entry)
@@ -127,13 +136,21 @@ class JobEngine:
             job_id = self._queue.popleft()
             self._running = job_id
             entry = self._entries[job_id]
+        backend: Backend | None = None
         try:
             self._run(JobHandle(entry, self._cond, self._log))
         finally:
             with self._cond:
+                backend = entry.backend
                 self._running = None
                 entry.backend = None
                 self._cond.notify_all()
+            if backend is not None:
+                try:
+                    backend.close()
+                except Exception as error:
+                    name = type(error).__name__
+                    self._log.emit("backend.close_failed", "warning", job_id=job_id, reason=name)
         return True
 
     def wait_for_work(self, timeout_s: float) -> bool:
@@ -176,8 +193,15 @@ class JobEngine:
 
     # --- internals ---------------------------------------------------------------------
 
+    def _read_fingerprint(self, path: str) -> str | None:
+        try:
+            data = self._stores.fs.read_bytes(path)
+            return f"sha256:{hashlib.sha256(data).hexdigest()}"
+        except (FileNotFoundError, OSError):
+            return None
+
     def _recover_store(self, store: Store, project_root: str) -> RecoveryResult:
-        result = recover(store, self._clock)
+        result = recover(store, self._clock, self._read_fingerprint)
         with self._cond:
             self._recovered = (*self._recovered, (store, result))
         for job in result.interrupted:
@@ -199,18 +223,30 @@ class JobEngine:
             self._clock.wait(self._cond, remaining)
         return self._view_locked(entry), entry.record.state != initial
 
-    def _run(self, handle: JobHandle) -> None:
+    def _run(self, handle: JobHandle[Any]) -> None:
         try:
             settings = self._settings_for(handle.record.project_root)
-            ctx = RunContext(
-                handle,
-                self._provider,
-                self._ids,
-                self._log,
-                settings,
-                self._mappings_for(settings),
-            )
-            outcome = run(ctx)
+            if isinstance(handle.spec, CheckDrawingSpec):
+                ctx = DrawingRunContext(
+                    handle,
+                    self._provider,
+                    self._ids,
+                    self._log,
+                    settings,
+                    self._mappings_for(settings),
+                )
+                outcome = run_drawing(ctx)
+            else:
+                ctx = PlanRunContext(
+                    handle,
+                    self._provider,
+                    self._ids,
+                    self._log,
+                    self._settings_for,
+                    self._stores.fs,
+                    self._clock,
+                )
+                outcome = run_plan(ctx)
             self._log.emit(
                 "job.finished",
                 "info",
@@ -221,9 +257,14 @@ class JobEngine:
         except Exception as error:
             self._fail_unexpected(handle, error)
 
-    def _fail_unexpected(self, handle: JobHandle, error: Exception) -> None:
+    def _fail_unexpected(self, handle: JobHandle[Any], error: Exception) -> None:
         job_id = handle.record.job_id
-        self._log.emit("job.error", "error", job_id=job_id, reason=type(error).__name__)
+        frames = traceback.extract_tb(error.__traceback__)
+        where = f" at {frames[-1].filename}:{frames[-1].lineno}" if frames else ""
+        if isinstance(error, OSError):
+            where += f" errno={error.errno} winerror={getattr(error, 'winerror', None)}"
+            where += f" file={ntpath.basename(str(error.filename))}"
+        self._log.emit("job.error", "error", job_id=job_id, reason=f"{type(error).__name__}{where}")
         if not handle.record.is_final:
             body = error_object(
                 ErrorCode.EXEC_INTERRUPTED.value, "The job stopped on an unexpected error."

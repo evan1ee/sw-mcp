@@ -1,5 +1,6 @@
 """Parsing, validating and merging configuration layers (spec 13.3.1, 13.3.2). No I/O."""
 
+import ntpath
 import re
 import tomllib
 from collections.abc import Mapping, Sequence
@@ -14,7 +15,14 @@ CONFIG_SCHEMA_ID: Final = "https://sw-mcp.invalid/schemas/config/v1.json"
 ENV_PREFIX: Final = "SWMCP_"
 _CONFIG_VERSION: Final = "1.0"
 # Security keys come from the user file only (13.3.1): a section name drops the whole section.
-_SECURITY_KEYS: Final = ("access", "solidworks.session", "drawing.standard_dir")
+_SECURITY_KEYS: Final = (
+    "access",
+    "solidworks.session",
+    "drawing.standard_dir",
+    "part.template",
+)
+_DEVICE_PREFIXES: Final = ("\\\\?\\", "\\\\.\\")
+_ENV_REFERENCE: Final = re.compile(r"%[^%\\]+%|\$env:|\$\{|\$\(", re.IGNORECASE)
 _LINE = re.compile(r"line (\d+)")
 _UNEXPECTED = re.compile(r"'([^']+)'")
 
@@ -107,9 +115,9 @@ def _drop_security(layer: Layer) -> tuple[Layer, list[str]]:
         node = values[section]
         assert isinstance(node, dict)
         del node[leaf]
+        if not node:
+            del values[section]
         warnings.append(f"{layer.origin}: ignored security key {section}.{leaf} (user file only)")
-    if isinstance(values.get("access"), dict) and not values["access"]:
-        del values["access"]
     return Layer(layer.source, layer.origin, values), warnings
 
 
@@ -135,19 +143,46 @@ def _describe(pointer: str, message: str, expected: Sequence[str]) -> tuple[str 
     return key, f"invalid value for {key}{shown}"
 
 
+def _valid_part_template(path: str) -> bool:
+    if path == "":
+        return True
+    slashed = path.replace("/", "\\")
+    if slashed.startswith(_DEVICE_PREFIXES):
+        return False
+    if slashed.startswith("~") or _ENV_REFERENCE.search(path):
+        return False
+    drive, rest = ntpath.splitdrive(slashed)
+    if not drive or not rest.startswith("\\") or ":" in rest:
+        return False
+    base = ntpath.basename(slashed)
+    stem, ext = ntpath.splitext(base)
+    return bool(stem) and ext.lower() == ".prtdot"
+
+
 def _validate(layer: Layer) -> ConfigError | None:
     document = dict(layer.values)
     if layer.source == "env":
         document["config_version"] = _CONFIG_VERSION
     issues = validate_against_schema(document, CONFIG_SCHEMA_ID)
-    if not issues:
-        return None
-    first = issues[0]
-    key, message = _describe(first.pointer, first.message, first.expected or ())
-    origin = layer.origin
-    if layer.source == "env" and key is not None:
-        origin = _variable(key)
-    return ConfigError(origin, key, None, message)
+    if issues:
+        first = issues[0]
+        key, message = _describe(first.pointer, first.message, first.expected or ())
+        origin = layer.origin
+        if layer.source == "env" and key is not None:
+            origin = _variable(key)
+        return ConfigError(origin, key, None, message)
+    part = document.get("part")
+    if isinstance(part, dict) and "template" in part:
+        template = part["template"]
+        if isinstance(template, str) and not _valid_part_template(template):
+            origin = _variable("part.template") if layer.source == "env" else layer.origin
+            return ConfigError(
+                origin,
+                "part.template",
+                None,
+                "invalid value for part.template; expected an absolute .prtdot path",
+            )
+    return None
 
 
 def _merge_into(base: Tree, top: Mapping[str, JsonValue]) -> Tree:
@@ -195,7 +230,7 @@ def _texts(tree: Tree, *path: str) -> tuple[str, ...]:
 
 DEFAULTS: Final[Tree] = {
     "access": {"allowed_roots": [], "pdm_vault_roots": []},
-    "mcp": {"toolsets": ["core", "drawing"]},
+    "mcp": {"toolsets": ["core"]},
     "core": {"idle_shutdown_min": 30, "job_retention_days": 7},
     "solidworks": {
         "session": "auto",
@@ -219,6 +254,7 @@ DEFAULTS: Final[Tree] = {
         },
     },
     "store": {"snapshot_keep": 10, "backup_keep": 5},
+    "part": {"template": ""},
     "logging": {"level": "info", "retention_days": 14},
 }
 
@@ -251,6 +287,7 @@ def _settings_of(tree: Tree, warnings: tuple[str, ...]) -> Settings:
         backup_keep=_ints(tree, "store", "backup_keep"),
         logging_level=_text(tree, "logging", "level"),
         logging_retention_days=_ints(tree, "logging", "retention_days"),
+        part_template=_text(tree, "part", "template"),
         warnings=warnings,
     )
 

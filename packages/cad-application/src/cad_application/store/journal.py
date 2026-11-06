@@ -1,12 +1,13 @@
 """Job transitions and crash recovery (spec 8.4, 13.2.2, 13.2.3 Phase 1a)."""
 
 import ntpath
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import Final
 
 from cad_ir.generated.error_codes import DEFAULT_RETRYABLE, ErrorCode
+from cad_ir.generated.ipc import FailedOperation
 
 from cad_application.ports import Clock, Store
 from cad_application.store.codec import Obj, format_ts
@@ -16,8 +17,11 @@ from cad_application.store.journal_records import (
     BatchSentRecord,
     DocumentRecord,
     OpResultRecord,
+    PublishedRecord,
+    PublishIntentRecord,
     StateRecord,
 )
+from cad_application.store.records import JobWarning
 
 # The edges of the 8.4 state diagram; any other transition is a programming error.
 TRANSITIONS: Final[Mapping[JobState, frozenset[JobState]]] = MappingProxyType(
@@ -90,13 +94,13 @@ def _interrupted_error() -> Obj:
 
 
 def _unknown_documents(journal: Sequence[object]) -> tuple[JobDocument, ...]:
-    """Documents with an ``open`` record and no later ``close`` (13.2.3)."""
+    """Documents with an ``open`` or ``create`` record and no later ``close`` (13.2.3)."""
     open_now: dict[str, JobDocument] = {}
     for record in journal:
         if not isinstance(record, DocumentRecord):
             continue
         key = ntpath.normcase(record.path)
-        if record.action == "open":
+        if record.action in ("open", "create"):
             open_now[key] = JobDocument(record.path, record.owned, "unknown")
         elif record.action == "close":
             open_now.pop(key, None)
@@ -126,7 +130,11 @@ def _journal_chain(job: JobRecord, journal: Sequence[object]) -> tuple[StateReco
     return tuple(chain)
 
 
-def recover(store: Store, clock: Clock) -> RecoveryResult:
+def recover(
+    store: Store,
+    clock: Clock,
+    read_fingerprint: Callable[[str], str | None] = lambda _: None,
+) -> RecoveryResult:
     """Steps 1, 3 and 4 of 13.2.3, after the order rule of 13.2.2. Never resumes or resends."""
     ts = format_ts(clock.now())
     interrupted: list[JobRecord] = []
@@ -155,7 +163,22 @@ def recover(store: Store, clock: Clock) -> RecoveryResult:
         if job.is_final or job.state == "RECOVERY":
             continue
         target: JobState = "ABORTED" if job.state == "PLANNED" else "FAILED"
-        with_documents = replace(job, documents=_unknown_documents(journal))
+        warnings = list(job.warnings)
+        intent = next((r for r in reversed(journal) if isinstance(r, PublishIntentRecord)), None)
+        published = any(isinstance(r, PublishedRecord) for r in journal)
+        if intent is not None and not published:
+            target_fp = read_fingerprint(intent.path)
+            if target_fp is not None and target_fp == intent.fingerprint:
+                msg = (
+                    f"Target file '{intent.path}' matches publish intent fingerprint "
+                    "but publication was unconfirmed before restart."
+                )
+                warnings.append(JobWarning("published_unconfirmed", msg))
+        with_documents = replace(
+            job,
+            documents=_unknown_documents(journal),
+            warnings=tuple(warnings),
+        )
         reason = "core service restarted while the job was not finished"
         record = StateRecord(ts, job_id, job.state, target, reason, _interrupted_error())
         interrupted.append(_enter(store, with_documents, record))
@@ -171,10 +194,24 @@ def recover(store: Store, clock: Clock) -> RecoveryResult:
 
 
 def record_completed_operations(
-    store: Store, result: RecoveryResult, completed: Sequence[str]
+    store: Store,
+    result: RecoveryResult,
+    completed: Sequence[str],
+    *,
+    failed: Sequence[FailedOperation | Mapping[str, str]] = (),
 ) -> tuple[str, ...]:
     """Step 2: ``op_result`` with ``recovered: true`` for pending IDs the add-in completed."""
     done = set(completed)
+    failed_by_id: dict[str, str] = {}
+    for f in failed:
+        if isinstance(f, FailedOperation):
+            failed_by_id[f.operation_id] = f.code
+        else:
+            op_id = f.get("operation_id")
+            code = f.get("code")
+            if isinstance(op_id, str) and isinstance(code, str):
+                failed_by_id[op_id] = code
+
     recorded: list[str] = []
     for job_id, pending in result.pending_operation_ids.items():
         journal = store.read_journal(job_id)
@@ -184,5 +221,11 @@ def record_completed_operations(
             if op in pending and op in done:
                 ts = store.timestamp()
                 store.append(job_id, OpResultRecord(ts, job_id, op, True, None, recovered=True))
+                recorded.append(op)
+            elif op in pending and op in failed_by_id:
+                ts = store.timestamp()
+                store.append(
+                    job_id, OpResultRecord(ts, job_id, op, False, failed_by_id[op], recovered=True)
+                )
                 recorded.append(op)
     return tuple(recorded)

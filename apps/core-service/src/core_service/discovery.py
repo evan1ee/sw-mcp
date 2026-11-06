@@ -4,6 +4,7 @@ import contextlib
 import json
 import os
 import sys
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,7 +20,7 @@ from cad_ir.core.json_types import JsonValue
 from cad_protocol.backend import IpcBackend
 from cad_protocol.client.ipc_client import IpcClient
 from cad_protocol.client.pipe_transport import NamedPipeTransport
-from cad_protocol.client.transport import TransportClosed
+from cad_protocol.client.transport import Transport, TransportClosed
 from cad_protocol.errors import IpcError
 
 type NotificationCallback = Callable[[str, JsonValue], None]
@@ -152,12 +153,17 @@ def resolve_session(sessions: list[SessionInfo], target_session: str = "auto") -
 class NamedPipeBackendProvider:
     """Backend provider connecting to discovered live SOLIDWORKS add-in pipes."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         *,
         session_dir: Path | str | None = None,
         target_session: str = "auto",
         is_process_running: Callable[[int], bool] | None = None,
+        reconnect_timeout_s: float = 2.0,
+        reconnect_poll_s: float = 0.02,
+        monotonic: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
+        transport_factory: Callable[[str], Transport] | None = None,
     ) -> None:
         self._session_dir = (
             Path(session_dir) if session_dir is not None else get_default_session_dir()
@@ -166,16 +172,30 @@ class NamedPipeBackendProvider:
         self._is_process_running = (
             is_process_running if is_process_running is not None else is_solidworks_running
         )
+        self._reconnect_timeout_s = reconnect_timeout_s
+        self._reconnect_poll_s = reconnect_poll_s
+        self._monotonic = monotonic
+        self._sleep = sleep
+        self._transport_factory = (
+            transport_factory if transport_factory is not None else NamedPipeTransport
+        )
 
     def acquire(self, on_notification: NotificationCallback) -> Backend:
         sessions = discover_sessions(self._session_dir, self._is_process_running)
         selected = resolve_session(sessions, self._target_session)
-        try:
-            transport = NamedPipeTransport(selected.pipe)
-        except (TransportClosed, OSError) as exc:
-            raise BackendUnavailable(
-                "BACKEND_LOST", f"Could not connect to add-in pipe: {exc}"
-            ) from None
+
+        deadline = self._monotonic() + self._reconnect_timeout_s
+        transport: Transport | None = None
+        while True:
+            try:
+                transport = self._transport_factory(selected.pipe)
+                break
+            except (TransportClosed, OSError) as exc:
+                if self._monotonic() >= deadline:
+                    raise BackendUnavailable(
+                        "BACKEND_LOST", f"Could not connect to add-in pipe: {exc}"
+                    ) from None
+                self._sleep(self._reconnect_poll_s)
 
         client = IpcClient(
             transport,
@@ -186,4 +206,5 @@ class NamedPipeBackendProvider:
         try:
             return IpcBackend(client)
         except IpcError as error:
+            client.close()
             raise BackendUnavailable(error.code, error.message, error.details) from None

@@ -98,6 +98,7 @@ public sealed class NamedPipeServer : IDisposable
         while (!_cts.IsCancellationRequested)
         {
             NamedPipeServerStream? stream = null;
+            PipeFrameSink? sink = null;
             try
             {
                 var security = CreateCurrentUserSecurity();
@@ -124,7 +125,7 @@ public sealed class NamedPipeServer : IDisposable
                 var connectTask = stream.WaitForConnectionAsync(_cts.Token);
                 connectTask.GetAwaiter().GetResult();
 
-                var sink = new PipeFrameSink(stream, _config.MaxFrameBytes);
+                sink = new PipeFrameSink(stream, _config.MaxFrameBytes);
                 var session = new IpcSession(
                     _config,
                     _ledger,
@@ -159,6 +160,8 @@ public sealed class NamedPipeServer : IDisposable
                 }
 
                 session.Close();
+                sink.Dispose();
+                sink = null;
             }
             catch (OperationCanceledException)
             {
@@ -173,6 +176,7 @@ public sealed class NamedPipeServer : IDisposable
             }
             finally
             {
+                sink?.Dispose();
                 lock (_gate)
                 {
                     _activeSession = null;
@@ -203,7 +207,13 @@ public sealed class NamedPipeServer : IDisposable
             _disposed = true;
         }
 
-        _cts.Cancel();
+        try
+        {
+            _cts.Cancel();
+        }
+        catch
+        {
+        }
 
         lock (_gate)
         {
@@ -229,52 +239,5 @@ public sealed class NamedPipeServer : IDisposable
         }
         _cts.Dispose();
         _startedEvent.Dispose();
-    }
-
-    private sealed class PipeFrameSink : IFrameSink
-    {
-        private readonly Stream _stream;
-        private readonly int _maxFrameBytes;
-        private readonly object _writeLock = new object();
-        private bool _closed;
-
-        public PipeFrameSink(Stream stream, int maxFrameBytes)
-        {
-            _stream = stream;
-            _maxFrameBytes = maxFrameBytes;
-        }
-
-        public void Write(byte[] payload)
-        {
-            lock (_writeLock)
-            {
-                if (_closed)
-                {
-                    return;
-                }
-                var frame = FrameCodec.Encode(payload, _maxFrameBytes);
-                _stream.Write(frame, 0, frame.Length);
-                _stream.Flush();
-            }
-        }
-
-        public void Close()
-        {
-            lock (_writeLock)
-            {
-                if (_closed)
-                {
-                    return;
-                }
-                _closed = true;
-                try
-                {
-                    _stream.Close();
-                }
-                catch
-                {
-                }
-            }
-        }
     }
 }

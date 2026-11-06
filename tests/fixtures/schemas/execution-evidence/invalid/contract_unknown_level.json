@@ -1,0 +1,161 @@
+{
+  "evidence_schema_version": "0.1",
+  "job_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2",
+  "graph": "part:plate_4h@1",
+  "plan_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+  "recovered": false,
+  "environment": {
+    "solidworks": {
+      "version": "2025",
+      "service_pack": "SP0.0",
+      "ui_language": "zh-CN"
+    },
+    "addin_version": "0.1.0",
+    "protocol": "0.1",
+    "profile_hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+    "template": {
+      "path": "D:/templates/ISO-mm.prtdot",
+      "sha256": "9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c"
+    }
+  },
+  "outcome": {
+    "job_state": "COMMITTED",
+    "execution_status": "succeeded",
+    "rebuild_status": "ok",
+    "verification_status": "passed"
+  },
+  "contracts": [
+    {
+      "node": "extrude_base",
+      "level": "approximate",
+      "hash": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+      "checks": [
+        {
+          "name": "feature_exists",
+          "required": true,
+          "expected": true
+        },
+        {
+          "name": "feature_type",
+          "required": true,
+          "expected": "extrude"
+        },
+        {
+          "name": "parameter_equals",
+          "required": false,
+          "expected": 10.0,
+          "unit": "mm",
+          "tolerance": {
+            "kind": "absolute",
+            "value": 0.01
+          }
+        },
+        {
+          "name": "direction_reversed",
+          "required": false,
+          "not_applicable_reason": "The graph's extrude is not a blind cut"
+        }
+      ]
+    }
+  ],
+  "operations": [
+    {
+      "plan_op": "op_3",
+      "operation_id": "job_01JCX3Z8Q4M5N6P7R8S9T0V1W2:3",
+      "op": "feature.create",
+      "source": "extrude_base",
+      "execution_status": "succeeded",
+      "effect": "applied",
+      "native": {
+        "feature_id": "f79",
+        "native_id": 79,
+        "native_type": "Extrusion",
+        "status": "ok"
+      },
+      "observation": {
+        "native_type": "Extrusion",
+        "type": "extrude",
+        "error_code": 0,
+        "is_warning": false,
+        "suppressed": false,
+        "parents": [
+          "f73"
+        ],
+        "update_stamp": 412,
+        "completeness": {
+          "type": "present",
+          "parameters": "unsupported"
+        }
+      },
+      "postconditions": [
+        {
+          "name": "feature_exists",
+          "status": "passed",
+          "required": true
+        },
+        {
+          "name": "parameter_equals",
+          "status": "not_evaluated",
+          "reason": "unsupported",
+          "required": false
+        }
+      ],
+      "error": null
+    }
+  ],
+  "observations": [
+    {
+      "stage": "in_session",
+      "instance_id": "i_1",
+      "read_only": false,
+      "dirty": false,
+      "completeness": {
+        "bodies": "present",
+        "mass": "present"
+      },
+      "measured": {
+        "solid_body_count": 1,
+        "volume_m3": 5.798938e-05
+      }
+    },
+    {
+      "stage": "reopened",
+      "instance_id": "i_2",
+      "read_only": true,
+      "dirty": false,
+      "completeness": {
+        "bodies": "present"
+      },
+      "measured": {
+        "solid_body_count": 1
+      }
+    }
+  ],
+  "checks": [
+    {
+      "check": "volume",
+      "stage": "reopened",
+      "requirement": "Part volume equals the IR's",
+      "source": [
+        "extrude_base",
+        "cut_holes"
+      ],
+      "expected": 57989.38,
+      "measured": 57989.38,
+      "unit": "mm3",
+      "tolerance": {
+        "kind": "relative",
+        "value": 0.0001
+      },
+      "method": "IMassProperty, system units",
+      "status": "passed"
+    }
+  ],
+  "warnings": [],
+  "artifact": {
+    "path": "D:/parts/plate.SLDPRT",
+    "fingerprint": "sha256:3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f3f",
+    "published": true
+  },
+  "failed_artifact": null
+}

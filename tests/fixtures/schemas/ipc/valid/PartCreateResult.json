@@ -1,0 +1,22 @@
+[
+  {
+    "native_id": 1,
+    "path": "C:\\parts\\part1.SLDPRT",
+    "instance_id": "inst-1",
+    "previous_active": null,
+    "template": {
+      "path": "C:\\templates\\ISO-mm.prtdot",
+      "sha256": "abcdef0123456789"
+    }
+  },
+  {
+    "native_id": 2,
+    "path": "C:\\parts\\part2.SLDPRT",
+    "instance_id": "inst-2",
+    "previous_active": "C:\\parts\\old.SLDPRT",
+    "template": {
+      "path": "C:\\templates\\ISO-mm.prtdot",
+      "sha256": "abcdef0123456789"
+    }
+  }
+]

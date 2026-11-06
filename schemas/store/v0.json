@@ -100,6 +100,27 @@
         "updated_at"
       ]
     },
+    "PartRecord": {
+      "type": "object",
+      "properties": {
+        "part_key": { "type": "string" },
+        "path": { "type": "string" },
+        "fingerprint": { "$ref": "../common/v0.json#/$defs/ContentHash" },
+        "produced": { "type": "boolean" },
+        "graph": { "type": "string" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "updated_at": { "$ref": "#/$defs/Timestamp" }
+      },
+      "required": [
+        "part_key",
+        "path",
+        "fingerprint",
+        "produced",
+        "graph",
+        "job_id",
+        "updated_at"
+      ]
+    },
     "ReportMeta": {
       "type": "object",
       "properties": {
@@ -141,7 +162,8 @@
         "error": { "anyOf": [{ "$ref": "../common/v0.json#/$defs/Error" }, { "type": "null" }] },
         "warnings": { "type": "array", "items": { "$ref": "#/$defs/JobWarning" } },
         "documents": { "type": "array", "items": { "$ref": "#/$defs/JobDocument" } },
-        "next_op_seq": { "type": "integer", "minimum": 1 }
+        "next_op_seq": { "type": "integer", "minimum": 1 },
+        "part_result": { "anyOf": [{ "type": "object" }, { "type": "null" }] }
       },
       "required": [
         "job_id",
@@ -202,6 +224,36 @@
       },
       "required": ["type", "ts", "job_id", "operation_id", "ok", "error_code"]
     },
+    "OpVerifiedRecord": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "op_verified" },
+        "ts": { "$ref": "#/$defs/Timestamp" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "operation_id": { "type": "string" },
+        "node": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "feature_id": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "observation": {
+          "anyOf": [{ "$ref": "../ipc/v0.json#/$defs/Observation" }, { "type": "null" }]
+        },
+        "checks": {
+          "type": "array",
+          "items": { "$ref": "../execution-evidence/v0.json#/$defs/PostconditionResult" }
+        },
+        "status": { "$ref": "../execution-evidence/v0.json#/$defs/VerificationStatus" }
+      },
+      "required": [
+        "type",
+        "ts",
+        "job_id",
+        "operation_id",
+        "node",
+        "feature_id",
+        "observation",
+        "checks",
+        "status"
+      ]
+    },
     "SnapshotRecord": {
       "type": "object",
       "properties": {
@@ -220,7 +272,7 @@
         "ts": { "$ref": "#/$defs/Timestamp" },
         "job_id": { "$ref": "#/$defs/JobId" },
         "path": { "type": "string" },
-        "action": { "enum": ["open", "save", "close"] },
+        "action": { "enum": ["open", "create", "save", "close"] },
         "owned": { "type": "boolean" }
       },
       "required": ["type", "ts", "job_id", "path", "action", "owned"]
@@ -235,14 +287,41 @@
       },
       "required": ["type", "ts", "job_id", "message"]
     },
+    "PublishIntentRecord": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "publish_intent" },
+        "ts": { "$ref": "#/$defs/Timestamp" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "path": { "type": "string" },
+        "fingerprint": { "$ref": "../common/v0.json#/$defs/ContentHash" }
+      },
+      "required": ["type", "ts", "job_id", "path", "fingerprint"]
+    },
+    "PublishedRecord": {
+      "type": "object",
+      "properties": {
+        "type": { "const": "published" },
+        "ts": { "$ref": "#/$defs/Timestamp" },
+        "job_id": { "$ref": "#/$defs/JobId" },
+        "path": { "type": "string" },
+        "fingerprint": {
+          "anyOf": [{ "$ref": "../common/v0.json#/$defs/ContentHash" }, { "type": "null" }]
+        }
+      },
+      "required": ["type", "ts", "job_id", "path"]
+    },
     "JournalRecord": {
       "oneOf": [
         { "$ref": "#/$defs/StateRecord" },
         { "$ref": "#/$defs/BatchSentRecord" },
         { "$ref": "#/$defs/OpResultRecord" },
+        { "$ref": "#/$defs/OpVerifiedRecord" },
         { "$ref": "#/$defs/SnapshotRecord" },
         { "$ref": "#/$defs/DocumentRecord" },
-        { "$ref": "#/$defs/NoteRecord" }
+        { "$ref": "#/$defs/NoteRecord" },
+        { "$ref": "#/$defs/PublishIntentRecord" },
+        { "$ref": "#/$defs/PublishedRecord" }
       ]
     }
   }

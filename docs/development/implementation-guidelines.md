@@ -6,8 +6,8 @@ How to write the code, as opposed to what it must do. These guidelines change wi
 
 The add-in runs inside SOLIDWORKS (ADR-028), so it shares SOLIDWORKS's COM objects instead of owning separate proxies. Releasing objects SOLIDWORKS still uses can crash it, and holding objects across documents leaks memory.
 
-- **Release only what you created and finished with**, with `Marshal.ReleaseComObject` in a `finally` block. Typical cases are enumerators, selection data, and temporary entities from loops over faces and edges.
-- **Never call `Marshal.FinalReleaseComObject`.** Never release the `ISldWorks` application object, a document (`IModelDoc2`) or a feature manager that other code may hold.
+- **Release only the temporary objects your code obtained and finished with**, with `Marshal.ReleaseComObject` in a `finally` block or through `ComScope` (ADR-059). Typical cases are enumerators, faces, edges, surfaces, selection data, math objects and a feature a command has finished reading.
+- **Never call `Marshal.FinalReleaseComObject`.** Never release `ISldWorks`, `IModelDoc2` or its derived interfaces, `IFeatureManager`, `ISketchManager`, `IModelDocExtension`, or an object obtained from another owner.
 - **Never cache SOLIDWORKS objects across commands.** A command looks up what it needs by ID (5.3.6) and drops it when it ends. Documents may be closed, rebuilt or replaced between commands.
 - **No SOLIDWORKS object leaves the UI thread.** Commands convert results to plain data before returning (8.6.2).
 - **Loops over many entities** release each per-iteration object before moving to the next.
@@ -28,7 +28,7 @@ Principle 9 (core logic testable without CAD) only holds if nothing below the ap
   cad-ir                 → nothing else of ours
   ```
 
-- **Ports.** `Backend` is the operation vocabulary of 6.5 (`apply_batch`, `snapshot_drawing`, `read_features`, `geometry_candidates`, document actions), typed with the generated IPC models. Those live in `cad_ir.generated.ipc`, because `cad-application` may import `cad-ir` but never `cad-protocol`. It is declared as a `typing.Protocol` in `cad_application.ports`, and `cad-protocol` implements it structurally without importing it. `Store` is section 13.2. `Clock` and `IdSource` make time and ULIDs injectable for determinism tests (15.6); `Clock` also owns waiting on a condition (ADR-053).
+- **Ports.** `Backend` is the operation vocabulary of 6.5 (`apply_ops`, `measure_part`, `snapshot_drawing`, `read_features`, `geometry_candidates`, document actions), typed with the generated IPC models. Those live in `cad_ir.generated.ipc`, because `cad-application` may import `cad-ir` but never `cad-protocol`. It is declared as a `typing.Protocol` in `cad_application.ports`, and `cad-protocol` implements it structurally without importing it. `Store` is section 13.2. `Clock` and `IdSource` make time and ULIDs injectable for determinism tests (15.6); `Clock` also owns waiting on a condition (ADR-053).
 - **Ports added for jobs and the store (v1.22) [Builder's call].** All are `typing.Protocol`s in `cad_application.ports`.
   - `BackendProvider.acquire(on_notification) -> Backend` returns the connected session, delivering its notifications to the callback, or raises with `BACKEND_LOST` or `BACKEND_SESSION_AMBIGUOUS` (8.6.1). Session discovery and the real pipe implement it in the transport milestone; until then core-service tests use one built on `replay_backend`.
   - `FileSystem`: `resolve` (links and junctions), `stat`, `read_bytes`, `list_dir`, `write_atomic`, `write_new`, `append_line` (flush and `fsync`), `remove`, `make_dirs`, `lock_exclusive`. The OS implementation lives in `core_service`; `MemoryFileSystem` in `cad_application.testing` can fail at the nth write, `fsync` or rename to simulate a crash.

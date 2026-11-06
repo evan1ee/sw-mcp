@@ -12,6 +12,10 @@ def queued_line(job_id: str, position: int) -> str:
     return f"drawing check queued: {job_id} (position {position})"
 
 
+def part_queued_line(job_id: str, position: int) -> str:
+    return f"part build queued: {job_id} (position {position})"
+
+
 def status_line(record: JobRecord, position: int | None) -> str:
     head = f"{record.job_id} {record.job_type} {record.state}"
     progress = record.progress

@@ -91,6 +91,7 @@ class JobRecord:
     warnings: tuple[JobWarning, ...]
     documents: tuple[JobDocument, ...]
     next_op_seq: int
+    part_result: Obj | None = None
 
     @property
     def is_final(self) -> bool:
@@ -99,7 +100,7 @@ class JobRecord:
     def to_json(self) -> Obj:
         warnings: list[JsonValue] = [w.to_json() for w in self.warnings]
         documents: list[JsonValue] = [d.to_json() for d in self.documents]
-        return {
+        body: Obj = {
             "job_id": self.job_id,
             "job_type": self.job_type,
             "state": self.state,
@@ -119,12 +120,16 @@ class JobRecord:
             "documents": documents,
             "next_op_seq": self.next_op_seq,
         }
+        if self.part_result is not None:
+            body["part_result"] = self.part_result
+        return body
 
     @staticmethod
     def from_json(obj: Obj) -> "JobRecord":
         """``obj`` must satisfy the ``JobRecord`` schema."""
         progress = obj.get("progress")
         error = obj.get("error")
+        part_result = obj.get("part_result")
         return JobRecord(
             job_id=get_str(obj, "job_id"),
             job_type=_job_type(get_str(obj, "job_type")),
@@ -144,4 +149,5 @@ class JobRecord:
             warnings=tuple(JobWarning.from_json(as_obj(w)) for w in get_list(obj, "warnings")),
             documents=tuple(JobDocument.from_json(as_obj(d)) for d in get_list(obj, "documents")),
             next_op_seq=get_int(obj, "next_op_seq"),
+            part_result=None if part_result is None else as_obj(part_result),
         )

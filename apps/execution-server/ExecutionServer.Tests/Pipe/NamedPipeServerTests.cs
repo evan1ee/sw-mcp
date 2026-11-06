@@ -207,4 +207,126 @@ public sealed class NamedPipeServerTests
             Assert.Equal("0.1", resultJson["result"]?["schema_version"]?.Value<string>());
         }
     }
+
+    private sealed class BlockingStream : Stream
+    {
+        public ManualResetEventSlim WriteStarted { get; } = new ManualResetEventSlim(false);
+        public ManualResetEventSlim AllowWriteToComplete { get; } = new ManualResetEventSlim(false);
+
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => 0;
+        public override long Position { get => 0; set { } }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => 0;
+        public override long Seek(long offset, SeekOrigin origin) => 0;
+        public override void SetLength(long value) { }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            WriteStarted.Set();
+            AllowWriteToComplete.Wait(5000);
+        }
+    }
+
+    [Fact]
+    public void PartMeasure_RunsThroughSession()
+    {
+        var sink = new RecordingSink();
+        var config = Rpc.Config();
+        var ledger = new OperationLedger();
+        var handler = new ScriptedHandler();
+        handler.OnMeasure = (p, ct) => new JObject { ["path"] = p.Document, ["volume_m3"] = 1.0 };
+        var session = new IpcSession(config, ledger, handler, sink);
+
+        session.Receive(Rpc.Hello(1, config.Token));
+        session.Receive(Rpc.Request(2, "part.measure", Rpc.PartMeasureParams("D:/work/plate.sldprt")));
+
+        Assert.True(session.HasQueuedCommands);
+        var ran = session.RunNext();
+        Assert.True(ran);
+        Assert.Single(handler.MeasureCalls);
+        Assert.Equal("D:/work/plate.sldprt", handler.MeasureCalls[0]);
+    }
+
+    [Fact]
+    public void ResponseWrite_DoesNotBlockTheCommandThread()
+    {
+        var blockingStream = new BlockingStream();
+        using var sink = new PipeFrameSink(blockingStream, 64 * 1024 * 1024);
+
+        var config = Rpc.Config();
+        var ledger = new OperationLedger();
+        var handler = new ScriptedHandler();
+        handler.OnSnapshot = (p, ct) => new JObject { ["schema_version"] = "0.1" };
+        var session = new IpcSession(config, ledger, handler, sink);
+
+        session.Receive(Rpc.Hello(1, config.Token));
+        session.Receive(Rpc.Request(2, "drawing.snapshot", Rpc.SnapshotParams()));
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        // RunNext on the command thread
+        var ran = session.RunNext();
+        sw.Stop();
+
+        Assert.True(ran);
+        // Command thread should NOT be blocked by the stalled stream write
+        Assert.True(sw.ElapsedMilliseconds < 500, $"RunNext took {sw.ElapsedMilliseconds}ms, should be < 500ms");
+
+        // Allow writer to exit cleanly
+        blockingStream.AllowWriteToComplete.Set();
+    }
+
+    [Fact]
+    public void Frames_KeepTheirOrder()
+    {
+        using var ms = new MemoryStream();
+        using (var sink = new PipeFrameSink(ms, 64 * 1024 * 1024, leaveOpen: true))
+        {
+            for (int i = 1; i <= 5; i++)
+            {
+                var payload = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(new { seq = i }));
+                sink.Write(payload);
+            }
+            sink.Close();
+        }
+
+        ms.Position = 0;
+        for (int i = 1; i <= 5; i++)
+        {
+            var frame = FrameCodec.Read(ms, 64 * 1024 * 1024);
+            Assert.NotNull(frame);
+            var json = JObject.Parse(Encoding.UTF8.GetString(frame));
+            Assert.Equal(i, json["seq"]?.Value<int>());
+        }
+        Assert.Null(FrameCodec.Read(ms, 64 * 1024 * 1024));
+    }
+
+    [Fact]
+    public void Close_FlushesOrFailsQueuedFrames()
+    {
+        using var ms = new MemoryStream();
+        var sink = new PipeFrameSink(ms, 64 * 1024 * 1024, leaveOpen: true);
+
+        var payload1 = Encoding.UTF8.GetBytes("frame-1");
+        var payload2 = Encoding.UTF8.GetBytes("frame-2");
+        sink.Write(payload1);
+        sink.Write(payload2);
+
+        // Close flushes queued frames
+        sink.Close();
+
+        ms.Position = 0;
+        var r1 = FrameCodec.Read(ms, 64 * 1024 * 1024);
+        var r2 = FrameCodec.Read(ms, 64 * 1024 * 1024);
+        Assert.NotNull(r1);
+        Assert.NotNull(r2);
+        Assert.Equal("frame-1", Encoding.UTF8.GetString(r1));
+        Assert.Equal("frame-2", Encoding.UTF8.GetString(r2));
+
+        // Additional writes after Close should fail/be dropped without throwing
+        sink.Write(Encoding.UTF8.GetBytes("frame-3"));
+        Assert.Null(FrameCodec.Read(ms, 64 * 1024 * 1024));
+    }
 }

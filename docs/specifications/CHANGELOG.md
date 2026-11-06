@@ -2,6 +2,108 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.37
+
+A sketch may sit on an extrude's cap face, so "a hole, 4 mm deep, in the top face" can be built. Decided in [ADR-070](../adr/ADR-070-sketch-on-extrude-cap-face.md); measured by the [face spike](../superpowers/review/2026-11-06-face-sketch-spike.md); planned in [the face reference plan](../superpowers/plans/2026-11-06-face-reference-sketches.md).
+
+- **IR (5.7.4):** a sketch `plane` may be `<extrude_id>.end_face` or `<extrude_id>.start_face`. No other faces, edges or offset planes. The sketch lists the extrude in its `dependencies`. The schema pattern already accepted `name.name`; the compiler now accepts these two roles.
+- **Frames (measured on `plane:front`):** an end face has the base plane's axes with the origin moved by the depth; a start face has x mirrored and the normal reversed. A blind cut from a face goes into the body with `Flip=false`, `Dir=false`; from an origin plane it still needs `Dir=true`.
+- **No persisted references:** the compiler states the face's outward normal and offset, and the add-in finds the extrude's planar face with that signature, selects it with `IEntity.Select4` and checks the opened sketch's axes (`REF_NOT_FOUND`, `REF_AMBIGUOUS`, `REF_SIGNATURE_MISMATCH`). K28 stays open for edges and later phases.
+- **Contracts:** `sketch.create` takes `plane` or `face`; `feature.create` takes `host` (`face` for a cut whose sketch is on a face). The stage version of feature lowering is 0.3.0, so plan hashes change for graphs that use a face, and the golden plan's provenance changed.
+- **Verification:** expected geometry places a cut from a face between `depth - h` and `depth` (end face) or `0` and `h` (start face), with x mirrored on the start face.
+- **Authoring guide and evaluation set:** the guide teaches the face syntax and its frame; `blind_hole_top_face` is now a build case and `refuse_hole_in_side_face` replaces the old refusal.
+- **Register:** adds K29 (the frame rule is unmeasured on `plane:top` and `plane:right`; the add-in fails safely).
+
+## What changed in 1.36
+
+Adds `get_authoring_guide`, the tool an agent reads before it turns a user's request into a Part Feature Graph, and states the refusal rule. No IR schema or add-in code changed, and no live SOLIDWORKS run was made.
+
+- **New tool, `get_authoring_guide` (12.4.4, 12.4.5, 12.2):** core toolset, `store` kind, read-only, no input. It returns one Markdown guide: the workflow (decide, write, `validate_part_graph` until valid, state what will be built, `apply_part_graph`), the planes with their axes and normals, the validator rules, the limits, and validated worked examples. It is generated from the plane definitions and the supported feature list, so it cannot drift from them.
+- **Refusal rule (owner decision, 2026-11-06):** when a request needs something the MVP cannot express (fillets, arcs, patterns, sketches on a face, more than one base extrude, assemblies, and similar), the agent replies that it cannot fulfil the request and never builds an approximation.
+- **A tool, not an MCP resource:** the MCP front-end may import no `cad_*` package and reaches the core only through tools, so a resource would need a new core protocol path. ADR-044's "no prompts" is kept; the server states the workflow in its `instructions` instead.
+- **Validator messages:** five rule messages now say what to change (second extrude, cut without the extrude dependency, open loop, hole or cut on or outside the edge), so an agent can repair a graph in one step.
+- **Evaluation set:** 11 prompts (8 to build, 3 to refuse) with facts computed by plain arithmetic, a checker and a script (`scripts/score_part_ir.py`). It scores answers an agent produced; the tests call no LLM.
+- **Plan:** [agent IR authoring](../superpowers/plans/2026-11-06-agent-ir-authoring.md).
+
+## What changed in 1.35
+
+Adds a coherent architecture reference for the IR, the compiler and the adapter, and aligns the topic files with each other. No schema or production code changed, and no live SOLIDWORKS run was made.
+
+- **New sections, Proposed:** [§22 CAD IR](ir-specification.md) and [§23 Compiler Architecture](compiler-architecture-specification.md). They point to the topic sections for what is decided, and label everything new. 23.13 names one owner for each shared contract.
+- **§8.9 extended, no new adapter file:** 8.9.11 maps the IR to native calls, with evidence levels; 8.9.12 is the add-in's half of reference resolution; 8.9.13 lists the raw facts it exposes; 8.9.14 maps concerns to their existing sections. 8.9.5 gains rows for selection failure, over-defined sketches, references and a blocked UI. A new mark, ◐, means read from the installed interop and help but never run.
+- **API findings:** the 2025 help marks these obsolete: `InsertProtrusionSwept4`, `InsertCutSwept5`, `FeatureFillet3` for constant radius, `FeatureLinearPattern5` and `FeatureCircularPattern5`. It also documents that face IDs are removed on rebuild and tracking IDs last only until one.
+- **Proposed ADRs:** [ADR-065](../adr/ADR-065-part-parameters-and-expressions.md) to [ADR-069](../adr/ADR-069-stable-operation-ids.md). None is applied.
+- **Register:** adds K23 to K28.
+- **Alignment fixes (wording only; each matched an accepted decision or the schema):**
+  - 8.6.2 follows ADR-059: hidden control with no fallback, re-post, and the pipe thread's full list of answers. 8.6.1's example uses protocol `0.1`.
+  - 8.3 rule 9: one conversion place per direction, as 8.7 and 8.8.9 already said.
+  - 8.4 and 8.5, and 6.5.2's Undo row: part jobs use the working-file rule, not undo.
+  - 6.3: preconditions are not plan content, because the schema has no such field.
+  - 5.7.2 and 5.7.5: reference examples that the grammar rejects now say so (K23). 5.7.1 notes the ordering risk. 5.7.3 separates mirror from `pattern`, as Proposed, and states `spacing`'s two kinds.
+  - 13.1: the `apply_part_graph` exception. 13.2.1: `evidence.json`, and `feature_ids` and `measured` from A3.
+  - 4.6: parameters use `kind`, since 3.4.3 fixes units per document.
+  - 5.6 cross-refers K25. 3.2, 6.3, 7.5, 9.3 and 10.2 cross-refer the new sections. 17: the adapters do not verify, and `execution-evidence/` is listed.
+  - 18: the MVP is approved, as HANDOFF already said.
+
+## What changed in 1.34
+
+Delivers roadmap phase [A0](../plans/solidworks-adapter-roadmap.md): the contracts that ADR-063 and ADR-064 need now exist as schemas. The add-in and the job do not use them yet, so no job behaves differently.
+
+- **Error catalogue:** adds `BACKEND_OPERATION_FAILED` (8.9.5) and `FEATURE_VERIFICATION_FAILED` (ADR-064), replacing their placeholders. ADR-037 lists both.
+- **New schemas:** `schemas/execution-evidence/v0.json` (8.9.6), including `VerificationContract`, check results, `failure_class` and `blocked_by`; `schemas/ipc/ops/document.rebuild.json`.
+- **`schemas/ipc/v0.json`:** adds `Observation` (8.9.3 rule 7) and `OperationFailureDetails` with `effect`, `stage` and `native` (8.9.5). `native` fields are absent when unknown, not null.
+- **Operations:** `sketch.create` and `feature.create` results gain an optional `observation`, and `feature.create`'s `status` is limited to the four values of 8.9.3 rule 6. **Breaking for a plan:** `dir` leaves `feature.create` and the compiler (6.5.2), and the `feature_lowering` stage goes to 0.2.0, so every plan hash changes.
+- **Journal:** the store schema gains `op_verified` (13.2.3). The journal reader follows in MVP Task 9a.
+- **`cad-verification`:** `CheckResult.status` gains `warning` and `not_applicable`, and rejects a reason that does not fit its status (8.9.6). Nothing produces the new values yet.
+- **8.9.3:** `document.rebuild` returns `rebuilt`, the call's own return, apart from the observed `ok` and `errors`, because a rebuild returning true does not mean error-free.
+- **8.9.6:** the example gains `contracts` and `observation`, and `native_id` is an integer, as in the operation result. A contract check becomes `not_applicable` through `not_applicable_reason`, set from the IR alone.
+
+## What changed in 1.33
+
+Settles a contradiction between 6.5.3 and 6.7.4, finding V14 of the [verifiable compilation gap analysis](../superpowers/review/2026-11-05-verifiable-compilation-gap-analysis.md). No production code or schema changed: the code already behaved this way.
+
+- **6.7.4 (owner decision, 2026-11-05):** a plan's `bundle` records each document's pinned revision, so two revisions of identical content give the same `operations` but different plan hashes. 6.7.4 used to say they gave an identical plan.
+
+## What changed in 1.32
+
+Adopts per-operation verification from the [verifiable compilation gap analysis](../superpowers/review/2026-11-05-verifiable-compilation-gap-analysis.md). No schema or production code changed, and the code does not follow this yet (roadmap A0, A2 and MVP Tasks 8 to 9b). No live SOLIDWORKS run was made.
+
+- **New ADR:** [ADR-064](../adr/ADR-064-per-operation-verification-contracts.md), Accepted by the owner on 2026-11-05. It extends ADR-063.
+- **New section:** [10.2.2 Per-operation verification](../architecture/verification-engine.md): contracts derived from the IR, a judgement before each next operation, fail fast, and cost tiers.
+- **Changed:** 6.5.2 (a blind cut's direction leaves the plan and the wire), 6.5.3 (postconditions are names only), 8.4.1, 8.7 (`rebuild` is observed state), 8.8.9, 8.9.3 (`observation`), 8.9.5, 8.9.6 (`warning`, `not_applicable`, reasons, `failure_class`, `blocked_by`), 8.9.10, 10.2.1 and 13.2.3 (`op_verified`).
+- **Open Decisions** ([register](open-decisions.md)): logged **K18** (cost of per-feature observation), **K19** (rebuild state on a document that was not rebuilt), **K20** (which mass property call to use) and **K21** (native type names for extrudes and cuts). **K22** is closed by owner decision: a feature warning blocks a commit in the MVP. **K15** is narrowed by the official API help: `AccessSelections` is ruled out for observers. 15 open decisions now.
+
+## What changed in 1.31
+
+Adds the compiler-oriented SOLIDWORKS adapter design, accepted by the owner on 2026-11-05. No production code or schema changed. No live SOLIDWORKS run was made for this design, and API facts not measured by the 2026-11-05 spike are marked unverified.
+
+- **New sections:** [8.8 SOLIDWORKS Adapter Architecture](../architecture/solidworks-adapter.md) and [8.9 SOLIDWORKS Adapter Interface Specification](solidworks-adapter.md): layers, the five-stage handler, determinism levels R0 to R4, failure and retry rules, observation and verification, reconciliation limits, version isolation, operations by phase, error normalization with `details.effect`, an evidence record, `op:` variant capabilities and representative C# interfaces. 8.8.3 lists where the design departs from the request that prompted it, including that the compiler stays Python (ADR-001).
+- **New ADRs:** ADR-058 to ADR-063, all Accepted.
+- **New plan:** [SOLIDWORKS adapter roadmap](../plans/solidworks-adapter-roadmap.md), which builds on the part chain MVP plan and does not replace it.
+- **Open Decisions** ([register](open-decisions.md)): logged **K13** (interop binding on a newer major), **K14** (native feature identity beyond reopen), **K15** (reading feature definitions without side effects), and **K16** (expected geometry beyond exact calculation); 11 open decisions now. K17 was logged and closed in this version.
+- **Accepted, not applied yet:** `PROPOSED_OPERATION_FAILED` and the evidence schema (roadmap A0).
+- **Owner decisions, 2026-11-05:** the compiler stays Python (ADR-001). ADR-059's COM release rule is adopted and applied to G1 and AGENTS.md section 2; the code does not follow it yet. The dispatcher and capability work joins the MVP as plan Task 7c. **Ledger (8.7, 13.2.3; closes K17):** an operation that may have changed the document and then failed is recorded and can never run again, `session.completed_operations` gains an additive `failed_operations`, and `operation_ids` stays successes only. Not implemented yet (plan Task 7a).
+
+## What changed in 1.30
+
+Specifies the part chain MVP ([design](../superpowers/specs/2026-11-05-part-chain-mvp-design.md), [plan](../superpowers/plans/2026-11-05-part-chain-mvp.md)), using the answers recorded by the [live API spike](../superpowers/review/2026-11-05-part-chain-spike.md). No schema or code yet; those come with the MVP's later tasks. New rules are **[Builder's call]** except where marked as the owner's decision.
+
+- **Part template** (13.3, 6.5.2, 8.4.1; owner decision): new key `part.template`, the full path of a `.prtdot`, user file only, default unset. `part.create` uses the caller's template, otherwise this key. Unset or missing fails with `CONFIG_INVALID` or `FILE_NOT_FOUND` naming the setting. SOLIDWORKS's own default-template preference (`~BLANK_PART_TEMPLATE.prtdot` on the owner's install, which is not a file) is never used, and there is no fallback to an installed template.
+- **Sketch axes and directions** (5.7.4): the table of axes, normals and blind extrude and cut directions for the three standard planes. A blind `cut_extrude` passes `Dir=true`; `Flip` does not work. Standard planes are found by `RefPlane` order and their normal is checked. `IMassProperty` uses `UseSystemUnits = true`. The `GetPersistReference3` fallback of 5.3.6 is not needed (A2 held).
+- **Part operations** (6.5.2, 6.5.3): `part.create`, `sketch.create` and `feature.create` for the MVP, standard planes as role references (an exception to 6.5.1), documents addressed by full path only, existing paths refused because silent `SaveAs4` overwrites. A plan holds symbols (`$working`, node IDs) that the job binds at send time, one operation per batch. Selection uses `IFeature.Select2` and `Select4`; `SelectByID2` stays banned (8.3 rule 11).
+- **Plan key** (6.7.4, 13.2.1): one key, the plan's content hash; an existing plan is reused and the reuse journalled.
+- **`plan` job** (8.4.1, 8.7, 13.2.3, 13.2.1): lifecycle, publishing by no-replace rename, cancel boundaries, working files, `part.measure`, journal records `publish_intent` and `published` and the `document` action `create`, the `published_unconfirmed` warning, the `parts/` record and `part_result`.
+- **Rule 13 and events** (8.3 rule 13, ADR-050; owner decision D1): the "AI job running" banner is not built for the MVP; `cancel_execution` stops a job; event detection is built. The add-in uses `RegenNotify`/`RegenPostNotify`, `FileSavePostNotify` and `DestroyNotify2`, not `FileSaveNotify` or `FileCloseNotify`, and checks a document with `GetOpenDocumentByName(fullPath)` before trusting an ownership entry. Part operations need no active document.
+- **ADRs** (owner decisions for the MVP): ADR-032 gains the ownership table and close-tracking exceptions to "stateless"; ADR-046 gains the working-file rule instead of undo for part jobs and add-in ownership enforcement; ADR-050 records the D1 exception; ADR-037 adds `PART_VERIFICATION_FAILED` and the `PART_` prefix.
+- **Verification** (10.2.1): the MVP checks and tolerances (±0.01 mm, ±0.01%), with the plate measured in the spike.
+- **Revisions** (3.4.5, 12.4.2): `apply_part_graph` takes an optional `expected_revision`; identical content reuses a revision, different content without a match is `REV_CONFLICT`.
+- **Tools and toolsets** (12.3, 12.4.4, 12.4.5, 12.5, 13.3): `mcp.toolsets` defaults to `["core"]` while drawings are frozen, and a disabled tool is refused over the core pipe. Four tools (`apply_part_graph`, `validate_part_graph`, `list_feature_types`, `get_feature_schema`) ship before Phase 1c under ADR-057. 12.5 allows new parts the system produced, never overwriting.
+- **Open Decisions** ([register](open-decisions.md)): logged **K11** (events for an engineer's UI actions are not yet observed) and **K12** (measurement on curved bodies); 7 open decisions now (K3, J11, K8, K9, K10, K11, K12).
+
+## What changed in 1.29
+
+Adds the part chain MVP to the current focus of the roadmap (section 18): its stages, finish line and exclusions, linking its [design](../superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](../superpowers/plans/2026-11-05-part-chain-mvp.md), both awaiting the owner's approval. No contract changes; those come with the MVP's first specification task.
+
 ## What changed in 1.28
 
 Rewrites the roadmap (section 18) for readability, adds the order of work for Phase 1, and records the owner's decision to freeze drawing work and build the part chain first. Phase scope, acceptance criteria and assumptions A1–A17 are unchanged.

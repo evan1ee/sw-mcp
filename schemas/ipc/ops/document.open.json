@@ -41,6 +41,9 @@
       "properties": {
         "owned": {
           "type": "boolean"
+        },
+        "instance_id": {
+          "type": "string"
         }
       },
       "required": [

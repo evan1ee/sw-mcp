@@ -1,6 +1,6 @@
 # 7. Semantic Geometry Reference System (P1)
 
-> Specification v1.28, section 7. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, section 7. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 7.1 Purpose
 
@@ -43,6 +43,6 @@ Thresholds are configurable and calibrated on the CAD benchmark. **The system ne
 
 ## 7.5 SOLIDWORKS
 
-Gathering candidates happens in the add-in and every decision in Python (ADR-049). Use `IModelDocExtension::GetPersistReference3`, `GetObjectByPersistReference3`, `IEntity`, `IFace2`, `IEdge`, `IVertex`. Persistent references are validated after topology changes; they are not a guarantee of semantic identity.
+Gathering candidates happens in the add-in and every decision in Python (ADR-049). Use `IModelDocExtension::GetPersistReference3`, `GetObjectByPersistReference3`, `IEntity`, `IFace2`, `IEdge`, `IVertex`. Persistent references are validated after topology changes; they are not a guarantee of semantic identity. Which other native identifiers are unsuitable, and why, is [8.9.12](../specifications/solidworks-adapter.md#8912-reference-resolution-in-the-adapter). The authored forms are [22.6](../specifications/ir-specification.md#226-reference-model).
 
 **Model geometry vs drawing-view geometry.** A drawing dimension or annotation attaches to the entity as it appears in a particular view, not to the model entity. Drawing references therefore resolve in two steps: the reference resolves to a model entity, then the adapter maps it to the corresponding entity in the target view (through `IView` entity mapping) and checks that it is visible there. An entity that is not visible in the view, or that maps to more than one view entity, is reported. It is never attached to a guessed edge.

@@ -1,0 +1,12 @@
+[
+  {
+    "type": "line",
+    "start": [0.0, 0.0],
+    "end": [10.0, 10.0]
+  },
+  {
+    "type": "circle",
+    "center": [0.0, 0.0],
+    "diameter": 5.0
+  }
+]

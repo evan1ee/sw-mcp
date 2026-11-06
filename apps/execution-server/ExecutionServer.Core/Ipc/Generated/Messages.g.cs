@@ -39,12 +39,120 @@ public enum DocumentEventParamsEvent
 }
 
 [JsonConverter(typeof(StringEnumConverter))]
+public enum OperationEffect
+{
+    [EnumMember(Value = "none")]
+    None,
+    [EnumMember(Value = "applied")]
+    Applied,
+    [EnumMember(Value = "unknown")]
+    Unknown
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum OperationFailureDetailsStage
+{
+    [EnumMember(Value = "admit")]
+    Admit,
+    [EnumMember(Value = "translate")]
+    Translate,
+    [EnumMember(Value = "invoke")]
+    Invoke,
+    [EnumMember(Value = "read_back")]
+    ReadBack,
+    [EnumMember(Value = "report")]
+    Report
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum CompletenessState
+{
+    [EnumMember(Value = "present")]
+    Present,
+    [EnumMember(Value = "empty")]
+    Empty,
+    [EnumMember(Value = "unavailable")]
+    Unavailable,
+    [EnumMember(Value = "unsupported")]
+    Unsupported
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum FeatureCreateEndConditionType
+{
+    [EnumMember(Value = "blind")]
+    Blind,
+    [EnumMember(Value = "through_all_both")]
+    ThroughAllBoth
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum FeatureCreateParamsType
+{
+    [EnumMember(Value = "extrude")]
+    Extrude,
+    [EnumMember(Value = "cut_extrude")]
+    CutExtrude
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum FeatureCreateParamsHost
+{
+    [EnumMember(Value = "plane")]
+    Plane,
+    [EnumMember(Value = "face")]
+    Face
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum FeatureCreateResultStatus
+{
+    [EnumMember(Value = "ok")]
+    Ok,
+    [EnumMember(Value = "warning")]
+    Warning,
+    [EnumMember(Value = "error")]
+    Error,
+    [EnumMember(Value = "suppressed")]
+    Suppressed
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
 public enum ModelItemsInsertParamsSource
 {
     [EnumMember(Value = "entire_model")]
     EntireModel,
     [EnumMember(Value = "selected_feature")]
     SelectedFeature
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum SketchCreateEntityType
+{
+    [EnumMember(Value = "line")]
+    Line,
+    [EnumMember(Value = "circle")]
+    Circle
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum SketchCreateParamsPlane
+{
+    [EnumMember(Value = "plane:front")]
+    PlaneFront,
+    [EnumMember(Value = "plane:top")]
+    PlaneTop,
+    [EnumMember(Value = "plane:right")]
+    PlaneRight
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum SketchCreateFaceRole
+{
+    [EnumMember(Value = "start_face")]
+    StartFace,
+    [EnumMember(Value = "end_face")]
+    EndFace
 }
 
 [JsonConverter(typeof(StringEnumConverter))]
@@ -289,10 +397,25 @@ public sealed class CompletedOperationsParams
     public Meta? Meta { get; set; }
 }
 
+public sealed class FailedOperation
+{
+    [JsonProperty("operation_id", Required = Required.Always)]
+    public string OperationId { get; set; } = string.Empty;
+
+    [JsonProperty("code", Required = Required.Always)]
+    public string Code { get; set; } = string.Empty;
+
+    [JsonProperty("effect", Required = Required.Always)]
+    public string Effect { get; set; } = string.Empty;
+}
+
 public sealed class CompletedOperationsResult
 {
     [JsonProperty("operation_ids", Required = Required.Always)]
     public List<string> OperationIds { get; set; } = new List<string>();
+
+    [JsonProperty("failed_operations", NullValueHandling = NullValueHandling.Ignore)]
+    public List<FailedOperation>? FailedOperations { get; set; }
 }
 
 public sealed class SnapshotParams
@@ -305,6 +428,99 @@ public sealed class SnapshotParams
 
     [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
     public Meta? Meta { get; set; }
+}
+
+public sealed class PartBBoxM
+{
+    [JsonProperty("min", Required = Required.Always)]
+    public List<double> Min { get; set; } = new List<double>();
+
+    [JsonProperty("max", Required = Required.Always)]
+    public List<double> Max { get; set; } = new List<double>();
+}
+
+public sealed class PartCylinderM
+{
+    [JsonProperty("point", Required = Required.Always)]
+    public List<double> Point { get; set; } = new List<double>();
+
+    [JsonProperty("direction", Required = Required.Always)]
+    public List<double> Direction { get; set; } = new List<double>();
+
+    [JsonProperty("radius", Required = Required.Always)]
+    public double Radius { get; set; }
+}
+
+public sealed class PartRebuildResult
+{
+    [JsonProperty("ok", Required = Required.Always)]
+    public bool Ok { get; set; }
+
+    [JsonProperty("errors", Required = Required.Always)]
+    public List<string> Errors { get; set; } = new List<string>();
+}
+
+public sealed class PartFeatureInfo
+{
+    [JsonProperty("feature_id", Required = Required.Always)]
+    public string FeatureId { get; set; } = string.Empty;
+
+    [JsonProperty("native_id", Required = Required.Always)]
+    public long NativeId { get; set; }
+
+    [JsonProperty("type", Required = Required.Always)]
+    public string Type { get; set; } = string.Empty;
+
+    [JsonProperty("status", Required = Required.Always)]
+    public string Status { get; set; } = string.Empty;
+}
+
+public sealed class PartMeasureParams
+{
+    [JsonProperty("document", Required = Required.Always)]
+    public string Document { get; set; } = string.Empty;
+
+    [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
+    public Meta? Meta { get; set; }
+}
+
+public sealed class PartMeasureResult
+{
+    [JsonProperty("path", Required = Required.Always)]
+    public string Path { get; set; } = string.Empty;
+
+    [JsonProperty("instance_id", Required = Required.Always)]
+    public string InstanceId { get; set; } = string.Empty;
+
+    [JsonProperty("solid_body_count", Required = Required.Always)]
+    public long SolidBodyCount { get; set; }
+
+    [JsonProperty("bbox_m", Required = Required.Always)]
+    public PartBBoxM BboxM { get; set; } = null!;
+
+    [JsonProperty("volume_m3", Required = Required.Always)]
+    public double VolumeM3 { get; set; }
+
+    [JsonProperty("surface_area_m2", Required = Required.Always)]
+    public double SurfaceAreaM2 { get; set; }
+
+    [JsonProperty("center_of_mass_m", Required = Required.Always)]
+    public List<double> CenterOfMassM { get; set; } = new List<double>();
+
+    [JsonProperty("cylinders_m", Required = Required.Always)]
+    public List<PartCylinderM> CylindersM { get; set; } = new List<PartCylinderM>();
+
+    [JsonProperty("rebuild", Required = Required.Always)]
+    public PartRebuildResult Rebuild { get; set; } = null!;
+
+    [JsonProperty("features", Required = Required.Always)]
+    public List<PartFeatureInfo> Features { get; set; } = new List<PartFeatureInfo>();
+
+    [JsonProperty("dirty", Required = Required.Always)]
+    public bool Dirty { get; set; }
+
+    [JsonProperty("read_only", Required = Required.Always)]
+    public bool ReadOnly { get; set; }
 }
 
 public sealed class Operation
@@ -416,6 +632,105 @@ public sealed class ResponseChunkParams
 
     [JsonProperty("data", Required = Required.Always)]
     public string Data { get; set; } = string.Empty;
+}
+
+public sealed class NativeFailure
+{
+    [JsonProperty("call", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Call { get; set; }
+
+    [JsonProperty("returned", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Returned { get; set; }
+
+    [JsonProperty("hresult", NullValueHandling = NullValueHandling.Ignore)]
+    public long? Hresult { get; set; }
+
+    [JsonProperty("error_code", NullValueHandling = NullValueHandling.Ignore)]
+    public long? ErrorCode { get; set; }
+}
+
+public sealed class OperationFailureDetails
+{
+    [JsonProperty("effect", Required = Required.Always)]
+    public OperationEffect Effect { get; set; }
+
+    [JsonProperty("stage", NullValueHandling = NullValueHandling.Ignore)]
+    public OperationFailureDetailsStage? Stage { get; set; }
+
+    [JsonProperty("native", NullValueHandling = NullValueHandling.Ignore)]
+    public NativeFailure? Native { get; set; }
+}
+
+public sealed class ObservationCompleteness
+{
+    [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? Type { get; set; }
+
+    [JsonProperty("error_code", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? ErrorCode { get; set; }
+
+    [JsonProperty("suppressed", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? Suppressed { get; set; }
+
+    [JsonProperty("parents", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? Parents { get; set; }
+
+    [JsonProperty("parameters", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? Parameters { get; set; }
+
+    [JsonProperty("solid_body_count", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? SolidBodyCount { get; set; }
+
+    [JsonProperty("needs_rebuild", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? NeedsRebuild { get; set; }
+
+    [JsonProperty("update_stamp", NullValueHandling = NullValueHandling.Ignore)]
+    public CompletenessState? UpdateStamp { get; set; }
+}
+
+public sealed class ObservedParameters
+{
+    [JsonProperty("end_condition", NullValueHandling = NullValueHandling.Ignore)]
+    public string? EndCondition { get; set; }
+
+    [JsonProperty("depth_m", NullValueHandling = NullValueHandling.Ignore)]
+    public double? DepthM { get; set; }
+}
+
+public sealed class Observation
+{
+    [JsonProperty("native_type", NullValueHandling = NullValueHandling.Ignore)]
+    public string? NativeType { get; set; }
+
+    [JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Type { get; set; }
+
+    [JsonProperty("error_code", NullValueHandling = NullValueHandling.Ignore)]
+    public long? ErrorCode { get; set; }
+
+    [JsonProperty("is_warning", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? IsWarning { get; set; }
+
+    [JsonProperty("suppressed", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Suppressed { get; set; }
+
+    [JsonProperty("parents", NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Parents { get; set; }
+
+    [JsonProperty("parameters", NullValueHandling = NullValueHandling.Ignore)]
+    public ObservedParameters? Parameters { get; set; }
+
+    [JsonProperty("solid_body_count", NullValueHandling = NullValueHandling.Ignore)]
+    public long? SolidBodyCount { get; set; }
+
+    [JsonProperty("needs_rebuild", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? NeedsRebuild { get; set; }
+
+    [JsonProperty("update_stamp", NullValueHandling = NullValueHandling.Ignore)]
+    public long? UpdateStamp { get; set; }
+
+    [JsonProperty("completeness", Required = Required.Always)]
+    public ObservationCompleteness Completeness { get; set; } = null!;
 }
 
 public sealed class CenterMarkAddParams
@@ -557,6 +872,30 @@ public sealed class DocumentOpenResult
 {
     [JsonProperty("owned", Required = Required.Always)]
     public bool Owned { get; set; }
+
+    [JsonProperty("instance_id", NullValueHandling = NullValueHandling.Ignore)]
+    public string? InstanceId { get; set; }
+}
+
+public sealed class DocumentRebuildParams
+{
+    [JsonProperty("force", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Force { get; set; }
+
+    [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
+    public Meta? Meta { get; set; }
+}
+
+public sealed class DocumentRebuildResult
+{
+    [JsonProperty("rebuilt", Required = Required.Always)]
+    public bool Rebuilt { get; set; }
+
+    [JsonProperty("ok", Required = Required.Always)]
+    public bool Ok { get; set; }
+
+    [JsonProperty("errors", Required = Required.Always)]
+    public List<string> Errors { get; set; } = new List<string>();
 }
 
 public sealed class DocumentSaveParams
@@ -610,6 +949,51 @@ public sealed class DrawingCreateResult
     public string SheetName { get; set; } = string.Empty;
 }
 
+public sealed class FeatureCreateEndCondition
+{
+    [JsonProperty("type", Required = Required.Always)]
+    public FeatureCreateEndConditionType Type { get; set; }
+
+    [JsonProperty("depth", NullValueHandling = NullValueHandling.Ignore)]
+    public double? Depth { get; set; }
+}
+
+public sealed class FeatureCreateParams
+{
+    [JsonProperty("node_id", Required = Required.Always)]
+    public string NodeId { get; set; } = string.Empty;
+
+    [JsonProperty("type", Required = Required.Always)]
+    public FeatureCreateParamsType Type { get; set; }
+
+    [JsonProperty("profile", Required = Required.Always)]
+    public string Profile { get; set; } = string.Empty;
+
+    [JsonProperty("end_condition", Required = Required.Always)]
+    public FeatureCreateEndCondition EndCondition { get; set; } = null!;
+
+    [JsonProperty("host", NullValueHandling = NullValueHandling.Ignore)]
+    public FeatureCreateParamsHost? Host { get; set; }
+
+    [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
+    public Meta? Meta { get; set; }
+}
+
+public sealed class FeatureCreateResult
+{
+    [JsonProperty("native_id", Required = Required.Always)]
+    public long NativeId { get; set; }
+
+    [JsonProperty("feature_id", Required = Required.Always)]
+    public string FeatureId { get; set; } = string.Empty;
+
+    [JsonProperty("status", Required = Required.Always)]
+    public FeatureCreateResultStatus Status { get; set; }
+
+    [JsonProperty("observation", NullValueHandling = NullValueHandling.Ignore)]
+    public Observation? Observation { get; set; }
+}
+
 public sealed class ModelItemsInsertParams
 {
     [JsonProperty("view", NullValueHandling = NullValueHandling.Ignore)]
@@ -646,6 +1030,42 @@ public sealed class ModelItemsInsertResult
     public List<string>? Annotations { get; set; }
 }
 
+public sealed class PartCreateParams
+{
+    [JsonProperty("template", Required = Required.Always)]
+    public string Template { get; set; } = string.Empty;
+
+    [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
+    public Meta? Meta { get; set; }
+}
+
+public sealed class PartCreateTemplateInfo
+{
+    [JsonProperty("path", Required = Required.Always)]
+    public string Path { get; set; } = string.Empty;
+
+    [JsonProperty("sha256", Required = Required.Always)]
+    public string Sha256 { get; set; } = string.Empty;
+}
+
+public sealed class PartCreateResult
+{
+    [JsonProperty("native_id", Required = Required.Always)]
+    public long NativeId { get; set; }
+
+    [JsonProperty("path", Required = Required.Always)]
+    public string Path { get; set; } = string.Empty;
+
+    [JsonProperty("instance_id", Required = Required.Always)]
+    public string InstanceId { get; set; } = string.Empty;
+
+    [JsonProperty("previous_active", Required = Required.AllowNull)]
+    public string? PreviousActive { get; set; }
+
+    [JsonProperty("template", Required = Required.Always)]
+    public PartCreateTemplateInfo Template { get; set; } = null!;
+}
+
 public sealed class SheetFormatGenerateParams
 {
     [JsonProperty("template", Required = Required.Always)]
@@ -665,6 +1085,78 @@ public sealed class SheetFormatGenerateResult
 
     [JsonProperty("size_mm", Required = Required.Always)]
     public List<double> SizeMm { get; set; } = new List<double>();
+}
+
+public sealed class SketchCreateEntity
+{
+    [JsonProperty("type", Required = Required.Always)]
+    public SketchCreateEntityType Type { get; set; }
+
+    [JsonProperty("start", NullValueHandling = NullValueHandling.Ignore)]
+    public List<double>? Start { get; set; }
+
+    [JsonProperty("end", NullValueHandling = NullValueHandling.Ignore)]
+    public List<double>? End { get; set; }
+
+    [JsonProperty("center", NullValueHandling = NullValueHandling.Ignore)]
+    public List<double>? Center { get; set; }
+
+    [JsonProperty("diameter", NullValueHandling = NullValueHandling.Ignore)]
+    public double? Diameter { get; set; }
+}
+
+public sealed class SketchCreateFace
+{
+    [JsonProperty("feature", Required = Required.Always)]
+    public string Feature { get; set; } = string.Empty;
+
+    [JsonProperty("role", Required = Required.Always)]
+    public SketchCreateFaceRole Role { get; set; }
+
+    [JsonProperty("normal", Required = Required.Always)]
+    public List<double> Normal { get; set; } = new List<double>();
+
+    [JsonProperty("offset_mm", Required = Required.Always)]
+    public double OffsetMm { get; set; }
+
+    [JsonProperty("x_axis", Required = Required.Always)]
+    public List<double> XAxis { get; set; } = new List<double>();
+
+    [JsonProperty("y_axis", Required = Required.Always)]
+    public List<double> YAxis { get; set; } = new List<double>();
+}
+
+public sealed class SketchCreateParams
+{
+    [JsonProperty("node_id", Required = Required.Always)]
+    public string NodeId { get; set; } = string.Empty;
+
+    [JsonProperty("plane", NullValueHandling = NullValueHandling.Ignore)]
+    public SketchCreateParamsPlane? Plane { get; set; }
+
+    [JsonProperty("face", NullValueHandling = NullValueHandling.Ignore)]
+    public SketchCreateFace? Face { get; set; }
+
+    [JsonProperty("entities", Required = Required.Always)]
+    public List<SketchCreateEntity> Entities { get; set; } = new List<SketchCreateEntity>();
+
+    [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
+    public Meta? Meta { get; set; }
+}
+
+public sealed class SketchCreateResult
+{
+    [JsonProperty("native_id", Required = Required.Always)]
+    public long NativeId { get; set; }
+
+    [JsonProperty("feature_id", Required = Required.Always)]
+    public string FeatureId { get; set; } = string.Empty;
+
+    [JsonProperty("entity_count", Required = Required.Always)]
+    public long EntityCount { get; set; }
+
+    [JsonProperty("observation", NullValueHandling = NullValueHandling.Ignore)]
+    public Observation? Observation { get; set; }
 }
 
 public sealed class ViewCreateParams

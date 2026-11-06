@@ -218,7 +218,26 @@ public sealed partial class IpcSession
             case "session.completed_operations":
                 if (TryParams<CompletedOperationsParams>(id, p, required: false, out _))
                 {
-                    WriteWhole(id, RpcFrames.Result(id, new JObject { ["operation_ids"] = new JArray(_ledger.CompletedIds()) }));
+                    var failed = _ledger.FailedOperations();
+                    var res = new JObject
+                    {
+                        ["operation_ids"] = new JArray(_ledger.CompletedIds()),
+                    };
+                    if (failed.Count > 0)
+                    {
+                        var failedArray = new JArray();
+                        foreach (var f in failed)
+                        {
+                            failedArray.Add(new JObject
+                            {
+                                ["operation_id"] = f.OperationId,
+                                ["code"] = f.Code,
+                                ["effect"] = f.Effect,
+                            });
+                        }
+                        res["failed_operations"] = failedArray;
+                    }
+                    WriteWhole(id, RpcFrames.Result(id, res));
                 }
 
                 break;
@@ -233,6 +252,13 @@ public sealed partial class IpcSession
                 if (TryParams<SnapshotParams>(id, p, required: true, out var snapshot))
                 {
                     Enqueue(new QueuedCommand(id, snapshot, null));
+                }
+
+                break;
+            case "part.measure":
+                if (TryParams<PartMeasureParams>(id, p, required: true, out var measure))
+                {
+                    Enqueue(new QueuedCommand(id, null, null, measure));
                 }
 
                 break;

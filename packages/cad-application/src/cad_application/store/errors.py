@@ -8,9 +8,9 @@ from cad_ir.core.json_types import JsonValue
 
 @dataclass(frozen=True, slots=True)
 class StoreError:
-    """``STORE_LOCKED`` or ``STORE_CORRUPT``, returned instead of raised."""
+    """``STORE_LOCKED``, ``STORE_CORRUPT`` or ``REV_CONFLICT``, returned instead of raised."""
 
-    code: Literal["STORE_LOCKED", "STORE_CORRUPT"]
+    code: Literal["STORE_LOCKED", "STORE_CORRUPT", "REV_CONFLICT"]
     message: str
     details: JsonValue = None
 

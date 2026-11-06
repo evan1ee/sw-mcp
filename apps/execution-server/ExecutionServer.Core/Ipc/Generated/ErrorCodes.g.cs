@@ -45,6 +45,9 @@ public static class ErrorCodes
     public const string CONFIG_INVALID = "CONFIG_INVALID";
     public const string FILE_NOT_FOUND = "FILE_NOT_FOUND";
     public const string STORE_UNAVAILABLE = "STORE_UNAVAILABLE";
+    public const string PART_VERIFICATION_FAILED = "PART_VERIFICATION_FAILED";
+    public const string BACKEND_OPERATION_FAILED = "BACKEND_OPERATION_FAILED";
+    public const string FEATURE_VERIFICATION_FAILED = "FEATURE_VERIFICATION_FAILED";
 
     /// <summary>Default retryable of a code; an unknown code is AfterFix.</summary>
     public static ErrorRetryable DefaultRetryable(string code)
@@ -130,6 +133,12 @@ public static class ErrorCodes
             case FILE_NOT_FOUND:
                 return ErrorRetryable.AfterFix;
             case STORE_UNAVAILABLE:
+                return ErrorRetryable.AfterFix;
+            case PART_VERIFICATION_FAILED:
+                return ErrorRetryable.AfterFix;
+            case BACKEND_OPERATION_FAILED:
+                return ErrorRetryable.AfterFix;
+            case FEATURE_VERIFICATION_FAILED:
                 return ErrorRetryable.AfterFix;
             default:
                 return ErrorRetryable.AfterFix;

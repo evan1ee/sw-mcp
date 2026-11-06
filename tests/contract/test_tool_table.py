@@ -13,6 +13,13 @@ from cad_ir.generated.error_codes import ErrorCode
 ROOT = Path(__file__).resolve().parents[2]
 TABLE = ROOT / "docs" / "api" / "tool-contracts.md"
 SHIPPED_PHASES = {"1a"}
+SHIPPED_TOOLS = {
+    "apply_part_graph",
+    "validate_part_graph",
+    "list_feature_types",
+    "get_feature_schema",
+    "get_authoring_guide",
+}
 HEADING = "### 12.4.4 Tool table"
 CELLS = 5
 ROW = re.compile(r"^\|\s*`([a-z0-9_]+)`\s*\|")
@@ -72,7 +79,10 @@ def _row_problems(name: str, row: Row, contract: ToolContract) -> list[str]:
 
 
 def table_problems(
-    table: Table, contracts: Mapping[str, ToolContract], shipped: Collection[str]
+    table: Table,
+    contracts: Mapping[str, ToolContract],
+    shipped: Collection[str],
+    shipped_tools: Collection[str] = SHIPPED_TOOLS,
 ) -> list[str]:
     """Every difference between the table and the contract files (12.4.4)."""
     problems = list(table.problems)
@@ -83,13 +93,13 @@ def table_problems(
         else:
             problems += _row_problems(name, row, contract)
     for name, row in table.rows.items():
-        if row.phase in shipped and name not in contracts:
+        if (row.phase in shipped or name in shipped_tools) and name not in contracts:
             problems.append(f"{name}: no contract file for a row of shipped phase {row.phase}")
     return problems
 
 
 def _problems(text: str) -> list[str]:
-    return table_problems(parse_table(text), load_contracts(), SHIPPED_PHASES)
+    return table_problems(parse_table(text), load_contracts(), SHIPPED_PHASES, SHIPPED_TOOLS)
 
 
 def test_table_matches_contract_files() -> None:
@@ -98,7 +108,9 @@ def test_table_matches_contract_files() -> None:
 
 def test_every_shipped_tool_registered() -> None:
     rows = parse_table(TABLE.read_text(encoding="utf-8")).rows
-    shipped = {name for name, row in rows.items() if row.phase in SHIPPED_PHASES}
+    shipped = {
+        name for name, row in rows.items() if row.phase in SHIPPED_PHASES or name in SHIPPED_TOOLS
+    }
     assert shipped
     assert set(make_tool_rig().registry.names) == shipped
 

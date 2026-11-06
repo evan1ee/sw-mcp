@@ -1,0 +1,9 @@
+[
+  {
+    "type": "blind",
+    "depth": 10.0
+  },
+  {
+    "type": "through_all_both"
+  }
+]

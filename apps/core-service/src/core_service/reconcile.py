@@ -1,5 +1,6 @@
 """Step 2 of start-up recovery (13.2.3), done on the first backend connection."""
 
+import contextlib
 import threading
 from collections.abc import Callable
 
@@ -24,7 +25,12 @@ class ReconcilingProvider:
 
     def acquire(self, on_notification: Callable[[str, JsonValue], None]) -> Backend:
         backend = self._inner.acquire(on_notification)
-        with self._guard:
-            if self._engine is not None and self._engine.reconcile_pending():
-                self._engine.reconcile(backend)
-        return backend
+        try:
+            with self._guard:
+                if self._engine is not None and self._engine.reconcile_pending():
+                    self._engine.reconcile(backend)
+            return backend
+        except BaseException:
+            with contextlib.suppress(Exception):
+                backend.close()
+            raise

@@ -9,6 +9,8 @@ public interface ICommandHandler
 {
     JToken Snapshot(SnapshotParams p, CancellationToken ct);
 
+    JToken MeasurePart(PartMeasureParams p, CancellationToken ct);
+
     /// <summary>Runs one operation. Throws <see cref="IpcException"/> for a failure the core can act on.</summary>
     JToken Execute(string document, Operation op, CancellationToken ct);
 }
