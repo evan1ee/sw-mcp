@@ -87,7 +87,12 @@ def test_live_part_open_and_close_events(scratch_part: Path) -> None:
     open_op = Operation(
         operation_id=f"{job_id}:1",
         op="document.open",
-        params={"path": str(scratch_part), "read_only": False, "_meta": {"job_id": job_id}},
+        params={
+            "path": str(scratch_part),
+            "read_only": False,
+            "fully_resolved": True,
+            "_meta": {"job_id": job_id},
+        },
     )
 
     try:
@@ -139,7 +144,12 @@ def test_live_untagged_event_outside_command(scratch_part: Path) -> None:
     open_op = Operation(
         operation_id=f"{job_id}:1",
         op="document.open",
-        params={"path": str(scratch_part), "read_only": False, "_meta": {"job_id": job_id}},
+        params={
+            "path": str(scratch_part),
+            "read_only": False,
+            "fully_resolved": True,
+            "_meta": {"job_id": job_id},
+        },
     )
 
     try:

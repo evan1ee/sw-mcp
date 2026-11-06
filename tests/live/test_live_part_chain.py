@@ -39,6 +39,8 @@ from core_service.service import CoreService
 from mcp_server.client import CorePipeClient
 
 if sys.platform == "win32":
+    import pythoncom  # type: ignore[import-not-found]
+    import pywintypes  # type: ignore[import-not-found]
     import win32com.client  # type: ignore[import-not-found]
 else:
     win32com = None  # type: ignore[assignment]
@@ -65,6 +67,36 @@ SOLID_PLATE_VOL_M3: Final = 6.0e-5
 SW_DOC_PART: Final = 1
 SW_SAVE_AS_CURRENT_VERSION: Final = 0
 SW_SAVE_AS_SILENT: Final = 1
+
+
+def _com(obj: Any, name: str, *args: Any) -> Any:
+    """Call a late-bound COM member that pywin32 may expose as a method or a property."""
+    attr = getattr(obj, name)
+    try:
+        return attr(*args)
+    except (TypeError, pywintypes.com_error):
+        if args:
+            raise
+        return attr
+
+
+def _plane_names(doc: Any) -> list[str]:
+    names: list[str] = []
+    feat = _com(doc, "FirstFeature")
+    while feat is not None:
+        if str(_com(feat, "GetTypeName2")) == "RefPlane":
+            names.append(str(feat.Name))
+        feat = _com(feat, "GetNextFeature")
+    return names
+
+
+def _save_as(doc: Any, path: str) -> bool:
+    """SaveAs4 with by-reference error and warning outputs, as late binding requires."""
+    errors = win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
+    warnings = win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0)
+    return bool(doc.SaveAs4(path, SW_SAVE_AS_CURRENT_VERSION, SW_SAVE_AS_SILENT, errors, warnings))
+
+
 SW_DONT_REBUILD_ACTIVE_DOC: Final = 1
 SW_REORDER_BEFORE: Final = 1
 
@@ -547,13 +579,7 @@ def test_open_dirty_document_untouched(tmp_path: Path) -> None:
     doc = sw_app.NewDocument(template, 0, 0, 0)  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
     assert doc is not None
     try:
-        saved = doc.SaveAs4(  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
-            str(scratch_dirty),
-            SW_SAVE_AS_CURRENT_VERSION,
-            SW_SAVE_AS_SILENT,
-            0,
-            0,
-        )
+        saved = _save_as(doc, str(scratch_dirty))
         assert saved
         hash_before = hashlib.sha256(scratch_dirty.read_bytes()).hexdigest()
 
@@ -562,13 +588,13 @@ def test_open_dirty_document_untouched(tmp_path: Path) -> None:
             str(scratch_dirty),
             False,
             SW_DONT_REBUILD_ACTIVE_DOC,
-            0,
+            win32com.client.VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, 0),
         )
         sm = doc.SketchManager  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
         sm.InsertSketch(True)  # type: ignore[reportUnknownMemberType]
         sm.CreateLine(0.0, 0.0, 0.0, 0.02, 0.02, 0.0)  # type: ignore[reportUnknownMemberType]
         sm.InsertSketch(True)  # type: ignore[reportUnknownMemberType]
-        assert bool(doc.GetSaveFlag()) is True  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+        assert bool(_com(doc, "GetSaveFlag")) is True  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
 
         provider = NamedPipeBackendProvider(target_session=str(session.pid))
         service = _start_core(
@@ -592,12 +618,12 @@ def test_open_dirty_document_untouched(tmp_path: Path) -> None:
         # Engineer's scratch document is still open, still dirty, un-overwritten on disk, and active
         still_open = sw_app.GetOpenDocumentByName(str(scratch_dirty))  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
         assert still_open is not None
-        assert bool(still_open.GetSaveFlag()) is True  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+        assert bool(_com(still_open, "GetSaveFlag")) is True  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
         assert hashlib.sha256(scratch_dirty.read_bytes()).hexdigest() == hash_before
 
         active_doc = sw_app.ActiveDoc  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
         assert active_doc is not None
-        active_path = str(active_doc.GetPathName())  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+        active_path = str(_com(active_doc, "GetPathName"))  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
         assert os.path.normcase(active_path) == os.path.normcase(str(scratch_dirty))
     finally:
         _close_in_solidworks_by_path(scratch_dirty)
@@ -861,11 +887,11 @@ def test_template_with_reordered_planes(tmp_path: Path) -> None:
     try:
         # Collect standard RefPlanes and reorder Top before Front (or delete Front)
         planes: list[Any] = []
-        feat = doc.FirstFeature()  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
+        feat = _com(doc, "FirstFeature")
         while feat is not None:
-            if str(feat.GetTypeName2()) == "RefPlane":  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+            if str(_com(feat, "GetTypeName2")) == "RefPlane":  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
                 planes.append(feat)
-            feat = feat.GetNextFeature()  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
+            feat = _com(feat, "GetNextFeature")
 
         assert len(planes) >= 2  # noqa: PLR2004
         front_name = str(planes[0].Name)  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
@@ -877,19 +903,15 @@ def test_template_with_reordered_planes(tmp_path: Path) -> None:
             # If SOLIDWORKS refuses to reorder standard planes, delete first plane so Top is index 0
             planes[0].Select2(False, 0)
             doc.EditDelete()  # type: ignore[reportUnknownMemberType]
+            if _plane_names(doc) == [str(p.Name) for p in planes]:
+                pytest.skip("SOLIDWORKS refuses to reorder or delete standard planes")
 
-        saved = doc.SaveAs4(  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
-            str(bad_template),
-            SW_SAVE_AS_CURRENT_VERSION,
-            SW_SAVE_AS_SILENT,
-            0,
-            0,
-        )
+        saved = _save_as(doc, str(bad_template))
         assert saved
     finally:
         with contextlib.suppress(Exception):
             sw_app.CloseDoc(str(bad_template))  # type: ignore[reportUnknownMemberType]
-            sw_app.CloseDoc(str(doc.GetTitle()))  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+            sw_app.CloseDoc(str(_com(doc, "GetTitle")))  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
 
     proj = tmp_path / "proj"
     proj.mkdir(parents=True, exist_ok=True)
@@ -930,30 +952,24 @@ def test_template_with_extra_feature(tmp_path: Path) -> None:
     assert doc is not None
     try:
         # Select first RefPlane and insert an extra sketch into the template
-        feat = doc.FirstFeature()  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
+        feat = _com(doc, "FirstFeature")
         while feat is not None:
-            if str(feat.GetTypeName2()) == "RefPlane":  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+            if str(_com(feat, "GetTypeName2")) == "RefPlane":  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
                 feat.Select2(False, 0)  # type: ignore[reportUnknownMemberType]
                 break
-            feat = feat.GetNextFeature()  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
+            feat = _com(feat, "GetNextFeature")
 
         sm = doc.SketchManager  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
         sm.InsertSketch(True)  # type: ignore[reportUnknownMemberType]
         sm.CreateLine(0.0, 0.0, 0.0, 0.01, 0.0, 0.0)  # type: ignore[reportUnknownMemberType]
         sm.InsertSketch(True)  # type: ignore[reportUnknownMemberType]
 
-        saved = doc.SaveAs4(  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
-            str(extra_template),
-            SW_SAVE_AS_CURRENT_VERSION,
-            SW_SAVE_AS_SILENT,
-            0,
-            0,
-        )
+        saved = _save_as(doc, str(extra_template))
         assert saved
     finally:
         with contextlib.suppress(Exception):
             sw_app.CloseDoc(str(extra_template))  # type: ignore[reportUnknownMemberType]
-            sw_app.CloseDoc(str(doc.GetTitle()))  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+            sw_app.CloseDoc(str(_com(doc, "GetTitle")))  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
 
     proj = tmp_path / "proj"
     proj.mkdir(parents=True, exist_ok=True)
