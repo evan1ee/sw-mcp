@@ -2949,6 +2949,76 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                          'title': 'MCP tool contract file (spec '
                                                                   '12.4.1)',
                                                          'type': 'object'},
+ 'https://sw-mcp.invalid/schemas/mcp/get_authoring_guide.json': {'$id': 'https://sw-mcp.invalid/schemas/mcp/get_authoring_guide.json',
+                                                                 '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                                                                 'description': 'Return the guide '
+                                                                                'for writing a '
+                                                                                'Part Feature '
+                                                                                'Graph. It covers '
+                                                                                'the workflow, '
+                                                                                'planes and '
+                                                                                'directions, '
+                                                                                'validator rules, '
+                                                                                'what is not '
+                                                                                'supported (refuse '
+                                                                                'those requests) '
+                                                                                'and worked '
+                                                                                'examples. Read it '
+                                                                                'before writing a '
+                                                                                'graph from a '
+                                                                                "user's request.",
+                                                                 'errors': ['IR_SCHEMA_INVALID'],
+                                                                 'examples': [{'arguments': {},
+                                                                               'response': {'data': {'guide': '# '
+                                                                                                              'Writing '
+                                                                                                              'a '
+                                                                                                              'Part '
+                                                                                                              'Feature '
+                                                                                                              'Graph '
+                                                                                                              'for '
+                                                                                                              'sw-mcp\n'
+                                                                                                              '\n'
+                                                                                                              '## '
+                                                                                                              'Workflow\n'
+                                                                                                              '...'},
+                                                                                            'error': None,
+                                                                                            'ids': {'request_id': 'req_00000000000000000000000001'},
+                                                                                            'ok': True}},
+                                                                              {'arguments': {'extra': 1},
+                                                                               'response': {'data': None,
+                                                                                            'error': {'code': 'IR_SCHEMA_INVALID',
+                                                                                                      'details': {'issues': [{'code': 'IR_SCHEMA_INVALID',
+                                                                                                                              'message': 'Additional '
+                                                                                                                                         'properties '
+                                                                                                                                         'are '
+                                                                                                                                         'not '
+                                                                                                                                         'allowed',
+                                                                                                                              'pointer': '/extra'}]},
+                                                                                                      'message': 'The '
+                                                                                                                 'arguments '
+                                                                                                                 'do '
+                                                                                                                 'not '
+                                                                                                                 'satisfy '
+                                                                                                                 'the '
+                                                                                                                 "tool's "
+                                                                                                                 'input '
+                                                                                                                 'schema.',
+                                                                                                      'retryable': 'after_fix'},
+                                                                                            'ids': {'request_id': 'req_00000000000000000000000002'},
+                                                                                            'ok': False}}],
+                                                                 'input': {'additionalProperties': False,
+                                                                           'properties': {},
+                                                                           'type': 'object'},
+                                                                 'kind': 'store',
+                                                                 'mutates': False,
+                                                                 'name': 'get_authoring_guide',
+                                                                 'output': {'additionalProperties': False,
+                                                                            'properties': {'guide': {'minLength': 1,
+                                                                                                     'type': 'string'}},
+                                                                            'required': ['guide'],
+                                                                            'type': 'object'},
+                                                                 'phase': '1c',
+                                                                 'toolset': 'core'},
  'https://sw-mcp.invalid/schemas/mcp/get_drawing_report.json': {'$id': 'https://sw-mcp.invalid/schemas/mcp/get_drawing_report.json',
                                                                 '$schema': 'https://json-schema.org/draft/2020-12/schema',
                                                                 'description': 'Read the result of '

@@ -1,6 +1,6 @@
 # 6. CAD Compiler
 
-> Specification v1.35, section 6. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.36, section 6. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 6.1 Purpose
 

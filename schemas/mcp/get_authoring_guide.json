@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/mcp/get_authoring_guide.json",
+  "name": "get_authoring_guide",
+  "description": "Return the guide for writing a Part Feature Graph. It covers the workflow, planes and directions, validator rules, what is not supported (refuse those requests) and worked examples. Read it before writing a graph from a user's request.",
+  "toolset": "core",
+  "phase": "1c",
+  "kind": "store",
+  "mutates": false,
+  "input": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "guide": { "type": "string", "minLength": 1 }
+    },
+    "required": ["guide"],
+    "additionalProperties": false
+  },
+  "errors": ["IR_SCHEMA_INVALID"],
+  "examples": [
+    {
+      "arguments": {},
+      "response": {
+        "ok": true,
+        "data": {
+          "guide": "# Writing a Part Feature Graph for sw-mcp\n\n## Workflow\n..."
+        },
+        "error": null,
+        "ids": { "request_id": "req_00000000000000000000000001" }
+      }
+    },
+    {
+      "arguments": { "extra": 1 },
+      "response": {
+        "ok": false,
+        "data": null,
+        "error": {
+          "code": "IR_SCHEMA_INVALID",
+          "message": "The arguments do not satisfy the tool's input schema.",
+          "retryable": "after_fix",
+          "details": {
+            "issues": [
+              {
+                "code": "IR_SCHEMA_INVALID",
+                "pointer": "/extra",
+                "message": "Additional properties are not allowed"
+              }
+            ]
+          }
+        },
+        "ids": { "request_id": "req_00000000000000000000000002" }
+      }
+    }
+  ]
+}

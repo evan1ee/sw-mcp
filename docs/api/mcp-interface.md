@@ -1,6 +1,6 @@
 # 12. MCP Interface
 
-> Specification v1.35, section 12. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.36, section 12. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 12.1 Principles
 
@@ -49,6 +49,7 @@ Every exposed tool's definition is loaded into the agent's context, and every re
 2. **Schemas on demand.** Tool descriptions stay short and do not embed per-feature schemas. Two tools serve them when needed:
    - `list_feature_types` — names plus one-line descriptions, grouped by tier, with Create/Read support.
    - `get_feature_schema(types[])` — compact JSON schema plus one minimal example for the requested types only.
+   - `get_authoring_guide` — one Markdown guide for turning a user's request into a valid graph, including the cases an agent must refuse. It is a tool, not an MCP resource: the front-end may import no `cad_*` package and reaches the core only through tools.
    The reference implementation's `get_recipe` tool is prior art for this.
 3. **Toolsets.** Tools are grouped and enabled per session through server configuration:
 

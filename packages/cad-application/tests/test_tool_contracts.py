@@ -22,6 +22,7 @@ PART_MVP = {
     "validate_part_graph",
     "list_feature_types",
     "get_feature_schema",
+    "get_authoring_guide",
 }
 SHIPPED = PHASE_1A | PART_MVP
 FIRST_SENTENCE_MAX = 120
@@ -104,6 +105,7 @@ def test_annotations_derivation() -> None:
         "validate_part_graph": (True, False, True),
         "list_feature_types": (True, False, True),
         "get_feature_schema": (True, False, True),
+        "get_authoring_guide": (True, False, True),
     }
     for name, (read_only, destructive, idempotent) in expected.items():
         assert contracts[name].annotations() == {

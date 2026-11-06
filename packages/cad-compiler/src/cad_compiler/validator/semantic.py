@@ -122,7 +122,10 @@ def _validate_lines_loop(lines: list[Line], pointer: str) -> list[ValidationIssu
             ValidationIssue(
                 code=ErrorCode.IR_RULE_VIOLATED,
                 pointer=pointer,
-                message="Sketch lines must form a single closed loop within 3.4.3 quantum",
+                message=(
+                    "Sketch lines must form a single closed loop within 3.4.3 quantum: each end"
+                    " point must meet exactly one other line and all lines must be connected"
+                ),
             )
         )
         return issues
@@ -209,7 +212,7 @@ def _check_solids(graph: PartGraph, issues: list[ValidationIssue]) -> None:
                 ValidationIssue(
                     code=ErrorCode.IR_RULE_VIOLATED,
                     pointer=f"/nodes/{ext_id}/type",
-                    message="Only one extrude feature is allowed",
+                    message="Only one extrude feature is allowed: remove the extra extrude",
                 )
             )
 
@@ -234,7 +237,10 @@ def _check_solids(graph: PartGraph, issues: list[ValidationIssue]) -> None:
                 ValidationIssue(
                     code=ErrorCode.IR_RULE_VIOLATED,
                     pointer=f"/nodes/{cut_id}/dependencies",
-                    message=f"Cut feature '{cut_id}' must depend on the extrude feature",
+                    message=(
+                        f"Cut feature '{cut_id}' must depend on the extrude feature:"
+                        " add the extrude to its dependencies"
+                    ),
                 )
             )
 
@@ -435,7 +441,10 @@ def _check_cut_inside_base(
                 ValidationIssue(
                     code=ErrorCode.IR_RULE_VIOLATED,
                     pointer=f"/nodes/{cut_prof_id}/entities/{eid}",
-                    message=f"Hole '{eid}' is tangent to or outside the extrude profile",
+                    message=(
+                        f"Hole '{eid}' is tangent to or outside the extrude profile:"
+                        " move it inside so it does not touch the edge"
+                    ),
                 )
             )
     loop = _sketch_lines(cut_sketch)
@@ -444,7 +453,10 @@ def _check_cut_inside_base(
             ValidationIssue(
                 code=ErrorCode.IR_RULE_VIOLATED,
                 pointer=f"/nodes/{cut_prof_id}/entities",
-                message="Cut loop is not strictly inside the extrude profile",
+                message=(
+                    "Cut loop is not strictly inside the extrude profile:"
+                    " move it inside so it does not touch the edge"
+                ),
             )
         )
 

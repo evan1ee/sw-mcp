@@ -19,6 +19,7 @@ from cad_application.tools import (
     apply_part_graph,
     cancel_execution,
     check_drawing,
+    get_authoring_guide,
     get_drawing_report,
     get_execution_status,
     get_feature_schema,
@@ -132,6 +133,7 @@ def build_registry(context: ToolContext, *, verify: bool = __debug__) -> ToolReg
         "get_drawing_report": partial(get_drawing_report.handle, context),
         "get_execution_status": partial(get_execution_status.handle, context),
         "get_feature_schema": partial(get_feature_schema.handle, context),
+        "get_authoring_guide": partial(get_authoring_guide.handle, context),
         "list_feature_types": partial(list_feature_types.handle, context),
         "validate_part_graph": partial(validate_part_graph.handle, context),
     }

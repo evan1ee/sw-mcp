@@ -1,6 +1,6 @@
 # 12.4 Tool Contracts and 12.5 File Access
 
-> Specification v1.35, sections 12.4–12.5. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.36, sections 12.4–12.5. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 12.4 Tool Contracts
 
@@ -94,6 +94,7 @@ Every tool in 12.2, its toolset, first phase, kind and whether it mutates. This 
 | `diff_part_graph` | core | 1c | store | no |
 | `list_feature_types` | core | 1c | store | no |
 | `get_feature_schema` | core | 1c | store | no |
+| `get_authoring_guide` | core | 1c | store | no |
 | `compile_bundle` | core | 1c | cad-read | no |
 | `validate_plan` | core | 1c | store | no |
 | `execute_plan` | core | 1c | job | yes |
@@ -120,7 +121,7 @@ Every tool in 12.2, its toolset, first phase, kind and whether it mutates. This 
 
 `apply_part_graph` and `update_part_graph` store the graph and build it in one job, which is why the `core` toolset needs no separate compile and execute tools. Creating sends a document by value, updating sends a JSON Patch, and everything else takes references (ADR-048).
 
-**Four tools ship before Phase 1c [Builder's call].** Under ADR-057 the part chain MVP ships `apply_part_graph`, `validate_part_graph`, `list_feature_types` and `get_feature_schema` before Phase 1c starts. Their rows keep Phase `1c`; the CI check's list of shipped phases (`SHIPPED_PHASES` in `test_tool_table.py`) gains those four names only, so no other `1c` row needs a contract file yet. `compile_bundle` and `execute_plan` stay unbuilt, because `apply_part_graph` makes them unnecessary for the `core` toolset. Their contracts are in 12.4.5.
+**Five tools ship before Phase 1c [Builder's call].** Under ADR-057 the part chain MVP ships `apply_part_graph`, `validate_part_graph`, `list_feature_types`, `get_feature_schema` and `get_authoring_guide` before Phase 1c starts. Their rows keep Phase `1c`; the CI check's list of shipped phases (`SHIPPED_PHASES` in `test_tool_table.py`) gains those five names only, so no other `1c` row needs a contract file yet. `compile_bundle` and `execute_plan` stay unbuilt, because `apply_part_graph` makes them unnecessary for the `core` toolset. Their contracts are in 12.4.5.
 
 ### 12.4.5 Phase 1a contracts
 
@@ -155,6 +156,7 @@ The four `core` tools of Phase 1c that ship early with the part chain MVP, in th
 | `validate_part_graph` | store | `graph` | `valid`, `issues` (3.4.7), `build_order`, `expected` (the expected geometry of 10.2.1, computed from the IR) |
 | `list_feature_types` | store | none | The three MVP types (`sketch`, `extrude`, `cut_extrude`), each with a one-line description and its support |
 | `get_feature_schema` | store | `types` | A compact schema and a minimal example (at most 400 tokens) per requested type |
+| `get_authoring_guide` | store | none | `guide`: Markdown that tells an agent how to turn a request into a valid graph: the workflow, the planes and directions, the validator rules, what is not supported (the agent replies that it cannot fulfil such a request and never approximates it) and validated worked examples. Generated from the code, so it cannot drift |
 
 **`apply_part_graph`.** Validates the IR (5.7, 3.4.7), authorizes `target_path` and stores the revision (3.4.5), then queues a `plan` job (8.4.1) and returns at once. The call fails, and creates no job, for a graph that breaks the schema or the semantic rules (`IR_SCHEMA_INVALID`, `IR_RULE_VIOLATED`, `IR_REFERENCE_UNRESOLVED`, `IR_CYCLE`), a revision conflict (`REV_CONFLICT`, 3.4.5), and a target that fails the checks below (`AUTH_PATH_DENIED` or `AUTH_SOURCE_WRITE_NOT_ALLOWED`, with the reason in `details`). Everything after the job exists is the job's `error`, including the unset or missing template (`CONFIG_INVALID` or `FILE_NOT_FOUND`, `details.setting: part.template`) and `PART_VERIFICATION_FAILED`. Summary line: `part build queued: job_… (position 0)`.
 

@@ -8,7 +8,7 @@ from cad_ir.core.json_types import JsonValue
 from cad_application.tools.context import Call, ToolContext
 from cad_application.tools.result import ToolResult, ok
 
-_MVP_TYPES: Final[tuple[tuple[str, str], ...]] = (
+MVP_TYPES: Final[tuple[tuple[str, str], ...]] = (
     ("sketch", "2D sketch on a standard plane with line and circle entities."),
     ("extrude", "Blind boss extrude from a closed sketch profile."),
     ("cut_extrude", "Blind or through-all-both cut extrude from a sketch profile."),
@@ -17,7 +17,7 @@ _MVP_TYPES: Final[tuple[tuple[str, str], ...]] = (
 
 def handle(_ctx: ToolContext, call: Call) -> ToolResult:
     entries: list[JsonValue] = []
-    for name, description in _MVP_TYPES:
+    for name, description in MVP_TYPES:
         info = get_feature_info(name)
         modes = sorted(info.modes) if info is not None else ["create", "read"]
         support: list[JsonValue] = [m for m in modes if m in ("create", "read")]
@@ -29,5 +29,5 @@ def handle(_ctx: ToolContext, call: Call) -> ToolResult:
             }
         )
     data: JsonValue = {"types": entries}
-    names = ", ".join(name for name, _ in _MVP_TYPES)
+    names = ", ".join(name for name, _ in MVP_TYPES)
     return ok(data, call.ids(), f"{len(entries)} feature types: {names}")

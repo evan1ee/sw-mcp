@@ -2,6 +2,17 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.36
+
+Adds `get_authoring_guide`, the tool an agent reads before it turns a user's request into a Part Feature Graph, and states the refusal rule. No IR schema or add-in code changed, and no live SOLIDWORKS run was made.
+
+- **New tool, `get_authoring_guide` (12.4.4, 12.4.5, 12.2):** core toolset, `store` kind, read-only, no input. It returns one Markdown guide: the workflow (decide, write, `validate_part_graph` until valid, state what will be built, `apply_part_graph`), the planes with their axes and normals, the validator rules, the limits, and validated worked examples. It is generated from the plane definitions and the supported feature list, so it cannot drift from them.
+- **Refusal rule (owner decision, 2026-11-06):** when a request needs something the MVP cannot express (fillets, arcs, patterns, sketches on a face, more than one base extrude, assemblies, and similar), the agent replies that it cannot fulfil the request and never builds an approximation.
+- **A tool, not an MCP resource:** the MCP front-end may import no `cad_*` package and reaches the core only through tools, so a resource would need a new core protocol path. ADR-044's "no prompts" is kept; the server states the workflow in its `instructions` instead.
+- **Validator messages:** five rule messages now say what to change (second extrude, cut without the extrude dependency, open loop, hole or cut on or outside the edge), so an agent can repair a graph in one step.
+- **Evaluation set:** 11 prompts (8 to build, 3 to refuse) with facts computed by plain arithmetic, a checker and a script (`scripts/score_part_ir.py`). It scores answers an agent produced; the tests call no LLM.
+- **Plan:** [agent IR authoring](../superpowers/plans/2026-11-06-agent-ir-authoring.md).
+
 ## What changed in 1.35
 
 Adds a coherent architecture reference for the IR, the compiler and the adapter, and aligns the topic files with each other. No schema or production code changed, and no live SOLIDWORKS run was made.

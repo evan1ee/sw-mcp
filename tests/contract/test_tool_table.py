@@ -18,6 +18,7 @@ SHIPPED_TOOLS = {
     "validate_part_graph",
     "list_feature_types",
     "get_feature_schema",
+    "get_authoring_guide",
 }
 HEADING = "### 12.4.4 Tool table"
 CELLS = 5

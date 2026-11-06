@@ -1,6 +1,6 @@
 # 11. Production Drawings (P0)
 
-> Specification v1.35, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.36, section 11.1–11.9. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 11.1 Purpose and Bar
 

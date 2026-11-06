@@ -11,6 +11,15 @@ from mcp.server.stdio import stdio_server
 
 from mcp_server.client import CorePipeClient, CorePipeError
 
+INSTRUCTIONS = (
+    "sw-mcp builds SOLIDWORKS parts from a Part Feature Graph (IR). To turn a user's request"
+    " into a part: call get_authoring_guide first and follow it. If the request needs something"
+    " the guide lists as unsupported, reply that you cannot fulfil it and say what is"
+    " unsupported; never approximate it with something similar. Otherwise write the graph, call"
+    " validate_part_graph until it is valid, tell the user what will be built, then call"
+    " apply_part_graph and follow the job with get_execution_status."
+)
+
 
 def create_mcp_server(client: CorePipeClient) -> Server:
     """Create the low-level MCP server backed by ``client``."""
@@ -70,6 +79,7 @@ def create_mcp_server(client: CorePipeClient) -> Server:
     return Server(
         name="sw-mcp",
         version="0.1.0",
+        instructions=INSTRUCTIONS,
         on_list_tools=_on_list_tools,
         on_call_tool=_on_call_tool,
     )

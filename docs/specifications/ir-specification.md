@@ -1,6 +1,6 @@
 # 22. CAD IR Specification
 
-> Specification v1.35, section 22. Index and section map: [README.md](README.md).
+> Specification v1.36, section 22. Index and section map: [README.md](README.md).
 
 **Status: Proposed, awaiting the owner.** This section gathers the IR into one reference and specifies what the topic sections leave open. It changes no schema and no code. Companion sections: [§23 Compiler Architecture](compiler-architecture-specification.md) and [§8.9 SOLIDWORKS Adapter Interface](solidworks-adapter.md). Contract ownership across all three is in [23.13](compiler-architecture-specification.md#2313-cross-specification-contracts).
 

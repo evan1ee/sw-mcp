@@ -185,6 +185,7 @@ def test_default_hides_drawing_tools(tmp_path: Path) -> None:
             "validate_part_graph",
             "list_feature_types",
             "get_feature_schema",
+            "get_authoring_guide",
             "get_execution_status",
             "cancel_execution",
         } <= default_names
