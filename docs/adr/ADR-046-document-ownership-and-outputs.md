@@ -34,7 +34,7 @@ Each gap can lose an engineer's work or leave their session in a surprising stat
 - Exports (PDF, DXF) are written under a temporary name and renamed into place only when complete, so a reader never sees a half-written file. An existing export is replaced only under the same rule as its drawing.
 
 **Rollback.**
-- Part plans (Phase 1c on) are wrapped in an undo object (8.5) and rolled back on failure unless `keep_partial` is set.
+- Part plans (Phase 1c on) are wrapped in an undo object (8.5) and rolled back on failure unless `keep_partial` is set. **Part chain MVP exception (owner decision, 2026-11-05):** until undo (8.5) is built, `plan` jobs use the working-file rule instead of undo. The part is built in `<name>.<job_id>.building.SLDPRT` beside the target, verified, and renamed to the target with no replace only after every check passes (8.4.1). A failed job keeps `<name>.<job_id>.failed.SLDPRT`, and a cancelled one removes its working file unless `keep_partial` is set, which keeps it as `<name>.<job_id>.partial.SLDPRT`. The target is never written by a failed job and an existing file is never overwritten.
 - Drawings are not rolled back through undo, since the target file is never written by a failed job. The `.failed` copy is the evidence.
 
 ## Rationale
@@ -43,7 +43,7 @@ Splitting owned from borrowed documents gives the engineer one simple promise: t
 
 ## Consequences
 
-- The add-in tracks, per job, which documents it opened and the session's active document at the start.
+- The add-in tracks, per job, which documents it opened and the session's active document at the start. For parts it enforces ownership itself: `document.save` and `document.close` on a `.SLDPRT` are refused with `AUTH_SOURCE_WRITE_NOT_ALLOWED` unless the requesting job owns the document, and a save never targets a different path (ADR-032 amendment).
 - `.failed` and `.partial` files accumulate beside targets. Reports name them, and the engineer deletes them.
 - Adds `EXEC_DOCUMENT_DIRTY` to the error catalogue (ADR-037).
 

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/model_items.insert.json",
+  "title": "Operation model_items.insert (spec 6.5.2)",
+  "x-op": "model_items.insert",
+  "x-mutates": "document",
+  "x-errors": [
+    "AUTH_PATH_DENIED",
+    "BACKEND_BUSY",
+    "BACKEND_UI_BLOCKED",
+    "REF_NOT_FOUND",
+    "IR_SCHEMA_INVALID"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Params": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "view": {
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "entire_model",
+            "selected_feature"
+          ]
+        },
+        "duplicate_dims": {
+          "type": "boolean"
+        },
+        "hidden_feature_dims": {
+          "type": "boolean"
+        },
+        "use_placement_in_sketch": {
+          "type": "boolean"
+        },
+        "marked_for_drawing": {
+          "type": "boolean"
+        },
+        "not_marked_for_drawing": {
+          "type": "boolean"
+        },
+        "hole_callouts": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Result": {
+      "type": "object",
+      "required": [
+        "count"
+      ],
+      "properties": {
+        "count": {
+          "type": "integer"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

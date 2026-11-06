@@ -1,0 +1,18 @@
+[
+  {},
+  {
+    "destination_path": "C:/d/new.slddrw",
+    "paper_size": "A3",
+    "width_mm": 420.0,
+    "height_mm": 297.0
+  },
+  {
+    "sheet_format_path": "C:/d/custom.slddrt",
+    "template_path": "C:/d/drawing.drwdot",
+    "_meta": {
+      "request_id": "r_1",
+      "job_id": "j1",
+      "operation_id": "j1:1"
+    }
+  }
+]

@@ -23,4 +23,5 @@ TestResults/
 .idea/
 .openidea/
 .vscode/
+.superpowers/
 *.log

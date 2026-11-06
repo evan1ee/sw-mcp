@@ -14,6 +14,7 @@ class CheckThresholds:
     line_clearance_mm: float = 0.25
     edge_clearance_mm: float = 0.25
     font_metric_margin: float = 0.1
+    parallel_deg: float = 0.01
 
     @property
     def arc_chord_error_mm(self) -> float:
@@ -29,4 +30,5 @@ class CheckThresholds:
             "edge_clearance_mm": self.edge_clearance_mm,
             "font_metric_margin": self.font_metric_margin,
             "arc_chord_error_mm": self.arc_chord_error_mm,
+            "parallel_deg": self.parallel_deg,
         }

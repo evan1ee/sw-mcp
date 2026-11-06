@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/sheet_format.generate.json",
+  "title": "Operation sheet_format.generate (spec 6.5.1, ADR-055, K7)",
+  "x-op": "sheet_format.generate",
+  "x-mutates": "none",
+  "x-errors": [
+    "AUTH_PATH_DENIED",
+    "BACKEND_BUSY",
+    "BACKEND_UI_BLOCKED",
+    "IR_SCHEMA_INVALID"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Params": {
+      "type": "object",
+      "properties": {
+        "template": {
+          "$ref": "../../drawing-template/v0.json"
+        },
+        "destination_path": {
+          "type": "string"
+        },
+        "_meta": {
+          "$ref": "../v0.json#/$defs/Meta"
+        }
+      },
+      "required": [
+        "template",
+        "destination_path"
+      ]
+    },
+    "Result": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "size_mm": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "required": [
+        "path",
+        "size_mm"
+      ]
+    }
+  }
+}

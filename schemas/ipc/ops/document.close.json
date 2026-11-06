@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/document.close.json",
+  "title": "Operation document.close (spec 6.5.1)",
+  "x-op": "document.close",
+  "x-mutates": "session",
+  "x-errors": [
+    "BACKEND_BUSY",
+    "BACKEND_UI_BLOCKED",
+    "EXEC_DOCUMENT_DIRTY"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Params": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "_meta": {
+          "$ref": "../v0.json#/$defs/Meta"
+        }
+      },
+      "required": [
+        "path"
+      ]
+    },
+    "Result": {
+      "type": "object",
+      "properties": {
+        "closed": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "closed"
+      ]
+    }
+  }
+}

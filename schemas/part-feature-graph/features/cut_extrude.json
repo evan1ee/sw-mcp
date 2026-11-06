@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/part-feature-graph/features/cut_extrude.json",
+  "title": "Cut Extrude Feature Node (spec 5.7)",
+  "type": "object",
+  "required": [
+    "type",
+    "profile",
+    "end_condition"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "const": "cut_extrude"
+    },
+    "profile": {
+      "$ref": "../../common/v0.json#/$defs/ItemId"
+    },
+    "end_condition": {
+      "$ref": "../v0.json#/$defs/EndCondition"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "realizes": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    }
+  },
+  "examples": [
+    {
+      "type": "cut_extrude",
+      "dependencies": [
+        "sketch_holes",
+        "extrude_base"
+      ],
+      "profile": "sketch_holes",
+      "end_condition": {
+        "type": "through_all_both"
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+[
+  {
+    "jsonrpc": "2.0",
+    "method": "job.progress"
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "job.progress",
+    "params": {
+      "message": "m"
+    }
+  }
+]

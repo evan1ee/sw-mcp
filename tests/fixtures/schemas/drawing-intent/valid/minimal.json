@@ -1,0 +1,62 @@
+{
+  "module": "drawing_intent",
+  "id": "BRK-001-DI",
+  "schema_version": "0.1",
+  "units": "mm",
+  "documents": "part:bracket@4",
+  "design_intent": "design_intent:BRK-001-DES@2",
+  "configuration": "Default",
+  "general_tolerance": "ISO 2768-m",
+  "surface_finish": {
+    "general": {
+      "ra": 1.6
+    },
+    "exceptions": {
+      "finish_bore": {
+        "target": "bore_1.cylindrical_face",
+        "ra": 0.8,
+        "requirement": "r1"
+      }
+    }
+  },
+  "datums": {
+    "A": {
+      "ref": "base_extrude.bottom_face",
+      "applies_to": "surface"
+    },
+    "B": {
+      "ref": "bore_1.cylindrical_face",
+      "applies_to": "feature_of_size"
+    }
+  },
+  "critical_dimensions": {
+    "bore_dia": {
+      "param": "bore_1.diameter",
+      "tolerance": {
+        "type": "fit",
+        "value": "H7"
+      },
+      "requirement": "r1"
+    },
+    "hole_spacing": {
+      "param": "hole_pattern.spacing",
+      "tolerance": {
+        "type": "symmetric",
+        "value": 0.05
+      },
+      "requirement": "r3"
+    }
+  },
+  "gdt": {
+    "perp_bore": {
+      "characteristic": "perpendicularity",
+      "tolerance": 0.02,
+      "target": "bore_1.cylindrical_face",
+      "applies_to": "feature_of_size",
+      "datums": [
+        "A"
+      ],
+      "requirement": "r2"
+    }
+  }
+}

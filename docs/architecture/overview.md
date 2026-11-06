@@ -1,6 +1,8 @@
 # 3. High-Level Architecture
 
-> Specification v1.19, section 3. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, section 3. Index and section map: [specifications/README.md](../specifications/README.md).
+
+The layers below follow the core design principles ([1.3](../specifications/product-spec.md#13-core-design-principles)). Chiefly: the IR is the core of the system (12), the core is CAD-neutral and only the backend layer knows SOLIDWORKS (1), and execution is deterministic (3), verified (6) and recoverable (13).
 
 ## 3.1 Layers
 
@@ -23,11 +25,12 @@ flowchart TD
         DI["Design Intent IR (optional)"]
         D["Drawing Intent IR (optional)"]
         DL["Drawing Layout IR (optional)"]
+        DT["Drawing Template IR (optional)"]
         F["CAD Compiler"]
         G["Geometry Resolver"]
         H["Execution Planner"]
         DP["Drawing Planner"]
-        SC -.-> E & AG & DI & D & DL
+        SC -.-> E & AG & DI & D & DL & DT
         E --> F
         AG --> F
         G --> F
@@ -37,6 +40,7 @@ flowchart TD
         DI -.-> DP
         DP --> D
         DP --> DL
+        DT -.-> DL
     end
 
     H --> I["Execution & State Manager"]
@@ -64,14 +68,17 @@ flowchart TD
 | Design Intent IR (optional) | Functional and manufacturing requirements, engineering constraints, inspection requirements |
 | Drawing Intent IR (optional) | Dimensions, tolerances, GD&T, datums, surface finish |
 | Drawing Layout IR (optional) | Views, annotations, positioning, layout, pins |
+| Drawing Template IR (optional) | Sheet format, paper size, margins, border, title block zones/lines, static text, attribute link sources, revision table |
 | CAD Compiler | Validate the IR bundle, analyze and lower part and assembly graphs |
 | Geometry Resolver | Resolve references to CAD entities |
 | Drawing Planner | Derive the dimension scheme (into the Resolved Scheme, 11.10.1) and plan views and placement (into Drawing Layout IR) |
 | Execution Planner | Ordered, validated execution plans |
-| Execution Manager | Execution lifecycle and state |
-| Backend Adapter | Translate platform operations to native CAD |
-| Verification Engine | Check API, geometry, intent and drawing correctness |
+| Execution Manager | Execution lifecycle and state: the job layer in `cad-application` (8.8.5) |
+| Backend Adapter | Translate platform operations to native CAD and report what it observes (8.8, 8.9) |
+| Verification Engine | Derive expected values from the IR alone, and check API, geometry, intent and drawing correctness on observed state (10, ADR-063, ADR-064) |
 | Recovery Engine | Diagnose failures, choose safe recovery |
+
+The part chain through these components, as one contract set, is specified in [§22 IR](../specifications/ir-specification.md), [§23 Compiler Architecture](../specifications/compiler-architecture-specification.md) and [§8.9 Adapter Interface](../specifications/solidworks-adapter.md).
 
 ## 3.3 IR Modules and Task-Driven Composition
 
@@ -85,7 +92,8 @@ Shared IR core           IDs, cross-module references, geometry references, unit
    ├── Assembly Graph IR     (optional)  hierarchy, instances, mates, interfaces, motion
    ├── Design Intent IR      (optional)  functional / manufacturing / inspection requirements
    ├── Drawing Intent IR     (optional)  dimensions / GD&T / datums / surface finish
-   └── Drawing Layout IR     (optional)  views / annotations / positioning / layout
+   ├── Drawing Layout IR     (optional)  views / annotations / positioning / layout
+   └── Drawing Template IR   (optional)  sheet format / border / title block / attribute link sources
             │
 SOLIDWORKS execution backend             parts / assemblies / drawings / PMI
 ```
@@ -101,6 +109,7 @@ Every module is versioned, validatable on its own without SOLIDWORKS, serializab
 | Design Intent IR | What must the product do, and how is it made and inspected? | Functional features and requirements, engineering constraints, process, material, treatment, manufacturing inputs, inspection requirements, metadata | Modeling steps, mates, dimension values chosen for a drawing, views | 4 |
 | Drawing Intent IR | What does the drawing specify? | Critical dimensions and scheme overrides (the authored part of the dimension scheme), tolerances incl. general tolerance, GD&T, datums, surface finish, configuration, optional `context` (process, material, metadata) when no Design Intent is attached | Views, positions, sheet coordinates, text layout | 11.10 |
 | Drawing Layout IR | How is the drawing arranged? | Sheets, views, annotation placement, text layout, leaders, pins | Tolerance values, dimension values, requirements | 11.11 |
+| Drawing Template IR | How is the sheet format defined? | Paper size, orientation, border margins, title block zones/lines, static text, attribute link sources, revision table box | Views, model dimensions, engineering tolerances | 11.12 |
 
 The **Part Feature Graph** is the base module for every task that creates or changes part geometry. A task that works on existing parts (drawing, assembly or edit) uses a read-only Part Feature Graph that the Read path builds from the feature tree (5.3). The user never has to write one.
 
@@ -113,12 +122,12 @@ The **Part Feature Graph** is the base module for every task that creates or cha
 | Create a complex mechanical part | Part Feature Graph | Design Intent |
 | Create an assembly | Part Feature Graph (one per unique part) + Assembly Graph | Design Intent |
 | Create an assembly with motion simulation | Part + Assembly Graph + Design Intent | — |
-| Generate an engineering drawing | Part Feature Graph (usually read) + Drawing Intent + Drawing Layout | Design Intent |
+| Generate an engineering drawing | Part Feature Graph (usually read) + Drawing Intent + Drawing Layout | Design Intent, Drawing Template |
 | Design a complete mechanical product | All relevant modules | — |
 
 Examples:
 
-- **Plastic housing.** Part Feature Graph (geometry). Optionally Design Intent (wall thickness, draft, material), Drawing Intent and Drawing Layout. There is no Assembly Graph.
+- **Plastic housing.** Part Feature Graph (geometry). Optionally Design Intent (wall thickness, draft, material), Drawing Intent, Drawing Layout, and Drawing Template. There is no Assembly Graph.
 - **Spring-driven mechanical injector.** Part Feature Graphs (housing, piston, spring, drive mechanism), Assembly Graph (hierarchy, mates, stroke limits), Design Intent (spring force, stroke, functional requirements), Drawing Intent and Drawing Layout per part.
 
 The modules follow **progressive complexity**. Simple geometry needs only the Part Feature Graph. Engineering constraints add Design Intent. A mechanism adds the Assembly Graph. Manufacturing documentation adds Drawing Intent and Drawing Layout.
@@ -134,9 +143,10 @@ The modules follow **progressive complexity**. Simple geometry needs only the Pa
    | Assembly Graph | Part Feature Graph of each component (read-only allowed) | Design Intent |
    | Design Intent | — | — (targets functional features by name, never module-internal IDs) |
    | Drawing Intent | The Part Feature Graph or Assembly Graph it documents | Design Intent (`requirement`, inspection) |
-   | Drawing Layout | Drawing Intent | Part Feature Graph / Assembly Graph geometry (annotation attachment) |
+   | Drawing Layout | Drawing Intent | Part Feature Graph / Assembly Graph geometry (annotation attachment), Drawing Template (`template`) |
+   | Drawing Template | — | — |
 
-3. **Stable interfaces, not internals.** Modules refer to each other only through shared-core references (3.4.2): `DocumentRef` and `ItemRef` (`<module>:<document_id>[@<revision>]/<item_id>`) for documents and items, and `GeometryRef` (section 7, stopgap in 11.1) for geometry. A module never reads another module's internal structure.
+3. **Stable interfaces, not internals.** Modules refer to each other only through shared-core references (3.4.2): `DocumentRef` and `ItemRef` (`<module>:<document_id>[@<revision>]/<item_id>`) for documents and items, and `GeometryRef` (section 7, stopgap in 11.1) for geometry. A module never reads another module's internal structure. Exception: `drawing_template` field `source` candidates are late-bound lookup paths, not bundle references (11.12).
 4. **One owner per value, with fallbacks.** A value lives in exactly one module. When its owner is optional and absent, a defined fallback supplies it:
    - **Process, material, treatment and part metadata.** These come from the Design Intent IR if it is in the bundle. Otherwise they come from the part itself (SOLIDWORKS material and custom properties), overridden by the Drawing Intent `context`. If a Design Intent IR is present, `context` must be empty.
    - **Inspection.** Inspection comes from the Design Intent `inspection` list if present, otherwise from `inspect: true` on Drawing Intent items.

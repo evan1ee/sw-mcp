@@ -1,0 +1,15 @@
+[
+  {
+    "path": "C:\\w\\a.SLDDRW",
+    "owned": true,
+    "state": "maybe"
+  },
+  {
+    "path": "C:\\w\\a.SLDDRW",
+    "state": "known"
+  },
+  {
+    "owned": true,
+    "state": "known"
+  }
+]

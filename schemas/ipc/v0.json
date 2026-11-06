@@ -1,0 +1,835 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/v0.json",
+  "title": "IPC messages between the core and the add-in (spec 8.7)",
+  "x-protocol-version": "0.1",
+  "anyOf": [
+    {
+      "$ref": "#/$defs/Request"
+    },
+    {
+      "$ref": "#/$defs/Response"
+    },
+    {
+      "$ref": "#/$defs/Notification"
+    }
+  ],
+  "$defs": {
+    "Meta": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "operation_id": {
+          "type": "string"
+        }
+      }
+    },
+    "ViewOutline": {
+      "type": "object",
+      "required": [
+        "min",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "max": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "Request": {
+      "type": "object",
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "$ref": "../common/v0.json#/$defs/Count"
+        },
+        "method": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "jsonrpc",
+        "id",
+        "method"
+      ]
+    },
+    "Response": {
+      "type": "object",
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "$ref": "../common/v0.json#/$defs/Count"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "result": {},
+        "error": {
+          "$ref": "#/$defs/RpcError"
+        }
+      },
+      "required": [
+        "jsonrpc",
+        "id"
+      ]
+    },
+    "RpcError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991
+        },
+        "message": {
+          "type": "string"
+        },
+        "data": {
+          "$ref": "../common/v0.json#/$defs/Error"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ]
+    },
+    "Notification": {
+      "type": "object",
+      "properties": {
+        "jsonrpc": {
+          "const": "2.0"
+        },
+        "method": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "jsonrpc",
+        "method"
+      ]
+    },
+    "HelloParams": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "_meta": {
+          "$ref": "#/$defs/Meta"
+        }
+      },
+      "required": [
+        "token",
+        "protocol"
+      ]
+    },
+    "SolidWorksInfo": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "service_pack": {
+          "type": "string"
+        },
+        "ui_language": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "service_pack",
+        "ui_language"
+      ]
+    },
+    "OperationInfo": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "type": "string"
+        },
+        "schema_version": {
+          "$ref": "../common/v0.json#/$defs/SchemaVersion"
+        }
+      },
+      "required": [
+        "op",
+        "schema_version"
+      ]
+    },
+    "HelloResult": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "type": "string"
+        },
+        "addin_version": {
+          "type": "string"
+        },
+        "solidworks": {
+          "$ref": "#/$defs/SolidWorksInfo"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OperationInfo"
+          }
+        },
+        "licensed_modules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "protocol",
+        "addin_version",
+        "solidworks",
+        "capabilities",
+        "operations",
+        "licensed_modules",
+        "warnings"
+      ]
+    },
+    "PingParams": {
+      "type": "object",
+      "properties": {
+        "_meta": {
+          "$ref": "#/$defs/Meta"
+        }
+      }
+    },
+    "PingResult": {
+      "type": "object",
+      "properties": {
+        "pong": {
+          "const": true
+        }
+      },
+      "required": [
+        "pong"
+      ]
+    },
+    "CompletedOperationsParams": {
+      "type": "object",
+      "properties": {
+        "_meta": {
+          "$ref": "#/$defs/Meta"
+        }
+      }
+    },
+    "FailedOperation": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "effect": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "operation_id",
+        "code",
+        "effect"
+      ]
+    },
+    "CompletedOperationsResult": {
+      "type": "object",
+      "properties": {
+        "operation_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "failed_operations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FailedOperation"
+          }
+        }
+      },
+      "required": [
+        "operation_ids"
+      ]
+    },
+    "SnapshotParams": {
+      "type": "object",
+      "properties": {
+        "document": {
+          "type": "string"
+        },
+        "sheets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "_meta": {
+          "$ref": "#/$defs/Meta"
+        }
+      },
+      "required": [
+        "document"
+      ]
+    },
+    "SnapshotResult": {
+      "$ref": "../drawing-geometry-snapshot/v0.json"
+    },
+    "PartBBoxM": {
+      "type": "object",
+      "required": [
+        "min",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "max": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
+    "PartCylinderM": {
+      "type": "object",
+      "required": [
+        "point",
+        "direction",
+        "radius"
+      ],
+      "properties": {
+        "point": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "direction": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "radius": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "PartRebuildResult": {
+      "type": "object",
+      "required": [
+        "ok",
+        "errors"
+      ],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "PartFeatureInfo": {
+      "type": "object",
+      "required": [
+        "feature_id",
+        "native_id",
+        "type",
+        "status"
+      ],
+      "properties": {
+        "feature_id": {
+          "type": "string"
+        },
+        "native_id": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      }
+    },
+    "PartMeasureParams": {
+      "type": "object",
+      "required": [
+        "document"
+      ],
+      "properties": {
+        "document": {
+          "type": "string"
+        },
+        "_meta": {
+          "$ref": "#/$defs/Meta"
+        }
+      }
+    },
+    "PartMeasureResult": {
+      "type": "object",
+      "required": [
+        "path",
+        "instance_id",
+        "solid_body_count",
+        "bbox_m",
+        "volume_m3",
+        "surface_area_m2",
+        "center_of_mass_m",
+        "cylinders_m",
+        "rebuild",
+        "features",
+        "dirty",
+        "read_only"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "solid_body_count": {
+          "$ref": "../common/v0.json#/$defs/Count"
+        },
+        "bbox_m": {
+          "$ref": "#/$defs/PartBBoxM"
+        },
+        "volume_m3": {
+          "type": "number"
+        },
+        "surface_area_m2": {
+          "type": "number"
+        },
+        "center_of_mass_m": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "cylinders_m": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PartCylinderM"
+          }
+        },
+        "rebuild": {
+          "$ref": "#/$defs/PartRebuildResult"
+        },
+        "features": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PartFeatureInfo"
+          }
+        },
+        "dirty": {
+          "type": "boolean"
+        },
+        "read_only": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Operation": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "op": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "operation_id",
+        "op"
+      ]
+    },
+    "OperationGroup": {
+      "type": "object",
+      "properties": {
+        "document": {
+          "type": "string"
+        },
+        "operations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Operation"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "document",
+        "operations"
+      ]
+    },
+    "OpsApplyParams": {
+      "type": "object",
+      "properties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OperationGroup"
+          },
+          "minItems": 1
+        },
+        "_meta": {
+          "$ref": "#/$defs/Meta"
+        }
+      },
+      "required": [
+        "groups"
+      ]
+    },
+    "OperationOutcome": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "type": "string"
+        },
+        "result": {},
+        "error": {
+          "$ref": "../common/v0.json#/$defs/Error"
+        }
+      },
+      "required": [
+        "operation_id"
+      ]
+    },
+    "OpsApplyResult": {
+      "type": "object",
+      "properties": {
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/OperationOutcome"
+          }
+        }
+      },
+      "required": [
+        "outcomes"
+      ]
+    },
+    "JobCancelParams": {
+      "type": "object",
+      "properties": {
+        "_meta": {
+          "$ref": "#/$defs/Meta"
+        }
+      }
+    },
+    "JobCancelResult": {
+      "type": "object",
+      "properties": {
+        "cancelled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "cancelled"
+      ]
+    },
+    "JobProgressParams": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "done": {
+          "$ref": "../common/v0.json#/$defs/Count"
+        },
+        "total": {
+          "$ref": "../common/v0.json#/$defs/Count"
+        },
+        "_meta": {
+          "$ref": "#/$defs/Meta"
+        }
+      }
+    },
+    "DocumentEventParams": {
+      "type": "object",
+      "properties": {
+        "document": {
+          "type": "string"
+        },
+        "event": {
+          "enum": [
+            "regen",
+            "save",
+            "close",
+            "active_changed"
+          ]
+        },
+        "_meta": {
+          "$ref": "#/$defs/Meta"
+        }
+      },
+      "required": [
+        "document",
+        "event"
+      ]
+    },
+    "UiBlockedParams": {
+      "type": "object",
+      "properties": {
+        "waited_ms": {
+          "$ref": "../common/v0.json#/$defs/Count"
+        },
+        "_meta": {
+          "$ref": "#/$defs/Meta"
+        }
+      },
+      "required": [
+        "waited_ms"
+      ]
+    },
+    "ResponseChunkParams": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "../common/v0.json#/$defs/Count"
+        },
+        "index": {
+          "$ref": "../common/v0.json#/$defs/Count"
+        },
+        "count": {
+          "$ref": "../common/v0.json#/$defs/Count"
+        },
+        "data": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "index",
+        "count",
+        "data"
+      ]
+    },
+    "OperationEffect": {
+      "description": "Whether a failed operation may have changed the document (spec 8.9.5).",
+      "enum": [
+        "none",
+        "applied",
+        "unknown"
+      ]
+    },
+    "NativeFailure": {
+      "description": "Diagnostics only. Agents never branch on these (ADR-037).",
+      "type": "object",
+      "properties": {
+        "call": {
+          "type": "string"
+        },
+        "returned": {
+          "type": "string"
+        },
+        "hresult": {
+          "type": "integer"
+        },
+        "error_code": {
+          "type": "integer"
+        }
+      }
+    },
+    "OperationFailureDetails": {
+      "description": "details of an operation failure (spec 8.9.5). Required from stage 3 on.",
+      "type": "object",
+      "properties": {
+        "effect": {
+          "$ref": "#/$defs/OperationEffect"
+        },
+        "stage": {
+          "enum": [
+            "admit",
+            "translate",
+            "invoke",
+            "read_back",
+            "report"
+          ]
+        },
+        "native": {
+          "$ref": "#/$defs/NativeFailure"
+        }
+      },
+      "required": [
+        "effect"
+      ]
+    },
+    "CompletenessState": {
+      "description": "Missing means unavailable; empty is never evidence of success by itself (spec 8.9.6).",
+      "enum": [
+        "present",
+        "empty",
+        "unavailable",
+        "unsupported"
+      ]
+    },
+    "ObservationCompleteness": {
+      "description": "Whether each observed fact was read (spec 8.9.3 rule 7).",
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "error_code": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "suppressed": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "parents": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "parameters": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "solid_body_count": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "needs_rebuild": {
+          "$ref": "#/$defs/CompletenessState"
+        },
+        "update_stamp": {
+          "$ref": "#/$defs/CompletenessState"
+        }
+      }
+    },
+    "ObservedParameters": {
+      "description": "Feature parameters read back, raw SI (spec 8.7). Tier T1, once K15 clears the read.",
+      "type": "object",
+      "properties": {
+        "end_condition": {
+          "type": "string"
+        },
+        "depth_m": {
+          "type": "number"
+        }
+      }
+    },
+    "Observation": {
+      "description": "Facts read back in the same command, never copied from the request (ADR-064, spec 8.9.3 rule 7). Judged by the core, not the add-in.",
+      "type": "object",
+      "properties": {
+        "native_type": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "error_code": {
+          "type": "integer"
+        },
+        "is_warning": {
+          "type": "boolean"
+        },
+        "suppressed": {
+          "type": "boolean"
+        },
+        "parents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parameters": {
+          "$ref": "#/$defs/ObservedParameters"
+        },
+        "solid_body_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "needs_rebuild": {
+          "type": "boolean"
+        },
+        "update_stamp": {
+          "type": "integer"
+        },
+        "completeness": {
+          "$ref": "#/$defs/ObservationCompleteness"
+        }
+      },
+      "required": [
+        "completeness"
+      ]
+    }
+  }
+}

@@ -12,7 +12,7 @@ Every IR module, derived artifact and report must be versioned, validatable with
 - **JSON Schema draft 2020-12 files in `schemas/` are the source of truth** for every IR module, the IR bundle manifest, derived artifacts (Resolved Scheme, Drawing Layout snapshots, Drawing Geometry Snapshot, execution plan, reports), IPC messages and the error catalogue (ADR-037).
 - One directory per contract, one file per major version: `schemas/drawing-intent/v0.json`. `schemas/common/` holds the shared-core types (IDs, `<module>:<document_id>/<item_id>` references, units, tolerances, geometry references).
 - Every document carries `schema_version` (`major.minor`). Minor versions only add optional fields (3.3 rule 6).
-- Python models are generated from the schemas (`datamodel-code-generator`); C# IPC message types are generated the same way for the add-in. CI regenerates both and fails on any diff.
+- Python models and C# IPC message types are generated from the schemas by the project's own generator ([ADR-051](ADR-051-contract-type-generator.md), replacing `datamodel-code-generator`). CI regenerates both and fails on any diff.
 - Validation: structural checks use the JSON Schema; semantic checks (cycles, cross-module references, ownership rules) are Python code in `cad-ir`, with error codes from ADR-037.
 - `get_feature_schema` serves a compacted view of the same files (no descriptions beyond one line, no `$defs` the request does not need), so agent-facing schemas cannot drift from the validator.
 

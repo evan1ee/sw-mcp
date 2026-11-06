@@ -6,7 +6,7 @@
   "oneOf": [
     {
       "const": "IR_SCHEMA_INVALID",
-      "description": "A document does not satisfy its JSON Schema.",
+      "description": "A document or a tool's arguments do not satisfy their JSON Schema.",
       "x-retryable": "after_fix"
     },
     {
@@ -192,6 +192,31 @@
     {
       "const": "CONFIG_INVALID",
       "description": "The configuration is invalid.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "FILE_NOT_FOUND",
+      "description": "The file does not exist or is not a file.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "STORE_UNAVAILABLE",
+      "description": "A project store file cannot be read or written.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "PART_VERIFICATION_FAILED",
+      "description": "One or more part verification checks failed.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "BACKEND_OPERATION_FAILED",
+      "description": "A native call failed or its read-back disagreed; details.effect says whether the document may have changed.",
+      "x-retryable": "after_fix"
+    },
+    {
+      "const": "FEATURE_VERIFICATION_FAILED",
+      "description": "A built feature failed its verification contract; details.node and details.checks name it.",
       "x-retryable": "after_fix"
     }
   ]

@@ -102,6 +102,20 @@ def test_repeated_document_with_other_revision_points_at_the_later_entry() -> No
     ]
 
 
+def test_several_drawing_templates_allowed() -> None:
+    manifest = parse_bundle_manifest(
+        _manifest("drawing_template:A3@1", "drawing_template:A3-CONT@1", "drawing_layout:d")
+    )
+    assert isinstance(manifest, BundleManifest)
+    assert len(manifest.modules) == 3  # noqa: PLR2004
+
+
+def test_same_drawing_template_twice_rejected() -> None:
+    report = parse_bundle_manifest(_manifest("drawing_template:A3@1", "drawing_template:A3@2"))
+    assert isinstance(report, IssueReport)
+    assert [i.pointer for i in report.issues] == ["/modules/1"]
+
+
 def test_several_parts_without_assembly_rejected_at_each_extra_part() -> None:
     report = _report(
         parse_bundle_manifest(_manifest("part:a", "drawing_intent:d", "part:b", "part:c@2"))

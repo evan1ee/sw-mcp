@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/dimension.hide.json",
+  "title": "Operation dimension.hide (spec 6.5.1, 6.5.2)",
+  "x-op": "dimension.hide",
+  "x-mutates": "document",
+  "x-errors": [
+    "BACKEND_BUSY",
+    "BACKEND_UI_BLOCKED",
+    "REF_NOT_FOUND",
+    "IR_SCHEMA_INVALID"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Params": {
+      "type": "object",
+      "required": [
+        "annotation"
+      ],
+      "properties": {
+        "annotation": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "Result": {
+      "type": "object",
+      "required": [
+        "annotation",
+        "hidden"
+      ],
+      "properties": {
+        "annotation": {
+          "type": "string"
+        },
+        "hidden": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

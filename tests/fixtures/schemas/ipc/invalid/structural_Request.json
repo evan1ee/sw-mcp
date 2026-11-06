@@ -1,0 +1,24 @@
+[
+  {
+    "jsonrpc": "2.0",
+    "id": 1
+  },
+  {
+    "jsonrpc": "2.0",
+    "method": "m"
+  },
+  {
+    "id": 1,
+    "method": "m"
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": "abc",
+    "method": "m"
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": {}
+  }
+]

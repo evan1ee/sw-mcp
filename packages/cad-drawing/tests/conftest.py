@@ -1,7 +1,7 @@
 """Builders for in-code sheets, shared through the ``b`` fixture (importlib mode has no imports)."""
 
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 import pytest
 from cad_drawing.checks.geometry2d import Vec
@@ -15,8 +15,11 @@ from cad_drawing.checks.snapshot import (
     EdgeKind,
     ExtensionLine,
     PolylineCurve,
+    Rebuild,
     Rect,
+    RevisionTable,
     Sheet,
+    Snapshot,
     TextBox,
     TextMethod,
     View,
@@ -71,19 +74,24 @@ class Builder:
         arrowheads: Sequence[Sequence[Vec]] = (),
         leaders: Sequence[Sequence[Vec]] = (),
         text_boxes: Sequence[TextBox] = (),
+        parameters: Sequence[str] | None = None,
+        parenthesized: bool | None = None,
+        view: str | None = None,
     ) -> Annotation:
         return Annotation(
             key=key,
             kind=kind,
             native_id=key,
             tag=None,
-            view=None,
+            view=view,
             attachments=(),
             dimension_lines=tuple(dimension_lines),
             extension_lines=tuple(extension_lines),
             arrowheads=tuple(Arrowhead(tuple(a)) for a in arrowheads),
             leaders=tuple(tuple(x) for x in leaders),
             text_boxes=tuple(text_boxes),
+            parameters=None if parameters is None else tuple(sorted(parameters)),
+            parenthesized=parenthesized,
         )
 
     @staticmethod
@@ -107,6 +115,9 @@ class Builder:
         title_block: Sequence[Rect] = (),
         key: str = "s_0",
         index: int = 0,
+        sheet_format: str | None = None,
+        title_block_fields: Mapping[str, str] | None = None,
+        revision_table: Sequence[str] | None = None,
     ) -> Sheet:
         return Sheet(
             key=key,
@@ -117,6 +128,24 @@ class Builder:
             title_block=tuple(title_block),
             views=tuple(views),
             annotations=tuple(annotations),
+            sheet_format=sheet_format,
+            title_block_fields=(
+                None if title_block_fields is None else tuple(sorted(title_block_fields.items()))
+            ),
+            revision_table=None if revision_table is None else RevisionTable(tuple(revision_table)),
+        )
+
+    @staticmethod
+    def snapshot(sheets: Sequence[Sheet], rebuild: Rebuild | None = None) -> Snapshot:
+        return Snapshot(
+            schema_version="0.1",
+            document="test_dwg",
+            revision=None,
+            solidworks_version="2025",
+            service_pack="SP3.0",
+            captured_at="2026-11-04T10:00:00Z",
+            sheets=tuple(sheets),
+            rebuild=rebuild,
         )
 
 

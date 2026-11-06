@@ -1,0 +1,10 @@
+[
+  {
+    "template": "not-an-object",
+    "destination_path": "C:/d/test.slddrt"
+  },
+  {
+    "template": {},
+    "destination_path": 123
+  }
+]

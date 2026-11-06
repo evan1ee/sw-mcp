@@ -1,0 +1,8 @@
+{
+  "config_version": "1.0",
+  "drawing": {
+    "check": {
+      "epsilon": 0.01
+    }
+  }
+}

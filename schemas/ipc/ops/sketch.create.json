@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/sketch.create.json",
+  "title": "Operation sketch.create (spec 6.5.2)",
+  "x-op": "sketch.create",
+  "x-mutates": "document",
+  "x-errors": [
+    "AUTH_PATH_DENIED",
+    "BACKEND_BUSY",
+    "BACKEND_OPERATION_FAILED",
+    "BACKEND_REBUILD_ERROR",
+    "BACKEND_UI_BLOCKED",
+    "IR_SCHEMA_INVALID"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Entity": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "line",
+            "circle"
+          ]
+        },
+        "start": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "end": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "center": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "diameter": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "Params": {
+      "type": "object",
+      "required": [
+        "node_id",
+        "entities"
+      ],
+      "properties": {
+        "node_id": {
+          "type": "string"
+        },
+        "plane": {
+          "enum": [
+            "plane:front",
+            "plane:top",
+            "plane:right"
+          ]
+        },
+        "face": {
+          "$ref": "#/$defs/Face"
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "minItems": 1
+        },
+        "_meta": {
+          "$ref": "../v0.json#/$defs/Meta"
+        }
+      },
+      "description": "Exactly one of plane (an origin plane) or face (a cap face of the extrude, ADR-070) is given; the add-in rejects any other combination."
+    },
+    "Result": {
+      "type": "object",
+      "required": [
+        "native_id",
+        "feature_id",
+        "entity_count"
+      ],
+      "properties": {
+        "native_id": {
+          "type": "integer"
+        },
+        "feature_id": {
+          "type": "string"
+        },
+        "entity_count": {
+          "type": "integer"
+        },
+        "observation": {
+          "$ref": "../v0.json#/$defs/Observation"
+        }
+      }
+    },
+    "Face": {
+      "type": "object",
+      "description": "A cap face of an extrude, found by normal and offset (ADR-070). feature is the extrude's node id in the plan and its feature id once the core substitutes it.",
+      "required": [
+        "feature",
+        "role",
+        "normal",
+        "offset_mm",
+        "x_axis",
+        "y_axis"
+      ],
+      "properties": {
+        "feature": {
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "start_face",
+            "end_face"
+          ]
+        },
+        "normal": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "offset_mm": {
+          "type": "number"
+        },
+        "x_axis": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "y_axis": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

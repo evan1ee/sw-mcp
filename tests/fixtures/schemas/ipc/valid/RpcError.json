@@ -1,0 +1,18 @@
+[
+  {
+    "code": -32601,
+    "message": "unknown method"
+  },
+  {
+    "code": -32000,
+    "message": "busy",
+    "data": {
+      "code": "BACKEND_BUSY",
+      "message": "busy",
+      "retryable": "safe",
+      "details": {
+        "n": 1
+      }
+    }
+  }
+]

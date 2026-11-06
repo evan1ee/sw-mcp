@@ -2,7 +2,19 @@
   "mcpServers": {
     "context7": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"]
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ]
+    },
+    "sw-mcp": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "D:\\01_Data\\code\\sw-mcp",
+        "sw-mcp-mcp"
+      ]
     }
   }
 }

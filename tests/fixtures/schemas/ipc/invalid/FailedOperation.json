@@ -1,0 +1,14 @@
+[
+  {
+    "code": "BACKEND_REBUILD_ERROR",
+    "effect": "applied"
+  },
+  {
+    "operation_id": "job-1:1",
+    "effect": "applied"
+  },
+  {
+    "operation_id": "job-1:1",
+    "code": "BACKEND_REBUILD_ERROR"
+  }
+]

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/mcp/list_feature_types.json",
+  "name": "list_feature_types",
+  "description": "List the supported Part Feature Graph node types with a one-line description and support level. Call get_feature_schema to inspect the schema and example for any listed type.",
+  "toolset": "core",
+  "phase": "1c",
+  "kind": "store",
+  "mutates": false,
+  "input": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "types": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": { "type": "string" },
+            "description": { "type": "string" },
+            "support": {
+              "type": "array",
+              "items": { "enum": ["create", "read"] }
+            }
+          },
+          "required": ["type", "description", "support"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["types"],
+    "additionalProperties": false
+  },
+  "errors": ["IR_SCHEMA_INVALID"],
+  "examples": [
+    {
+      "arguments": {},
+      "response": {
+        "ok": true,
+        "data": {
+          "types": [
+            {
+              "type": "sketch",
+              "description": "2D sketch on a standard plane with line and circle entities.",
+              "support": ["create", "read"]
+            },
+            {
+              "type": "extrude",
+              "description": "Blind boss extrude from a closed sketch profile.",
+              "support": ["create", "read"]
+            },
+            {
+              "type": "cut_extrude",
+              "description": "Blind or through-all-both cut extrude from a sketch profile.",
+              "support": ["create", "read"]
+            }
+          ]
+        },
+        "error": null,
+        "ids": { "request_id": "req_00000000000000000000000001" }
+      }
+    },
+    {
+      "arguments": { "extra": 1 },
+      "response": {
+        "ok": false,
+        "data": null,
+        "error": {
+          "code": "IR_SCHEMA_INVALID",
+          "message": "The arguments do not satisfy the tool's input schema.",
+          "retryable": "after_fix",
+          "details": {
+            "issues": [
+              {
+                "code": "IR_SCHEMA_INVALID",
+                "pointer": "/extra",
+                "message": "Additional properties are not allowed"
+              }
+            ]
+          }
+        },
+        "ids": { "request_id": "req_00000000000000000000000002" }
+      }
+    }
+  ]
+}

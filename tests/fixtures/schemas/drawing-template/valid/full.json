@@ -1,0 +1,125 @@
+{
+  "module": "drawing_template",
+  "id": "ACME-A3",
+  "revision": 1,
+  "schema_version": "0.1",
+  "display_name": "ACME Standard A3",
+  "units": "mm",
+  "paper": {
+    "size": "A3",
+    "orientation": "landscape"
+  },
+  "border": {
+    "margins": {
+      "left": 20.0,
+      "right": 10.0,
+      "top": 10.0,
+      "bottom": 10.0
+    },
+    "line_width": 0.5
+  },
+  "title_block": {
+    "zones": {
+      "main": {
+        "min": [230.0, 10.0],
+        "max": [410.0, 120.0]
+      }
+    },
+    "lines": {
+      "top_line": {
+        "from": [230.0, 120.0],
+        "to": [410.0, 120.0],
+        "line_width": 0.35
+      }
+    }
+  },
+  "texts": {
+    "company": {
+      "text": "ACME Corp",
+      "box": {
+        "min": [232.0, 100.0],
+        "max": [300.0, 110.0]
+      },
+      "height": 5.0,
+      "align": "left"
+    }
+  },
+  "fields": {
+    "part_number": {
+      "label": "Part No.",
+      "source": [
+        "design_intent:metadata.part_number",
+        "part_property:PartNo"
+      ],
+      "required": true,
+      "box": {
+        "min": [232.0, 50.0],
+        "max": [300.0, 58.0]
+      },
+      "height": 3.5,
+      "align": "left"
+    },
+    "revision": {
+      "source": ["drawing_property:Revision"],
+      "box": {
+        "min": [305.0, 50.0],
+        "max": [340.0, 58.0]
+      },
+      "height": 3.5
+    },
+    "material": {
+      "source": ["part_material", "part_property:Material"],
+      "box": {
+        "min": [232.0, 38.0],
+        "max": [300.0, 46.0]
+      },
+      "height": 3.5
+    },
+    "finish": {
+      "source": ["drawing_intent:finish.general", "part_property:Finish"],
+      "box": {
+        "min": [305.0, 38.0],
+        "max": [360.0, 46.0]
+      },
+      "height": 3.5
+    },
+    "general_tolerance": {
+      "source": ["drawing_intent:tolerances.general", "drawing_property:GeneralTolerance"],
+      "box": {
+        "min": [232.0, 26.0],
+        "max": [300.0, 34.0]
+      },
+      "height": 3.5
+    },
+    "scale": {
+      "source": ["sheet:scale"],
+      "box": {
+        "min": [305.0, 26.0],
+        "max": [340.0, 34.0]
+      },
+      "height": 3.5
+    },
+    "projection_symbol": {
+      "source": ["sheet:projection"],
+      "box": {
+        "min": [232.0, 14.0],
+        "max": [300.0, 22.0]
+      },
+      "height": 3.5
+    },
+    "units": {
+      "source": ["sheet:units"],
+      "box": {
+        "min": [305.0, 14.0],
+        "max": [340.0, 22.0]
+      },
+      "height": 3.5
+    }
+  },
+  "revision_table": {
+    "box": {
+      "min": [232.0, 70.0],
+      "max": [408.0, 95.0]
+    }
+  }
+}

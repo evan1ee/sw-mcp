@@ -1,0 +1,15 @@
+{
+  "module": "drawing_template",
+  "schema_version": "0.1",
+  "units": "mm",
+  "paper": { "size": "Letter", "orientation": "landscape" },
+  "border": { "margins": { "left": 20.0, "right": 10.0, "top": 10.0, "bottom": 10.0 } },
+  "title_block": { "zones": { "main": { "min": [230.0, 10.0], "max": [410.0, 60.0] } } },
+  "fields": {
+    "part_number": {
+      "source": ["part_property:PartNo"],
+      "box": { "min": [232.0, 50.0], "max": [300.0, 58.0] },
+      "height": 3.5
+    }
+  }
+}

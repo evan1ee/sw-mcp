@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ExecutionServer.Core\ExecutionServer.Core.csproj" />
     <ProjectReference Include="..\ExecutionServer.Adapters\ExecutionServer.Adapters.csproj" />
   </ItemGroup>

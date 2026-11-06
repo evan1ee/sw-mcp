@@ -1,0 +1,13 @@
+[
+  {
+    "view": "Drawing View1"
+  },
+  {
+    "view": "Drawing View2",
+    "hole_centers": true,
+    "slot_centers": true,
+    "use_doc_defaults": true,
+    "size_mm": 5.0,
+    "gap_mm": 2.5
+  }
+]

@@ -1,6 +1,6 @@
 # 5. Part Feature Graph IR and Assembly Graph IR
 
-> Specification v1.19, section 5.1–5.5. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, section 5.1–5.5. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 5.1 Purpose
 
@@ -86,7 +86,7 @@ Weldments, mold tooling (core/cavity, tooling split), Toolbox and library featur
 
 - Unsupported feature types produce explicit compiler errors, never approximate geometry.
 - Adding a feature type adds an IR schema entry, a lowering rule, an executor adapter and a test. It **never adds an MCP tool** (section 12.3).
-- **Language-independent identification (ADR-021).** Feature, plane and dimension names depend on the SOLIDWORKS UI language and on what users rename them to. For example, `Boss-Extrude1` and `Front Plane` are called `凸台-拉伸1` and `前视基准面` on a Chinese install. The Read path identifies features by `IFeature.GetID()` and their type by `IFeature.GetTypeName2`, never by display name or tree position: positions change whenever a feature is inserted or reordered. Phase 0 confirms that `GetID()` stays stable across save/reopen, rename and rebuild, and falls back to a persistent reference (`GetPersistReference3`) for any case where it does not. Dimensions are identified by their owning feature's ID plus the dimension's index within that feature. It identifies the three standard planes and the origin by their order among the reference planes, never by display name. The IR names standard planes by role (`Front`, `Top`, `Right`), and the executor maps each role to the native plane. Display names are kept only for reporting.
+- **Language-independent identification (ADR-021).** Feature, plane and dimension names depend on the SOLIDWORKS UI language and on what users rename them to. For example, `Boss-Extrude1` and `Front Plane` are called `凸台-拉伸1` and `前视基准面` on a Chinese install. The Read path identifies features by `IFeature.GetID()` and their type by `IFeature.GetTypeName2`, never by display name or tree position: positions change whenever a feature is inserted or reordered. Phase 0 confirms that `GetID()` stays stable across save/reopen, rename and rebuild, and falls back to a persistent reference (`GetPersistReference3`) for any case where it does not. The 2026-11-05 spike confirmed it on a plate (A2): `GetID()` was identical for all 20 features after close and reopen, so the fallback is not needed for the MVP and stays documented here. Dimensions are identified by their owning feature's ID plus the dimension's index within that feature. It identifies the three standard planes and the origin by their order among the reference planes, never by display name. The IR names standard planes by role (`Front`, `Top`, `Right`), and the executor maps each role to the native plane. Display names are kept only for reporting.
 - Phase 0 maps the reference implementation's feature support onto these tiers. Anything it can create belongs in Tier 1 or 2 unless the owner decides otherwise.
 
 ## 5.4 Example (illustrative)

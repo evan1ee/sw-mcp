@@ -33,8 +33,9 @@ def _violation(index: int, ref: DocumentRef, message: str) -> ValidationIssue:
 def _semantic_issues(modules: tuple[DocumentRef, ...]) -> list[ValidationIssue]:
     """Bundle rules (spec 3.4.5), one issue per offending entry.
 
-    A document (module and ID, whatever the revision) is listed once. Other than ``part``, a
-    module key is listed once; several parts need an ``assembly`` in the bundle.
+    A document (module and ID, whatever the revision) is listed once. Other than ``part`` and
+    ``drawing_template``, a module key is listed once; several parts need an ``assembly`` in
+    the bundle.
     """
     has_assembly = any(ref.module == "assembly" for ref in modules)
     seen_documents: set[tuple[str, str]] = set()
@@ -44,7 +45,7 @@ def _semantic_issues(modules: tuple[DocumentRef, ...]) -> list[ValidationIssue]:
         document = (ref.module, ref.document_id)
         if document in seen_documents:
             message = f"{ref.module}:{ref.document_id} is listed more than once"
-        elif ref.module != "part" and ref.module in seen_modules:
+        elif ref.module not in ("part", "drawing_template") and ref.module in seen_modules:
             message = f"at most one {ref.module} document is allowed in a bundle"
         elif ref.module == "part" and not has_assembly and "part" in seen_modules:
             message = "more than one part needs an assembly in the bundle"

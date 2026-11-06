@@ -1,0 +1,774 @@
+"""CAD part verification core: expected geometry computation and measurement comparison."""
+
+import math
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
+from typing import Final, Literal, NamedTuple, cast
+
+from cad_ir.core.json_types import JsonValue
+from cad_ir.part_feature_graph.faces import face_frame, parse_face_plane
+from cad_ir.part_feature_graph.model import (
+    Circle,
+    Line,
+    PartGraph,
+    SketchNode,
+    SolidNode,
+)
+from cad_ir.part_feature_graph.planes import PlaneAxes, plane_axes
+
+PARALLEL_DOT_TOLERANCE = 1e-4
+LINEAR_TOLERANCE_MM = 0.01
+RELATIVE_TOLERANCE_RATIO = 0.0001
+DIM_3D = 3
+MM_PER_M = 1000.0
+MM2_PER_M2 = 1e6
+MM3_PER_M3 = 1e9
+
+type CheckStatus = Literal["passed", "failed", "warning", "not_applicable", "not_evaluated"]
+type NotEvaluatedReason = Literal["not_executed", "unsupported", "missing_data", "malformed_data"]
+type UnreadableReason = Literal["missing_data", "malformed_data"]
+
+NOT_EVALUATED_REASONS: Final = frozenset(
+    {"not_executed", "unsupported", "missing_data", "malformed_data"}
+)
+
+
+class Point3(NamedTuple):
+    """3D point / vector in millimeters."""
+
+    x: float
+    y: float
+    z: float
+
+
+@dataclass(frozen=True, slots=True)
+class Box:
+    """Axis-aligned 3D bounding box in millimeters."""
+
+    min: Point3
+    max: Point3
+
+    def __init__(
+        self,
+        min: Point3 | tuple[float, float, float] | list[float],
+        max: Point3 | tuple[float, float, float] | list[float],
+    ) -> None:
+        p_min = (
+            min if isinstance(min, Point3) else Point3(float(min[0]), float(min[1]), float(min[2]))
+        )
+        p_max = (
+            max if isinstance(max, Point3) else Point3(float(max[0]), float(max[1]), float(max[2]))
+        )
+        object.__setattr__(self, "min", p_min)
+        object.__setattr__(self, "max", p_max)
+
+    @property
+    def size(self) -> Point3:
+        return Point3(
+            self.max.x - self.min.x,
+            self.max.y - self.min.y,
+            self.max.z - self.min.z,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectedCylinder:
+    """Expected cylinder face geometry in millimeters."""
+
+    point: Point3
+    direction: Point3
+    radius: float
+
+    def __init__(
+        self,
+        point: Point3 | tuple[float, float, float] | list[float],
+        direction: Point3 | tuple[float, float, float] | list[float],
+        radius: float,
+    ) -> None:
+        p_pt = (
+            point
+            if isinstance(point, Point3)
+            else Point3(float(point[0]), float(point[1]), float(point[2]))
+        )
+        p_dir = (
+            direction
+            if isinstance(direction, Point3)
+            else Point3(float(direction[0]), float(direction[1]), float(direction[2]))
+        )
+        object.__setattr__(self, "point", p_pt)
+        object.__setattr__(self, "direction", p_dir)
+        object.__setattr__(self, "radius", float(radius))
+
+    @property
+    def radius_mm(self) -> float:
+        return self.radius
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectedFeature:
+    """Expected solid feature or sketch node in the part feature tree."""
+
+    node_id: str
+    feature_type: str
+    native_type: str = ""
+
+    @property
+    def type(self) -> str:
+        return self.feature_type
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectedGeometry:
+    """Expected geometry computed from the Part Feature Graph IR alone (spec 10.2)."""
+
+    solid_body_count: int
+    bbox_mm: Box
+    volume_mm3: float
+    surface_area_mm2: float
+    center_of_mass_mm: Point3
+    cylinders: tuple[ExpectedCylinder, ...]
+    features: tuple[ExpectedFeature, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class CheckResult:
+    """Outcome of a single verification requirement comparison."""
+
+    requirement: str
+    measured: JsonValue
+    expected: JsonValue
+    tolerance: float | None
+    status: CheckStatus
+    method: str
+    reason: str | None = None
+
+    def __post_init__(self) -> None:
+        """Only ``not_evaluated`` and ``not_applicable`` carry a reason, and need one (8.9.6)."""
+        if self.status == "not_evaluated":
+            valid = self.reason in NOT_EVALUATED_REASONS
+        elif self.status == "not_applicable":
+            valid = bool(self.reason)
+        else:
+            valid = self.reason is None
+        if not valid:
+            raise ValueError(f"invalid reason {self.reason!r} for status {self.status!r}")
+
+    @property
+    def passed(self) -> bool:
+        """True only for ``passed``; no other status counts as passed (ADR-063, ADR-064)."""
+        return self.status == "passed"
+
+
+def _order_polygon_vertices(lines: list[Line]) -> tuple[list[tuple[float, float]], float]:
+    """Order line segments into a closed polygon loop, returning vertices and perimeter."""
+    if not lines:
+        return [], 0.0
+
+    perimeter = 0.0
+    for line in lines:
+        dx = line.end[0] - line.start[0]
+        dy = line.end[1] - line.start[1]
+        perimeter += math.hypot(dx, dy)
+
+    remaining = list(lines)
+    first = remaining.pop(0)
+    vertices = [first.start]
+    current = first.end
+
+    tol = 1e-5
+    while remaining:
+        found_idx = -1
+        reverse = False
+        for idx, seg in enumerate(remaining):
+            if math.hypot(seg.start[0] - current[0], seg.start[1] - current[1]) <= tol:
+                found_idx = idx
+                reverse = False
+                break
+            if math.hypot(seg.end[0] - current[0], seg.end[1] - current[1]) <= tol:
+                found_idx = idx
+                reverse = True
+                break
+
+        if found_idx == -1:
+            return [line.start for line in lines], perimeter
+
+        seg = remaining.pop(found_idx)
+        vertices.append(current)
+        current = seg.start if reverse else seg.end
+
+    return vertices, perimeter
+
+
+def _collect_features(
+    graph: PartGraph,
+) -> tuple[list[ExpectedFeature], list[tuple[str, SolidNode]]]:
+    """Extract ordered expected features and solid nodes from the graph."""
+    features: list[ExpectedFeature] = []
+    solid_nodes: list[tuple[str, SolidNode]] = []
+
+    for nid, node in graph.nodes.items():
+        if isinstance(node, SketchNode):
+            features.append(
+                ExpectedFeature(
+                    node_id=nid,
+                    feature_type="sketch",
+                    native_type="ProfileFeature",
+                )
+            )
+        else:
+            solid_nodes.append((nid, node))
+            if node.type == "extrude":
+                features.append(
+                    ExpectedFeature(
+                        node_id=nid,
+                        feature_type="extrude",
+                        native_type="Extrusion",
+                    )
+                )
+            elif node.type == "cut_extrude":
+                features.append(
+                    ExpectedFeature(
+                        node_id=nid,
+                        feature_type="cut_extrude",
+                        native_type="ICE",
+                    )
+                )
+            else:
+                features.append(
+                    ExpectedFeature(
+                        node_id=nid,
+                        feature_type=node.type,
+                        native_type="",
+                    )
+                )
+    return features, solid_nodes
+
+
+def _compute_base_profile(
+    sketch: SketchNode,
+) -> tuple[float, float, float, float, tuple[float, float], tuple[float, float]]:
+    """Compute base 2D profile area, perimeter, centroid (cx, cy) and bounds (xs, ys)."""
+    lines = [e for e in sketch.entities.values() if isinstance(e, Line)]
+    circles = [e for e in sketch.entities.values() if isinstance(e, Circle)]
+
+    if lines:
+        vertices, perimeter = _order_polygon_vertices(lines)
+        n = len(vertices)
+        signed_area = 0.0
+        cx_num = 0.0
+        cy_num = 0.0
+        for i in range(n):
+            x_i, y_i = vertices[i]
+            x_next, y_next = vertices[(i + 1) % n]
+            cross = x_i * y_next - x_next * y_i
+            signed_area += cross
+            cx_num += (x_i + x_next) * cross
+            cy_num += (y_i + y_next) * cross
+
+        signed_area *= 0.5
+        area = abs(signed_area)
+        cx = cx_num / (6.0 * signed_area) if signed_area != 0.0 else 0.0
+        cy = cy_num / (6.0 * signed_area) if signed_area != 0.0 else 0.0
+
+        xs = [v[0] for v in vertices]
+        ys = [v[1] for v in vertices]
+        return area, perimeter, cx, cy, (min(xs), max(xs)), (min(ys), max(ys))
+
+    if circles:
+        c = circles[0]
+        r = c.diameter * 0.5
+        area = math.pi * r * r
+        perimeter = 2.0 * math.pi * r
+        cx, cy = c.center
+        return area, perimeter, cx, cy, (cx - r, cx + r), (cy - r, cy + r)
+
+    raise ValueError("Base sketch has no Line or Circle entities")
+
+
+def _cut_regions(sketch: SketchNode) -> list[tuple[float, float, float, float]]:
+    """Area, perimeter and centroid of each region a cut removes: one loop, or each circle."""
+    circles = [e for e in sketch.entities.values() if isinstance(e, Circle)]
+    if circles:
+        return [
+            (
+                math.pi * (c.diameter * 0.5) ** 2,
+                math.pi * c.diameter,
+                c.center[0],
+                c.center[1],
+            )
+            for c in circles
+        ]
+    area, perimeter, center_x, center_y, _, _ = _compute_base_profile(sketch)
+    return [(area, perimeter, center_x, center_y)]
+
+
+def _compute_base_bbox(
+    base_plane: PlaneAxes,
+    x_bounds: tuple[float, float],
+    y_bounds: tuple[float, float],
+    depth: float,
+) -> Box:
+    """Compute axis-aligned 3D bounding box for an extruded base profile."""
+    corners_2d = [
+        (x_bounds[0], y_bounds[0]),
+        (x_bounds[1], y_bounds[0]),
+        (x_bounds[1], y_bounds[1]),
+        (x_bounds[0], y_bounds[1]),
+    ]
+    corners_3d: list[tuple[float, float, float]] = []
+    for cx, cy in corners_2d:
+        corners_3d.append(base_plane.to_model(cx, cy, 0.0))
+        corners_3d.append(base_plane.to_model(cx, cy, depth))
+
+    min_pt = Point3(
+        min(p[0] for p in corners_3d),
+        min(p[1] for p in corners_3d),
+        min(p[2] for p in corners_3d),
+    )
+    max_pt = Point3(
+        max(p[0] for p in corners_3d),
+        max(p[1] for p in corners_3d),
+        max(p[2] for p in corners_3d),
+    )
+    return Box(min=min_pt, max=max_pt)
+
+
+def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
+    """Compute expected geometry from a PartGraph alone (spec 10.2, design 9)."""
+    features, solid_nodes = _collect_features(graph)
+
+    extrude_entries = [e for e in solid_nodes if e[1].type == "extrude"]
+    if not extrude_entries:
+        raise ValueError("PartGraph has no solid extrude feature")
+
+    _, base_node = extrude_entries[0]
+    base_sketch_raw = graph.nodes.get(base_node.profile)
+    if not isinstance(base_sketch_raw, SketchNode):
+        raise ValueError(f"Profile {base_node.profile!r} is not a SketchNode")
+
+    base_plane = plane_axes(base_sketch_raw.plane)
+    base_depth = float(base_node.end_condition.depth or 0.0)
+
+    base_area, base_perimeter, base_cx, base_cy, x_b, y_b = _compute_base_profile(base_sketch_raw)
+    bbox_mm = _compute_base_bbox(base_plane, x_b, y_b, base_depth)
+
+    base_vol = base_area * base_depth
+    base_com = base_plane.to_model(base_cx, base_cy, base_depth * 0.5)
+    total_moment = [base_vol * base_com[0], base_vol * base_com[1], base_vol * base_com[2]]
+    total_volume = base_vol
+    total_area = 2.0 * base_area + base_perimeter * base_depth
+
+    cylinders: list[ExpectedCylinder] = []
+    base_circles = [e for e in base_sketch_raw.entities.values() if isinstance(e, Circle)]
+    if base_circles:
+        cylinders.append(
+            ExpectedCylinder(
+                point=base_plane.to_model(base_cx, base_cy, 0.0),
+                direction=base_plane.normal,
+                radius=base_circles[0].diameter * 0.5,
+            )
+        )
+
+    cut_entries = [e for e in solid_nodes if e[1].type == "cut_extrude"]
+    for _, cut_node in cut_entries:
+        cut_sketch_raw = graph.nodes.get(cut_node.profile)
+        if not isinstance(cut_sketch_raw, SketchNode):
+            continue
+
+        is_through = cut_node.end_condition.type in ("through_all", "through_all_both")
+        cut_depth = base_depth if is_through else float(cut_node.end_condition.depth or 0.0)
+        face = parse_face_plane(cut_sketch_raw.plane)
+        if face is None:
+            cut_plane = plane_axes(cut_sketch_raw.plane)
+            x_sign, depth_center, circle_depth = 1.0, cut_depth * 0.5, 0.0
+        else:
+            # A cut from a cap face goes into the body (ADR-070); its x may be mirrored.
+            frame = face_frame(base_plane, base_depth, face.role)
+            low, high = frame.into_body_depth_from_base(base_depth, cut_depth)
+            cut_plane = base_plane
+            x_sign, depth_center, circle_depth = frame.x_sign, (low + high) * 0.5, frame.offset_mm
+
+        for area, perimeter, center_x, center_y in _cut_regions(cut_sketch_raw):
+            region_vol = area * cut_depth
+            region_com = cut_plane.to_model(x_sign * center_x, center_y, depth_center)
+
+            total_volume -= region_vol
+            total_moment[0] -= region_vol * region_com[0]
+            total_moment[1] -= region_vol * region_com[1]
+            total_moment[2] -= region_vol * region_com[2]
+
+            # A through cut opens both end faces. A blind cut's floor replaces the area it removes.
+            total_area += perimeter * cut_depth - (2.0 * area if is_through else 0.0)
+
+        for entity in cut_sketch_raw.entities.values():
+            if isinstance(entity, Circle):
+                cylinders.append(
+                    ExpectedCylinder(
+                        point=cut_plane.to_model(
+                            x_sign * entity.center[0], entity.center[1], circle_depth
+                        ),
+                        direction=cut_plane.normal,
+                        radius=entity.diameter * 0.5,
+                    )
+                )
+
+    com_3d = Point3(
+        total_moment[0] / total_volume,
+        total_moment[1] / total_volume,
+        total_moment[2] / total_volume,
+    )
+
+    return ExpectedGeometry(
+        solid_body_count=1,
+        bbox_mm=bbox_mm,
+        volume_mm3=total_volume,
+        surface_area_mm2=total_area,
+        center_of_mass_mm=com_3d,
+        cylinders=tuple(cylinders),
+        features=tuple(features),
+    )
+
+
+def _cylinder_matches(
+    exp: ExpectedCylinder,
+    meas: tuple[tuple[float, float, float], tuple[float, float, float], float],
+) -> bool:
+    """Check if a measured cylinder matches an expected cylinder within tolerances."""
+    meas_pt, meas_dir, meas_r = meas
+
+    if abs(meas_r - exp.radius) > LINEAR_TOLERANCE_MM + 1e-9:
+        return False
+
+    norm_m = math.hypot(meas_dir[0], meas_dir[1], meas_dir[2])
+    norm_e = math.hypot(exp.direction.x, exp.direction.y, exp.direction.z)
+    if norm_m == 0.0 or norm_e == 0.0:
+        return False
+
+    dir_m = (meas_dir[0] / norm_m, meas_dir[1] / norm_m, meas_dir[2] / norm_m)
+    dir_e = (exp.direction.x / norm_e, exp.direction.y / norm_e, exp.direction.z / norm_e)
+
+    dot = abs(dir_m[0] * dir_e[0] + dir_m[1] * dir_e[1] + dir_m[2] * dir_e[2])
+    if 1.0 - dot > PARALLEL_DOT_TOLERANCE:
+        return False
+
+    vx = meas_pt[0] - exp.point.x
+    vy = meas_pt[1] - exp.point.y
+    vz = meas_pt[2] - exp.point.z
+
+    proj = vx * dir_e[0] + vy * dir_e[1] + vz * dir_e[2]
+    perp_x = vx - proj * dir_e[0]
+    perp_y = vy - proj * dir_e[1]
+    perp_z = vz - proj * dir_e[2]
+
+    perp_dist = math.hypot(perp_x, perp_y, perp_z)
+    return perp_dist <= LINEAR_TOLERANCE_MM + 1e-9
+
+
+def _match_cylinders(
+    expected: tuple[ExpectedCylinder, ...],
+    measured: list[tuple[tuple[float, float, float], tuple[float, float, float], float]],
+) -> bool:
+    """Find a 1-to-1 matching between expected and measured cylinders via bipartite matching."""
+    if len(expected) != len(measured):
+        return False
+    n = len(expected)
+    if n == 0:
+        return True
+
+    adj: list[list[int]] = []
+    for exp in expected:
+        matches = [j for j, m in enumerate(measured) if _cylinder_matches(exp, m)]
+        adj.append(matches)
+
+    match_to_exp = [-1] * n
+
+    def dfs(u: int, visited: list[bool]) -> bool:
+        for v in adj[u]:
+            if not visited[v]:
+                visited[v] = True
+                if match_to_exp[v] < 0 or dfs(match_to_exp[v], visited):
+                    match_to_exp[v] = u
+                    return True
+        return False
+
+    matches_count = 0
+    for u in range(n):
+        visited = [False] * n
+        if dfs(u, visited):
+            matches_count += 1
+
+    return matches_count == n
+
+
+class _UnreadableError(Exception):
+    """A measured value is absent or malformed, so its check cannot be judged."""
+
+    def __init__(self, reason: UnreadableReason) -> None:
+        super().__init__(reason)
+        self.reason: UnreadableReason = reason
+
+
+type _Measured = Mapping[str, JsonValue]
+type _Judgement = tuple[JsonValue, bool]
+type _MeasuredCylinder = tuple[tuple[float, float, float], tuple[float, float, float], float]
+
+
+def _field(m_dict: _Measured, key: str) -> JsonValue:
+    if key not in m_dict:
+        raise _UnreadableError("missing_data")
+    return m_dict[key]
+
+
+def _member(entry: _Measured, key: str) -> JsonValue:
+    """A key inside a field that is present; its absence makes that field malformed."""
+    if key not in entry:
+        raise _UnreadableError("malformed_data")
+    return entry[key]
+
+
+def _as_mapping(value: JsonValue) -> _Measured:
+    if not isinstance(value, Mapping):
+        raise _UnreadableError("malformed_data")
+    return cast(_Measured, value)
+
+
+def _as_list(value: JsonValue) -> list[JsonValue]:
+    if not isinstance(value, list):
+        raise _UnreadableError("malformed_data")
+    return value
+
+
+def _as_number(value: JsonValue) -> float:
+    if isinstance(value, bool) or not isinstance(value, int | float) or not math.isfinite(value):
+        raise _UnreadableError("malformed_data")
+    return float(value)
+
+
+def _as_vector(value: JsonValue) -> tuple[float, float, float]:
+    items = _as_list(value)
+    if len(items) != DIM_3D:
+        raise _UnreadableError("malformed_data")
+    return (_as_number(items[0]), _as_number(items[1]), _as_number(items[2]))
+
+
+def _judge_rebuild(m_dict: _Measured) -> _Judgement:
+    rebuild = _as_mapping(_field(m_dict, "rebuild"))
+    ok = _member(rebuild, "ok")
+    if not isinstance(ok, bool):
+        raise _UnreadableError("malformed_data")
+    errors = [str(e) for e in _as_list(_member(rebuild, "errors"))]
+    measured: JsonValue = {"ok": ok, "errors": [cast(JsonValue, e) for e in errors]}
+    return measured, ok and not errors
+
+
+def _judge_bodies(m_dict: _Measured, expected: ExpectedGeometry) -> _Judgement:
+    count = _field(m_dict, "solid_body_count")
+    if isinstance(count, bool) or not isinstance(count, int):
+        raise _UnreadableError("malformed_data")
+    return count, count == expected.solid_body_count
+
+
+# Every new part holds these before any feature is built: the tree's folders, the three reference
+# planes and the origin (spike section 3). They are the template's, not the plan's, so they are
+# neither expected nor "extra". Any other type that the plan does not name still fails.
+_TEMPLATE_TREE_TYPES: Final = frozenset({"RefPlane", "OriginProfileFeature", "DetailCabinet"})
+
+
+def _is_template_tree(feature_type: str) -> bool:
+    return feature_type in _TEMPLATE_TREE_TYPES or feature_type.endswith("Folder")
+
+
+def _is_acceptable_feature_type(exp_feat: ExpectedFeature, meas_type: str) -> bool:
+    """Check if the measured feature type string is acceptable for the expected feature."""
+    acceptable: set[str] = {exp_feat.feature_type, exp_feat.native_type}
+    if exp_feat.feature_type == "sketch":
+        acceptable.update(["sketch", "ProfileFeature"])
+    elif exp_feat.feature_type == "extrude":
+        acceptable.update(["extrude", "Extrusion", "Boss-Extrude"])
+    elif exp_feat.feature_type == "cut_extrude":
+        acceptable.update(["cut_extrude", "ICE", "Cut-Extrude", "CutExtrude"])
+    return meas_type in acceptable
+
+
+def _read_feature(value: JsonValue) -> tuple[str, str, str]:
+    entry = _as_mapping(value)
+    feature_id, feature_type, status = (
+        entry.get("feature_id"),
+        entry.get("type"),
+        entry.get("status"),
+    )
+    if (
+        not isinstance(feature_id, str)
+        or not isinstance(feature_type, str)
+        or not isinstance(status, str)
+    ):
+        raise _UnreadableError("malformed_data")
+    return feature_id, feature_type, status
+
+
+def _judge_features(
+    m_dict: _Measured, expected: ExpectedGeometry, feature_ids: Mapping[str, str]
+) -> _Judgement:
+    measured = [
+        feature
+        for feature in (_read_feature(f) for f in _as_list(_field(m_dict, "features")))
+        if not _is_template_tree(feature[1])
+    ]
+    by_id = {feature_id: (kind, status) for feature_id, kind, status in measured}
+    passed = len(measured) == len(expected.features)
+
+    for exp_feat in expected.features:
+        found = by_id.get(feature_ids.get(exp_feat.node_id, ""))
+        if found is None or found[1] != "ok" or not _is_acceptable_feature_type(exp_feat, found[0]):
+            passed = False
+
+    bound = {feature_ids[ef.node_id] for ef in expected.features if ef.node_id in feature_ids}
+    if any(feature_id not in bound for feature_id in by_id):
+        passed = False
+    return len(measured), passed
+
+
+def _within_linear(measured: Sequence[float], expected: Sequence[float]) -> bool:
+    return all(
+        abs(m - e) <= LINEAR_TOLERANCE_MM + 1e-9 for m, e in zip(measured, expected, strict=True)
+    )
+
+
+def _judge_bbox(m_dict: _Measured, expected: ExpectedGeometry) -> _Judgement:
+    bbox = _as_mapping(_field(m_dict, "bbox_m"))
+    meas_min = [x * MM_PER_M for x in _as_vector(_member(bbox, "min"))]
+    meas_max = [x * MM_PER_M for x in _as_vector(_member(bbox, "max"))]
+    passed = _within_linear(meas_min, expected.bbox_mm.min) and _within_linear(
+        meas_max, expected.bbox_mm.max
+    )
+    measured: JsonValue = {
+        "min": [cast(JsonValue, x) for x in meas_min],
+        "max": [cast(JsonValue, x) for x in meas_max],
+    }
+    return measured, passed
+
+
+def _within_relative(measured: float, expected: float) -> bool:
+    return abs(measured - expected) <= RELATIVE_TOLERANCE_RATIO * expected + 1e-9
+
+
+def _judge_volume(m_dict: _Measured, expected: ExpectedGeometry) -> _Judgement:
+    measured = _as_number(_field(m_dict, "volume_m3")) * MM3_PER_M3
+    return measured, _within_relative(measured, expected.volume_mm3)
+
+
+def _judge_surface_area(m_dict: _Measured, expected: ExpectedGeometry) -> _Judgement:
+    measured = _as_number(_field(m_dict, "surface_area_m2")) * MM2_PER_M2
+    return measured, _within_relative(measured, expected.surface_area_mm2)
+
+
+def _judge_center_of_mass(m_dict: _Measured, expected: ExpectedGeometry) -> _Judgement:
+    measured = [x * MM_PER_M for x in _as_vector(_field(m_dict, "center_of_mass_m"))]
+    passed = _within_linear(measured, expected.center_of_mass_mm)
+    return [cast(JsonValue, x) for x in measured], passed
+
+
+def _read_cylinder(value: JsonValue) -> _MeasuredCylinder:
+    entry = _as_mapping(value)
+    point = _as_vector(_member(entry, "point"))
+    direction = _as_vector(_member(entry, "direction"))
+    radius = _as_number(_member(entry, "radius"))
+    return (
+        (point[0] * MM_PER_M, point[1] * MM_PER_M, point[2] * MM_PER_M),
+        direction,
+        radius * MM_PER_M,
+    )
+
+
+def _judge_cylinders(m_dict: _Measured, expected: ExpectedGeometry) -> _Judgement:
+    measured = [_read_cylinder(c) for c in _as_list(_field(m_dict, "cylinders_m"))]
+    return len(measured), _match_cylinders(expected.cylinders, measured)
+
+
+def _result(
+    spec: tuple[str, str, float | None],
+    expected: JsonValue,
+    judge: Callable[[], _Judgement],
+) -> CheckResult:
+    requirement, method, tolerance = spec
+    try:
+        measured, passed = judge()
+    except _UnreadableError as unreadable:
+        return CheckResult(
+            requirement=requirement,
+            measured=None,
+            expected=expected,
+            tolerance=tolerance,
+            status="not_evaluated",
+            method=method,
+            reason=unreadable.reason,
+        )
+    return CheckResult(
+        requirement=requirement,
+        measured=measured,
+        expected=expected,
+        tolerance=tolerance,
+        status="passed" if passed else "failed",
+        method=method,
+    )
+
+
+def compare(
+    expected: ExpectedGeometry,
+    measured: JsonValue,
+    feature_ids: Mapping[str, str],
+) -> tuple[CheckResult, ...]:
+    """Compare expected geometry against raw SI measurements from SOLIDWORKS (spec 10.2).
+
+    Converts raw SI values (m, m2, m3) to mm, mm2, mm3 before checking. Never short-circuits:
+    runs every comparison and returns all results. A value that is absent or malformed gives
+    ``not_evaluated`` with a reason, never ``passed`` (ADR-063, spec 8.9.6).
+    """
+    m_dict: _Measured = cast(_Measured, measured) if isinstance(measured, Mapping) else {}
+    box = expected.bbox_mm
+    expected_box: JsonValue = {
+        "min": [cast(JsonValue, x) for x in box.min],
+        "max": [cast(JsonValue, x) for x in box.max],
+    }
+    return (
+        _result(
+            ("rebuild", "part.measure.rebuild", None),
+            {"ok": True, "errors": []},
+            lambda: _judge_rebuild(m_dict),
+        ),
+        _result(
+            ("bodies", "part.measure.solid_body_count", None),
+            expected.solid_body_count,
+            lambda: _judge_bodies(m_dict, expected),
+        ),
+        _result(
+            ("features", "part.measure.features", None),
+            len(expected.features),
+            lambda: _judge_features(m_dict, expected, feature_ids),
+        ),
+        _result(
+            ("bounding_box", "part.measure.bbox", LINEAR_TOLERANCE_MM),
+            expected_box,
+            lambda: _judge_bbox(m_dict, expected),
+        ),
+        _result(
+            ("volume", "part.measure.volume", RELATIVE_TOLERANCE_RATIO),
+            expected.volume_mm3,
+            lambda: _judge_volume(m_dict, expected),
+        ),
+        _result(
+            ("surface_area", "part.measure.surface_area", RELATIVE_TOLERANCE_RATIO),
+            expected.surface_area_mm2,
+            lambda: _judge_surface_area(m_dict, expected),
+        ),
+        _result(
+            ("center_of_mass", "part.measure.center_of_mass", LINEAR_TOLERANCE_MM),
+            [cast(JsonValue, x) for x in expected.center_of_mass_mm],
+            lambda: _judge_center_of_mass(m_dict, expected),
+        ),
+        _result(
+            ("cylinders", "part.measure.cylinders", LINEAR_TOLERANCE_MM),
+            len(expected.cylinders),
+            lambda: _judge_cylinders(m_dict, expected),
+        ),
+    )

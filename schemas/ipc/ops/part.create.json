@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/part.create.json",
+  "title": "Operation part.create (spec 6.5.2)",
+  "x-op": "part.create",
+  "x-mutates": "session",
+  "x-errors": [
+    "AUTH_PATH_DENIED",
+    "AUTH_SOURCE_WRITE_NOT_ALLOWED",
+    "BACKEND_BUSY",
+    "BACKEND_UI_BLOCKED",
+    "CONFIG_INVALID",
+    "FILE_NOT_FOUND"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Params": {
+      "type": "object",
+      "required": [
+        "template"
+      ],
+      "properties": {
+        "template": {
+          "type": "string"
+        },
+        "_meta": {
+          "$ref": "../v0.json#/$defs/Meta"
+        }
+      }
+    },
+    "TemplateInfo": {
+      "type": "object",
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        }
+      }
+    },
+    "Result": {
+      "type": "object",
+      "required": [
+        "native_id",
+        "path",
+        "instance_id",
+        "previous_active",
+        "template"
+      ],
+      "properties": {
+        "native_id": {
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "previous_active": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "template": {
+          "$ref": "#/$defs/TemplateInfo"
+        }
+      }
+    }
+  }
+}

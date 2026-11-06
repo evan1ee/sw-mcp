@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "result": {}
+  },
+  {
+    "jsonrpc": "2.0",
+    "result": {}
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": "abc"
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": "x"
+  },
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": {
+      "message": "m"
+    }
+  }
+]

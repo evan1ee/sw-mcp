@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/mcp/get_drawing_report.json",
+  "name": "get_drawing_report",
+  "description": "Read the result of a drawing check by report_id or execution_id. The default is a short summary: verdict, per-check status and the first failures. Use section to page through conflicts or warnings.",
+  "toolset": "drawing",
+  "phase": "1a",
+  "kind": "store",
+  "mutates": false,
+  "input": {
+    "type": "object",
+    "properties": {
+      "report_id": { "$ref": "../store/v0.json#/$defs/ReportId" },
+      "execution_id": { "$ref": "../store/v0.json#/$defs/JobId" },
+      "detail": { "enum": ["summary", "full"], "default": "summary" },
+      "section": { "enum": ["checks", "conflicts", "warnings", "soft_metrics"] },
+      "cursor": { "type": "string", "minLength": 1, "maxLength": 1024 },
+      "page_size": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 }
+    },
+    "oneOf": [{ "required": ["report_id"] }, { "required": ["execution_id"] }],
+    "dependentSchemas": {
+      "cursor": {
+        "required": ["section"],
+        "properties": { "section": { "enum": ["conflicts", "warnings"] } }
+      },
+      "page_size": {
+        "required": ["section"],
+        "properties": { "section": { "enum": ["conflicts", "warnings"] } }
+      }
+    },
+    "additionalProperties": false
+  },
+  "output": {
+    "anyOf": [
+      {
+        "type": "object",
+        "properties": {
+          "execution_id": { "$ref": "../store/v0.json#/$defs/JobId" },
+          "state": { "$ref": "../store/v0.json#/$defs/JobState" },
+          "report_id": { "type": "null" }
+        },
+        "required": ["execution_id", "state", "report_id"],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "report_id": { "$ref": "../store/v0.json#/$defs/ReportId" },
+          "section": { "enum": ["checks", "conflicts", "warnings", "soft_metrics"] },
+          "items": { "type": ["object", "array"] },
+          "next_cursor": { "type": "string" }
+        },
+        "required": ["report_id", "section", "items"],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "report_id": { "$ref": "../store/v0.json#/$defs/ReportId" },
+          "execution_id": { "$ref": "../store/v0.json#/$defs/JobId" },
+          "drawing": {
+            "type": "object",
+            "properties": {
+              "path": { "type": "string" },
+              "drawing_id": { "$ref": "../store/v0.json#/$defs/DrawingId" }
+            },
+            "required": ["path", "drawing_id"],
+            "additionalProperties": false
+          },
+          "verdict": { "enum": ["done", "fail", "not_evaluated"] },
+          "calibration": { "$ref": "../drawing-report/v0.json#/properties/calibration" },
+          "checks": {
+            "type": "object",
+            "propertyNames": { "pattern": "^D([1-9]|10)$" },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "status": { "enum": ["pass", "fail", "not_evaluated"] },
+                "failure_count": { "$ref": "../common/v0.json#/$defs/Count" },
+                "reasons": { "type": "array", "items": { "type": "string" } }
+              },
+              "required": ["status", "failure_count", "reasons"]
+            }
+          },
+          "conflict_count": { "$ref": "../common/v0.json#/$defs/Count" },
+          "top_failures": {
+            "type": "array",
+            "maxItems": 5,
+            "items": {
+              "type": "object",
+              "properties": {
+                "check": { "type": "string" },
+                "sheet": { "type": ["string", "null"] },
+                "code": { "type": ["string", "null"] },
+                "items": { "type": "array", "maxItems": 3, "items": { "type": "string" } }
+              },
+              "required": ["check", "sheet", "code", "items"],
+              "additionalProperties": false
+            }
+          },
+          "warning_count": { "$ref": "../common/v0.json#/$defs/Count" },
+          "job_warnings": {
+            "type": "array",
+            "items": { "$ref": "../store/v0.json#/$defs/JobWarning" }
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "report": { "type": "string" },
+              "snapshot": { "type": "string" }
+            },
+            "required": ["report", "snapshot"],
+            "additionalProperties": false
+          },
+          "sheets": { "$ref": "../drawing-report/v0.json#/properties/sheets" },
+          "thresholds": { "$ref": "../drawing-report/v0.json#/properties/thresholds" }
+        },
+        "required": [
+          "report_id",
+          "execution_id",
+          "drawing",
+          "verdict",
+          "calibration",
+          "checks",
+          "conflict_count",
+          "top_failures",
+          "warning_count",
+          "job_warnings",
+          "links"
+        ],
+        "additionalProperties": false
+      }
+    ]
+  },
+  "errors": ["IR_SCHEMA_INVALID", "EXEC_NOT_FOUND", "STORE_CORRUPT", "STORE_UNAVAILABLE"],
+  "examples": [
+    {
+      "arguments": { "execution_id": "job_00000000000000000000000001" },
+      "response": {
+        "ok": true,
+        "data": {
+          "report_id": "rep_00000000000000000000000001",
+          "execution_id": "job_00000000000000000000000001",
+          "drawing": {
+            "path": "C:\\Work\\bracket.SLDDRW",
+            "drawing_id": "drw_00000000000000000000000001"
+          },
+          "verdict": "fail",
+          "calibration": {
+            "status": "unverified",
+            "note": "Checks have run only on synthetic snapshots; results are unverified on real SOLIDWORKS data."
+          },
+          "checks": {
+            "D1": { "status": "fail", "failure_count": 2, "reasons": [] },
+            "D4": {
+              "status": "not_evaluated",
+              "failure_count": 0,
+              "reasons": ["drawing_intent_required"]
+            }
+          },
+          "conflict_count": 2,
+          "top_failures": [
+            {
+              "check": "D1",
+              "sheet": "s_0123456789",
+              "code": null,
+              "items": ["dim_width", "dim_height"]
+            }
+          ],
+          "warning_count": 0,
+          "job_warnings": [],
+          "links": {
+            "report": "cad://reports/rep_00000000000000000000000001",
+            "snapshot": "cad://snapshots/snap_00000000000000000000000001"
+          }
+        },
+        "error": null,
+        "ids": {
+          "request_id": "req_00000000000000000000000007",
+          "execution_id": "job_00000000000000000000000001",
+          "report_id": "rep_00000000000000000000000001"
+        }
+      }
+    },
+    {
+      "arguments": { "report_id": "rep_00000000000000000000000009" },
+      "response": {
+        "ok": false,
+        "data": null,
+        "error": {
+          "code": "EXEC_NOT_FOUND",
+          "message": "No report with this ID is known; it may have expired.",
+          "retryable": "never"
+        },
+        "ids": {
+          "request_id": "req_00000000000000000000000008",
+          "report_id": "rep_00000000000000000000000009"
+        }
+      }
+    }
+  ]
+}

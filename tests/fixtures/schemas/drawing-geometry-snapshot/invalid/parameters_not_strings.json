@@ -1,0 +1,377 @@
+{
+  "schema_version": "0.1",
+  "drawing": {
+    "document": "bracket_dwg",
+    "revision": 3
+  },
+  "solidworks": {
+    "version": "2025",
+    "service_pack": "SP3.0"
+  },
+  "captured_at": "2026-11-04T10:00:00Z",
+  "sheets": {
+    "s_0123456789": {
+      "index": 0,
+      "native_id": "Sheet1",
+      "size_mm": [
+        297,
+        210
+      ],
+      "border": {
+        "min": [
+          10,
+          5
+        ],
+        "max": [
+          292,
+          205
+        ]
+      },
+      "title_block": [
+        {
+          "min": [
+            212,
+            5
+          ],
+          "max": [
+            292,
+            45
+          ]
+        }
+      ],
+      "views": {
+        "v_front": {
+          "native_id": "Drawing View1",
+          "scale": 1,
+          "outline": {
+            "min": [
+              78,
+              88
+            ],
+            "max": [
+              142,
+              132
+            ]
+          },
+          "edges": [
+            {
+              "curve": {
+                "polyline": [
+                  [
+                    80,
+                    90
+                  ],
+                  [
+                    140,
+                    90
+                  ]
+                ]
+              },
+              "kind": "visible"
+            },
+            {
+              "curve": {
+                "polyline": [
+                  [
+                    140,
+                    90
+                  ],
+                  [
+                    140,
+                    130
+                  ]
+                ]
+              },
+              "kind": "visible"
+            },
+            {
+              "curve": {
+                "polyline": [
+                  [
+                    140,
+                    130
+                  ],
+                  [
+                    80,
+                    130
+                  ]
+                ]
+              },
+              "kind": "visible"
+            },
+            {
+              "curve": {
+                "polyline": [
+                  [
+                    80,
+                    130
+                  ],
+                  [
+                    80,
+                    90
+                  ]
+                ]
+              },
+              "kind": "visible"
+            }
+          ]
+        }
+      },
+      "annotations": {
+        "dim_width": {
+          "kind": "dimension",
+          "native_id": "D1@Drawing View1",
+          "tag": "dim_width",
+          "view": "v_front",
+          "attachments": [
+            "edge:bottom",
+            "edge:left"
+          ],
+          "dimension_lines": [
+            {
+              "polyline": [
+                [
+                  80,
+                  78
+                ],
+                [
+                  140,
+                  78
+                ]
+              ]
+            }
+          ],
+          "extension_lines": [
+            {
+              "line": [
+                [
+                  80,
+                  89
+                ],
+                [
+                  80,
+                  75
+                ]
+              ],
+              "entity": "edge:left"
+            },
+            {
+              "line": [
+                [
+                  140,
+                  89
+                ],
+                [
+                  140,
+                  75
+                ]
+              ],
+              "entity": "edge:right"
+            }
+          ],
+          "arrowheads": [
+            {
+              "polygon": [
+                [
+                  80,
+                  78
+                ],
+                [
+                  83,
+                  79
+                ],
+                [
+                  83,
+                  77
+                ]
+              ]
+            },
+            {
+              "polygon": [
+                [
+                  140,
+                  78
+                ],
+                [
+                  137,
+                  79
+                ],
+                [
+                  137,
+                  77
+                ]
+              ]
+            }
+          ],
+          "text_boxes": [
+            {
+              "corners": [
+                [
+                  106,
+                  80
+                ],
+                [
+                  114,
+                  80
+                ],
+                [
+                  114,
+                  83
+                ],
+                [
+                  106,
+                  83
+                ]
+              ],
+              "height_mm": 3,
+              "method": "display_data",
+              "text": "60"
+            }
+          ],
+          "parameters": [
+            1
+          ],
+          "parenthesized": false
+        },
+        "dim_height": {
+          "kind": "dimension",
+          "native_id": "D2@Drawing View1",
+          "tag": "dim_height",
+          "view": "v_front",
+          "attachments": [
+            "edge:bottom",
+            "edge:top"
+          ],
+          "dimension_lines": [
+            {
+              "polyline": [
+                [
+                  152,
+                  90
+                ],
+                [
+                  152,
+                  130
+                ]
+              ]
+            }
+          ],
+          "extension_lines": [
+            {
+              "line": [
+                [
+                  141,
+                  90
+                ],
+                [
+                  155,
+                  90
+                ]
+              ],
+              "entity": "edge:bottom"
+            },
+            {
+              "line": [
+                [
+                  141,
+                  130
+                ],
+                [
+                  155,
+                  130
+                ]
+              ],
+              "entity": "edge:top"
+            }
+          ],
+          "arrowheads": [
+            {
+              "polygon": [
+                [
+                  152,
+                  90
+                ],
+                [
+                  151,
+                  93
+                ],
+                [
+                  153,
+                  93
+                ]
+              ]
+            },
+            {
+              "polygon": [
+                [
+                  152,
+                  130
+                ],
+                [
+                  151,
+                  127
+                ],
+                [
+                  153,
+                  127
+                ]
+              ]
+            }
+          ],
+          "text_boxes": [
+            {
+              "corners": [
+                [
+                  154.5,
+                  106
+                ],
+                [
+                  157.5,
+                  106
+                ],
+                [
+                  157.5,
+                  114
+                ],
+                [
+                  154.5,
+                  114
+                ]
+              ],
+              "height_mm": 3,
+              "method": "display_data",
+              "text": "40"
+            }
+          ],
+          "parameters": [
+            "D2@Sketch1"
+          ],
+          "parenthesized": false
+        }
+      },
+      "sheet_format": "Test-A3.slddrt",
+      "title_block_fields": {
+        "part_number": "BR-001",
+        "revision": "B",
+        "material": "AISI 304",
+        "finish": "Anodized",
+        "general_tolerance": "ISO 2768-m",
+        "scale": "1:1",
+        "projection_symbol": "First angle",
+        "units": "mm"
+      },
+      "revision_table": {
+        "entries": [
+          "A",
+          "B"
+        ]
+      }
+    }
+  },
+  "rebuild": {
+    "completed": true,
+    "errors": [],
+    "silhouette_attachments": [],
+    "reopen": "verified"
+  }
+}

@@ -1,0 +1,19 @@
+[
+  {
+    "native_id": 73,
+    "feature_id": "f73",
+    "entity_count": 1
+  },
+  {
+    "native_id": 73,
+    "feature_id": "f73",
+    "entity_count": 4,
+    "observation": {
+      "completeness": {
+        "type": "present"
+      },
+      "native_type": "ProfileFeature",
+      "type": "sketch"
+    }
+  }
+]

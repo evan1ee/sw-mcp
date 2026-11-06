@@ -1,6 +1,6 @@
 # 5.7 Part Feature Graph Schema Guide
 
-> Specification v1.19, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
 
 Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3.2) read as one language and the compiler's defaults are explicit. Each type has one schema file, `schemas/part-feature-graph/features/<type>.json`, with one minimal example of at most 400 tokens (12.3).
 
@@ -30,13 +30,13 @@ Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3
 | `display_name` | Optional, for reports only |
 | `x_solidworks` | Backend-specific extension object (5.5). Never needed for a type to work; ignored by other backends |
 
-**Order.** Nodes are built in topological order. Ties are broken by the node ID's sort order, so the same graph always builds the same feature order.
+**Order.** Nodes are built in topological order. Ties are broken by the node ID's sort order, so the same graph always builds the same feature order. A tie between two nodes that change a body would make geometry depend on how their IDs are spelled. The MVP's semantic rules prevent it for its one extrude and its cuts; [ADR-066](../adr/ADR-066-body-order-is-explicit.md) (Proposed) generalizes that.
 
 ## 5.7.2 Naming and values
 
 - Fields and enum values are lower snake case. Booleans are named for the true case (`reverse`, `merge_result`).
 - Lengths are in the document's `units` and angles in degrees (3.4.3). Counts are integers.
-- A parameter that an agent or a drawing can refer to is a named field. Its `ParamRef` is `<node_id>.<field>` (`extrude_base.depth`), and for nested objects `<node_id>.<object>.<field>` (`extrude_base.end_condition.depth`). Sketch dimensions are `<sketch_id>.<dimension_id>` (`sketch_bore.x`).
+- A parameter that an agent or a drawing can refer to is a named field. Its `ParamRef` is `<node_id>.<field>` (`bore_1.diameter`), and for nested objects `<node_id>.<object>.<field>` (`extrude_base.end_condition.depth`). Sketch dimensions are `<sketch_id>.<dimension_id>` (`sketch_bore.x`). The grammar in 3.4.2 and the schema's `ParamRef` accept two segments only, so the nested form cannot validate yet: register K23.
 - Parameter names and role names (5.7.5) are disjoint per type (3.4.2 rule 2).
 
 ## 5.7.3 Shared objects
@@ -46,7 +46,7 @@ Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3
 | `end_condition` | `type` (`blind`, `through_all`, `through_all_both`, `up_to_next`, `up_to_surface`, `offset_from_surface`, `mid_plane`), `depth`, `target` (`GeometryRef`), `offset`, `reverse`, `draft` (`{angle, outward}`) | Extrude, cut, boss, rib |
 | `end_condition_2` | Same, for the second direction | Same |
 | `thin` | `thickness`, `type` (`one_side`, `mid_plane`, `two_side`), `thickness_2` | Thin extrude and revolve |
-| `pattern` | `seeds` (node IDs), `direction` and `direction_2` (`GeometryRef`), `spacing`, `count`, `skip` (instance indices) | Linear, circular and mirror patterns |
+| `pattern` | `seeds` (node IDs), `direction` and `direction_2` (`GeometryRef`), `spacing`, `count`, `skip` (instance indices). A linear pattern's `spacing` is a length, and a circular pattern's an angle with `direction` as its axis | Linear and circular patterns. A mirror takes `seeds` and a `plane` (22.5.2, Proposed) |
 | `hole_spec` | `standard` (`iso`), `type` (`simple`, `counterbore`, `countersink`, `tapped`), `size` (`M6`), `fit` (`close`, `normal`, `loose`), `depth` (`end_condition`), `thread_depth`, `cosmetic_thread` | Hole Wizard |
 | `sheet_metal` | `thickness`, `bend_radius`, `k_factor` or `bend_table`, `relief` | Sheet metal parameters and features |
 
@@ -60,7 +60,28 @@ Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3
 | `dimensions` | Keyed by dimension ID: `type` (`distance`, `horizontal`, `vertical`, `diameter`, `radius`, `angle`), `entities` and `value`. Each is a driving parameter (`<sketch_id>.<dimension_id>`) |
 
 - The IR states final geometry, never editing steps (5.3.1).
-- Sketch axes on each standard plane follow SOLIDWORKS's own sketch transform. Phase 0 records the exact axis directions per plane from the live API, and this guide is updated with them before Phase 1c.
+- Sketch axes on each standard plane follow SOLIDWORKS's own sketch transform. The first live spike (2026-11-05, SOLIDWORKS 2025 revision 33.0.0, [record](../superpowers/review/2026-11-05-part-chain-spike.md)) recorded them, found with `ISketch.ModelToSketchTransform.Inverse()` applied to unit points:
+
+  | Plane (role) | Sketch +x | Sketch +y | Normal (x cross y) | Blind extrude goes | Default blind cut goes | Blind cut with `Dir=true` goes |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | `plane:front` | model +X | model +Y | +Z | +Z | -Z | +Z |
+  | `plane:top` | model +X | model -Z | +Y | +Y | -Y | +Y |
+  | `plane:right` | model -Z | model +Y | +X | +X | -X | +X |
+
+- **Standard planes [Builder's call].** The document's first three `RefPlane` features are Front, Top and Right, in that order (5.3.6). Their names are localized, so the order is the only key. A plane's normal is read by applying `IRefPlane.Transform` to the point (0, 0, 1) and subtracting the image of (0, 0, 0). It gives Front (0, 0, 1), Top (0, 1, 0) and Right (1, 0, 0). The adapter checks the normal against the role and fails clearly on a mismatch, so a template with reordered or rotated planes is caught at once.
+- **Blind cut direction [Builder's call].** A blind `cut_extrude` goes the opposite way to a blind `extrude` by default: against the normal, so on a plate's own plane it finds nothing to cut and `FeatureCut4` returns null. The flip argument (`Flip=true`) selects which side of the profile is removed and does not help. The compiler's plan and the adapter must therefore pass the cut's direction argument `Dir=true`, which sends the blind cut along the normal, into the body. `through_all_both` is unaffected and works whichever way the normal points.
+- **Selection [Builder's call].** A plane or sketch is selected with `IFeature.Select2(false, 0)`; entities (faces, edges, sketch segments) with `IEntity.Select4`. `SelectByID2` stays banned (8.3 rule 11).
+- **Units [Builder's call].** The API takes metres whatever the document units are. The spike built the same plate in a millimetre and in an inch document with identical geometry. Mass properties are read with `IMassProperty.UseSystemUnits = true`; with `false` the values follow neither metres nor the document's linear unit.
+
+- **Sketch on a face [ADR-070, spike 2026-11-06].** `plane` may be `<extrude_id>.end_face` or `<extrude_id>.start_face` (not `side_faces`, edges or faces of a cut). The compiler states the face's outward normal and offset; the add-in finds the extrude's planar face with that normal and offset, selects it with `Entity.Select4`, and opens the sketch (live record: [face spike](../superpowers/review/2026-11-06-face-sketch-spike.md)). On `plane:front`, SOLIDWORKS 2025 gave these sketch frames:
+
+  | Face | Sketch origin | Sketch +x | Sketch +y | Sketch normal |
+  | --- | --- | --- | --- | --- |
+  | `end_face` | (0, 0, depth) | +X | +Y | +Z |
+  | `start_face` | (0, 0, 0) | -X | +Y | -Z |
+
+  The rule the compiler uses: an end face has the base plane's axes, the origin moved by the depth along the normal; a start face has x mirrored and the normal reversed. Only `plane:front` was measured (K29), so the add-in compares the opened sketch's axes with the stated ones and fails the operation on a mismatch.
+- **Blind cut from a face [ADR-070].** A blind `cut_extrude` whose sketch is on a face goes into the body with `Flip=false` and `Dir=false`. `Dir=true` finds nothing and `Flip=true` removes the material outside the profile. A cut from an origin plane keeps `Dir=true` (above).
 
 ## 5.7.5 Roles
 
@@ -69,7 +90,7 @@ Each type's schema lists the roles it defines (11.1, 3.4.2): the role name, the 
 - **Hole Wizard:** `cylindrical_face`, `axis`, `counterbore_face`.
 - **Revolve:** `faces_by_axial_order` (a list ordered along the axis).
 
-A role that is a set or a list can be referred to only with an index (`extrude_base.side_faces.0`), and only where the type defines a stable order. A role that matches more than one entity when one is expected fails with `REF_AMBIGUOUS` (7.4).
+A role that is a set or a list can be referred to as a whole where the field takes a set, otherwise only with an index (`extrude_base.side_faces.0`, not yet accepted by the schema's `GeometryRef`: register K23), and only where the type defines a stable order. A role that matches more than one entity when one is expected fails with `REF_AMBIGUOUS` (7.4).
 
 ## 5.7.6 Defaults
 

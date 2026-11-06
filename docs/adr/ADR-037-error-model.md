@@ -18,12 +18,16 @@ The spec requires structured errors (8.2), stable failure reporting (10.4, 11.6)
   | `REF_` | Geometry references | `REF_AMBIGUOUS`, `REF_NOT_FOUND`, `REF_SIGNATURE_MISMATCH`, `REF_NOT_IN_VIEW`, `REF_LOW_CONFIDENCE` |
   | `COMPILE_` | Compiler (6.7) | `COMPILE_FAILED`, `COMPILE_UNSUPPORTED_FEATURE`, `COMPILE_PLAN_INVALID` |
   | `EXEC_` | Jobs and lifecycle | `EXEC_TIMEOUT`, `EXEC_CANCELLED`, `EXEC_INTERRUPTED`, `EXEC_INTERRUPTED_BY_USER`, `EXEC_NOT_FOUND`, `EXEC_DOCUMENT_DIRTY`, `DUPLICATE_OPERATION` |
-  | `BACKEND_` | SOLIDWORKS and IPC | `BACKEND_LOST`, `BACKEND_BUSY`, `BACKEND_UI_BLOCKED`, `BACKEND_REBUILD_ERROR`, `BACKEND_READ_ONLY`, `BACKEND_SESSION_AMBIGUOUS`, `BACKEND_VERSION_UNSUPPORTED`, `BACKEND_CAPABILITY_MISSING` |
+  | `BACKEND_` | SOLIDWORKS and IPC | `BACKEND_LOST`, `BACKEND_BUSY`, `BACKEND_UI_BLOCKED`, `BACKEND_REBUILD_ERROR`, `BACKEND_OPERATION_FAILED` (added in v1.34, 8.9.5), `BACKEND_READ_ONLY`, `BACKEND_SESSION_AMBIGUOUS`, `BACKEND_VERSION_UNSUPPORTED`, `BACKEND_CAPABILITY_MISSING` |
   | `DRAWING_` | Drawing pipeline and checks | `DRAWING_CHECK_FAILED`, `DRAWING_RELAYOUT_EXHAUSTED`, `DRAWING_UNSUPPORTED_PART` |
   | `AUTH_` | Permissions | `AUTH_SOURCE_WRITE_NOT_ALLOWED` (ADR-022), `AUTH_PATH_DENIED` |
-  | `STORE_` | Project store (13.2) | `STORE_LOCKED`, `STORE_CORRUPT` |
+  | `STORE_` | Project store (13.2) | `STORE_LOCKED`, `STORE_CORRUPT`, `STORE_UNAVAILABLE` (added in v1.23) |
   | `CONFIG_` | Configuration (13.3) | `CONFIG_INVALID` |
+  | `FILE_` | Local files after authorization (12.5) | `FILE_NOT_FOUND` (added in v1.22) |
+  | `PART_` | Part chain verification (10.2.1) | `PART_VERIFICATION_FAILED` (added in v1.30): a built part failed one or more measurement checks; `details` lists the failing checks |
+  | `FEATURE_` | Per-operation verification (10.2.2) | `FEATURE_VERIFICATION_FAILED` (added in v1.34, ADR-064): a built feature failed its contract; `details.node` and `details.checks` name it |
 
+- A missing or unset part template reuses `CONFIG_INVALID` (unset) and `FILE_NOT_FOUND` (missing file), each with `details.setting: part.template` (v1.30).
 - Each error carries `code`, a one-line `message`, `retryable` (`never`, `after_fix`, `safe`), and `details` (IDs of the module, item, feature, view or check involved). Stack traces go to logs, never to the agent.
 - **MCP tool responses** use one envelope: `{ "ok": bool, "data": … | null, "error": … | null, "ids": { "request_id", "execution_id"?, "report_id"? } }`. Failed checks are results (`ok: true`, report says FAIL), not errors; errors mean the tool could not do its job.
 - Every log line carries the same `request_id` and `operation_id` across Python and C# (section 14).

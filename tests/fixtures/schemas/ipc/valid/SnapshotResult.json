@@ -1,0 +1,48 @@
+[
+  {
+    "schema_version": "0.1",
+    "drawing": {
+      "document": "bracket_dwg",
+      "revision": 3
+    },
+    "solidworks": {
+      "version": "2025",
+      "service_pack": "SP3.0"
+    },
+    "captured_at": "2026-11-04T10:00:00Z",
+    "sheets": {
+      "s_0123456789": {
+        "index": 0,
+        "native_id": "Sheet1",
+        "size_mm": [
+          297,
+          210
+        ],
+        "border": {
+          "min": [
+            10,
+            5
+          ],
+          "max": [
+            292,
+            205
+          ]
+        },
+        "title_block": [
+          {
+            "min": [
+              212,
+              5
+            ],
+            "max": [
+              292,
+              45
+            ]
+          }
+        ],
+        "views": {},
+        "annotations": {}
+      }
+    }
+  }
+]

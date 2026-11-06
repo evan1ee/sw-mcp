@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/document.rebuild.json",
+  "title": "Operation document.rebuild (spec 6.5.2, 8.9.3)",
+  "x-op": "document.rebuild",
+  "x-mutates": "document",
+  "x-errors": [
+    "BACKEND_BUSY",
+    "BACKEND_OPERATION_FAILED",
+    "BACKEND_REBUILD_ERROR",
+    "BACKEND_UI_BLOCKED",
+    "FILE_NOT_FOUND"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Params": {
+      "type": "object",
+      "properties": {
+        "force": {
+          "type": "boolean"
+        },
+        "_meta": {
+          "$ref": "../v0.json#/$defs/Meta"
+        }
+      }
+    },
+    "Result": {
+      "type": "object",
+      "properties": {
+        "rebuilt": {
+          "type": "boolean",
+          "description": "The rebuild call's own return. It does not mean error-free."
+        },
+        "ok": {
+          "type": "boolean",
+          "description": "Observed after the rebuild: no feature reports an error."
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "rebuilt",
+        "ok",
+        "errors"
+      ]
+    }
+  }
+}

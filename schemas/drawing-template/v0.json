@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/drawing-template/v0.json",
+  "title": "Drawing Template IR (spec 11.12)",
+  "type": "object",
+  "required": [
+    "module",
+    "schema_version",
+    "units",
+    "paper",
+    "border",
+    "title_block",
+    "fields"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "module": {
+      "const": "drawing_template"
+    },
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.(0|[1-9][0-9]*)$"
+    },
+    "id": {
+      "$ref": "../common/v0.json#/$defs/DocumentId"
+    },
+    "revision": {
+      "$ref": "../common/v0.json#/$defs/Revision"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "units": {
+      "const": "mm"
+    },
+    "paper": {
+      "type": "object",
+      "required": [
+        "size",
+        "orientation"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "size": {
+          "enum": [
+            "A4",
+            "A3",
+            "A2",
+            "A1",
+            "A0"
+          ]
+        },
+        "orientation": {
+          "enum": [
+            "portrait",
+            "landscape"
+          ]
+        }
+      }
+    },
+    "border": {
+      "type": "object",
+      "required": [
+        "margins"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "margins": {
+          "type": "object",
+          "required": [
+            "left",
+            "right",
+            "top",
+            "bottom"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "left": {
+              "allOf": [
+                {
+                  "$ref": "../common/v0.json#/$defs/Length"
+                },
+                {
+                  "exclusiveMinimum": 0
+                }
+              ]
+            },
+            "right": {
+              "allOf": [
+                {
+                  "$ref": "../common/v0.json#/$defs/Length"
+                },
+                {
+                  "exclusiveMinimum": 0
+                }
+              ]
+            },
+            "top": {
+              "allOf": [
+                {
+                  "$ref": "../common/v0.json#/$defs/Length"
+                },
+                {
+                  "exclusiveMinimum": 0
+                }
+              ]
+            },
+            "bottom": {
+              "allOf": [
+                {
+                  "$ref": "../common/v0.json#/$defs/Length"
+                },
+                {
+                  "exclusiveMinimum": 0
+                }
+              ]
+            }
+          }
+        },
+        "line_width": {
+          "allOf": [
+            {
+              "$ref": "../common/v0.json#/$defs/Length"
+            },
+            {
+              "exclusiveMinimum": 0
+            }
+          ]
+        }
+      }
+    },
+    "title_block": {
+      "type": "object",
+      "required": [
+        "zones"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "zones": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "../common/v0.json#/$defs/ItemId"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Rect"
+          }
+        },
+        "lines": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "../common/v0.json#/$defs/ItemId"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "from",
+              "to"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "from": {
+                "$ref": "#/$defs/Point"
+              },
+              "to": {
+                "$ref": "#/$defs/Point"
+              },
+              "line_width": {
+                "allOf": [
+                  {
+                    "$ref": "../common/v0.json#/$defs/Length"
+                  },
+                  {
+                    "exclusiveMinimum": 0
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "texts": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "../common/v0.json#/$defs/ItemId"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "text",
+          "box",
+          "height"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1
+          },
+          "box": {
+            "$ref": "#/$defs/Rect"
+          },
+          "height": {
+            "allOf": [
+              {
+                "$ref": "../common/v0.json#/$defs/Length"
+              },
+              {
+                "exclusiveMinimum": 0
+              }
+            ]
+          },
+          "align": {
+            "enum": [
+              "left",
+              "center",
+              "right"
+            ]
+          }
+        }
+      }
+    },
+    "fields": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "../common/v0.json#/$defs/ItemId"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "source",
+          "box",
+          "height"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^(?:part_property:.+|drawing_property:.+|part_material|(?:design_intent|drawing_intent):[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)*|sheet:(?:scale|projection|units))$"
+            }
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "box": {
+            "$ref": "#/$defs/Rect"
+          },
+          "height": {
+            "allOf": [
+              {
+                "$ref": "../common/v0.json#/$defs/Length"
+              },
+              {
+                "exclusiveMinimum": 0
+              }
+            ]
+          },
+          "align": {
+            "enum": [
+              "left",
+              "center",
+              "right"
+            ]
+          }
+        }
+      }
+    },
+    "revision_table": {
+      "type": "object",
+      "required": [
+        "box"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "box": {
+          "$ref": "#/$defs/Rect"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "Point": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "$ref": "../common/v0.json#/$defs/Length"
+      }
+    },
+    "Rect": {
+      "type": "object",
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "min": {
+          "$ref": "#/$defs/Point"
+        },
+        "max": {
+          "$ref": "#/$defs/Point"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/mcp/cancel_execution.json",
+  "name": "cancel_execution",
+  "description": "Cancel a job. A queued job is aborted before the call returns; a running job gets a cancel request and its current state is returned. A finished job is left alone.",
+  "toolset": "core",
+  "phase": "1a",
+  "kind": "store",
+  "mutates": true,
+  "input": {
+    "type": "object",
+    "properties": {
+      "execution_id": { "$ref": "../store/v0.json#/$defs/JobId" },
+      "keep_partial": { "type": "boolean", "default": false }
+    },
+    "required": ["execution_id"],
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "execution_id": { "$ref": "../store/v0.json#/$defs/JobId" },
+      "state": { "$ref": "../store/v0.json#/$defs/JobState" },
+      "final": { "type": "boolean" },
+      "changes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "document": { "type": "string" },
+            "action": { "type": "string" }
+          },
+          "required": ["document", "action"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["execution_id", "state", "final", "changes"],
+    "additionalProperties": false
+  },
+  "errors": ["IR_SCHEMA_INVALID", "EXEC_NOT_FOUND", "STORE_UNAVAILABLE"],
+  "examples": [
+    {
+      "arguments": { "execution_id": "job_00000000000000000000000001" },
+      "response": {
+        "ok": true,
+        "data": {
+          "execution_id": "job_00000000000000000000000001",
+          "state": "ABORTED",
+          "final": true,
+          "changes": []
+        },
+        "error": null,
+        "ids": {
+          "request_id": "req_00000000000000000000000003",
+          "execution_id": "job_00000000000000000000000001"
+        }
+      }
+    },
+    {
+      "arguments": { "execution_id": "job_00000000000000000000000009" },
+      "response": {
+        "ok": false,
+        "data": null,
+        "error": {
+          "code": "EXEC_NOT_FOUND",
+          "message": "No job with this ID is known; it may have expired.",
+          "retryable": "never"
+        },
+        "ids": {
+          "request_id": "req_00000000000000000000000004",
+          "execution_id": "job_00000000000000000000000009"
+        }
+      }
+    }
+  ]
+}

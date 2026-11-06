@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/ipc/ops/dimension.show.json",
+  "title": "Operation dimension.show (spec 6.5.2)",
+  "x-op": "dimension.show",
+  "x-mutates": "document",
+  "x-errors": [
+    "BACKEND_BUSY",
+    "BACKEND_UI_BLOCKED",
+    "REF_NOT_FOUND",
+    "IR_SCHEMA_INVALID"
+  ],
+  "x-since": "0.1",
+  "$defs": {
+    "Params": {
+      "type": "object",
+      "required": [
+        "annotation"
+      ],
+      "properties": {
+        "annotation": {
+          "type": "string"
+        }
+      }
+    },
+    "Result": {
+      "type": "object",
+      "required": [
+        "annotation",
+        "shown"
+      ],
+      "properties": {
+        "annotation": {
+          "type": "string"
+        },
+        "shown": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

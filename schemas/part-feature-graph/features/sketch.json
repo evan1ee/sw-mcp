@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/part-feature-graph/features/sketch.json",
+  "title": "Sketch Feature Node (spec 5.7.4)",
+  "type": "object",
+  "required": [
+    "type",
+    "plane",
+    "entities"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "const": "sketch"
+    },
+    "plane": {
+      "$ref": "../../common/v0.json#/$defs/GeometryRef"
+    },
+    "entities": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "additionalProperties": {
+        "$ref": "../v0.json#/$defs/SketchEntity"
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "realizes": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    }
+  },
+  "examples": [
+    {
+      "type": "sketch",
+      "plane": "plane:front",
+      "entities": {
+        "l1": {
+          "type": "line",
+          "start": [-50, -30],
+          "end": [50, -30]
+        },
+        "l2": {
+          "type": "line",
+          "start": [50, -30],
+          "end": [50, 30]
+        },
+        "l3": {
+          "type": "line",
+          "start": [50, 30],
+          "end": [-50, 30]
+        },
+        "l4": {
+          "type": "line",
+          "start": [-50, 30],
+          "end": [-50, -30]
+        }
+      }
+    }
+  ]
+}

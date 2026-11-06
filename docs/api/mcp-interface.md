@@ -1,6 +1,6 @@
 # 12. MCP Interface
 
-> Specification v1.19, section 12. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, section 12. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 12.1 Principles
 
@@ -49,6 +49,7 @@ Every exposed tool's definition is loaded into the agent's context, and every re
 2. **Schemas on demand.** Tool descriptions stay short and do not embed per-feature schemas. Two tools serve them when needed:
    - `list_feature_types` — names plus one-line descriptions, grouped by tier, with Create/Read support.
    - `get_feature_schema(types[])` — compact JSON schema plus one minimal example for the requested types only.
+   - `get_authoring_guide` — one Markdown guide for turning a user's request into a valid graph, including the cases an agent must refuse. It is a tool, not an MCP resource: the front-end may import no `cad_*` package and reaches the core only through tools.
    The reference implementation's `get_recipe` tool is prior art for this.
 3. **Toolsets.** Tools are grouped and enabled per session through server configuration:
 
@@ -63,7 +64,9 @@ Every exposed tool's definition is loaded into the agent's context, and every re
    | `detail` | Fine-grained tools (sketch entities, single features, drawing dimension edits) |
    | `verification` | Verification tools beyond `check_model` (12.2 F) |
 
-   The default profile is `core` + `drawing`, and `full` enables everything **[Builder's call]**. Toolsets change only which tools are visible; they never change any tool's contract.
+   The default profile is `core` alone, and `full` enables everything **[Builder's call]**. While drawing work is frozen (ADR-057) the default leaves out `drawing`, so `check_drawing` and `get_drawing_report` are not in `tools/list` unless a user adds `drawing` to `mcp.toolsets` (13.3); the frozen drawing tools are unsafe outside scratch copies. The profile was `core` + `drawing` before v1.30. Toolsets change only which tools are visible; they never change any tool's contract.
+
+   A call to a tool outside the configured toolsets that reaches the core through the core pipe is refused as an unknown tool (12.4.2), so hiding is real and not only a listing filter. `CoreService.call_tool` in process stays unfiltered, so tests of the drawing tools are not affected; a test that expects a drawing tool over the pipe sets the toolset explicitly **[Builder's call]**.
 4. **Responses: summary first.**
    - Default responses are summaries. Tools that can return large data take `detail: "summary" | "full"`.
    - Lists (feature tree, faces, dimensions) are paginated.

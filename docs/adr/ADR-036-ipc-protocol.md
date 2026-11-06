@@ -18,6 +18,7 @@ ADR-028 and ADR-032 fix the shape of the link: a named pipe, user-only ACL, per-
 - **Progress and events** are notifications from the add-in: `job.progress`, `document.event` (regen, save, close, active-document change, for 8.3 rule 13 and 9.3), `session.ui_blocked`.
 - **Cancellation.** `job.cancel` is a request; the add-in finishes the current command, then answers. A timeout on the Python side is reported as a timeout and never resent (8.3 rule 8).
 - **Errors** use the catalogue in ADR-037 in the JSON-RPC `error.data.code` field.
+- **Message details** (error codes, handshake order, `ops.apply` and `drawing.snapshot` shapes, the ledger, cancellation, chunks, transcripts) are in [8.7](../architecture/execution-engine.md#87-ipc-messages-builders-call).
 - **Units.** All lengths and angles on the wire are in the IR's declared units for IR payloads and sheet millimetres for drawing geometry; the add-in converts to and from system units (8.3 rule 9).
 
 ## Rationale

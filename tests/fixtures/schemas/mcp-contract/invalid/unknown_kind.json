@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/mcp/get_thing.json",
+  "name": "get_thing",
+  "description": "Gets a thing. More detail follows.",
+  "toolset": "core",
+  "phase": "1a",
+  "kind": "other",
+  "mutates": false,
+  "input": {
+    "type": "object",
+    "additionalProperties": false
+  },
+  "output": {
+    "type": "object"
+  },
+  "errors": [
+    "IR_SCHEMA_INVALID"
+  ],
+  "examples": [
+    {
+      "arguments": {},
+      "response": {
+        "ok": true,
+        "data": {},
+        "error": null,
+        "ids": {
+          "request_id": "req_01JCX3Z8Q4M5N6P7R8S9T0V1W2"
+        }
+      }
+    }
+  ]
+}

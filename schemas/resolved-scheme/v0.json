@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/resolved-scheme/v0.json",
+  "title": "Resolved Dimension Scheme (spec 11.10.1)",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "drawing_intent",
+    "entries"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^0\\.(0|[1-9][0-9]*)$"
+    },
+    "drawing_intent": {
+      "$ref": "../common/v0.json#/$defs/DocumentRef"
+    },
+    "part_revision": {
+      "$ref": "../common/v0.json#/$defs/Revision"
+    },
+    "pipeline_version": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "kind",
+          "source",
+          "status",
+          "origin"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "linear",
+              "diameter",
+              "radius",
+              "angular",
+              "ordinate",
+              "hole_callout",
+              "thread_callout",
+              "chamfer",
+              "note",
+              "table_row"
+            ]
+          },
+          "covers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "measures": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "source": {
+            "enum": [
+              "model_item",
+              "dimxpert",
+              "reference",
+              "authored"
+            ]
+          },
+          "tolerance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "critical"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "critical": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "shown",
+              "hidden",
+              "omitted"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "auxiliary": {
+            "type": "boolean"
+          },
+          "origin": {
+            "enum": [
+              "authored",
+              "derived"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

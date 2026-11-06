@@ -1,6 +1,6 @@
 # 15. Testing Strategy
 
-> Specification v1.19, section 15. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, section 15. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 15.1 Unit (no SOLIDWORKS)
 
@@ -43,10 +43,10 @@ Three contracts join code written separately in Python and C#: the MCP tool cont
 
 | Contract | Tests |
 | --- | --- |
-| Schemas | Each schema has `valid/` and `invalid/` fixtures in `tests/fixtures/schemas/<name>/`, including every JSON example in this specification (3.4.6). Both the generated Python models and the generated C# types (ADR-035) must accept every valid fixture and reject every invalid one, with the expected error code and pointer (3.4.7) |
+| Schemas | Each schema has `valid/` and `invalid/` fixtures in `tests/fixtures/schemas/<name>/`, including every JSON example in this specification (3.4.6). Both the generated Python models and the generated C# types (ADR-035) must accept every valid fixture and reject every invalid one, with the expected error code and pointer (3.4.7). For C#, "reject" covers what deserialization enforces: missing required fields, wrong JSON types and unknown input enum values (ADR-051), so only `invalid/` fixtures named `structural_*` apply to it |
 | Compatibility | The CI contract diff (ADR-042), and every migration from the previous major run over that major's fixtures |
 | MCP tools | For every contract file: the generated tool definition matches a committed snapshot; each `examples` call validates against `input` and its response against the envelope and `output`; a handler returning an error code not in `errors` fails; the one-line text summary stays under 200 characters (ADR-044); token budgets (12.3); no name equals a reference tool (12.1) |
-| Add-in protocol | Recorded transcripts in `tests/fixtures/ipc/` (one JSON Lines file per scenario: each frame with direction and timing). The Python client is tested by replaying the add-in's side to it. C# `Core` is tested by replaying the core's requests and comparing its responses, with timestamps and IDs masked |
+| Add-in protocol | Transcripts in `tests/fixtures/ipc/` (one JSON Lines file per scenario: each frame with direction and timing, format in 8.7), hand-written until live runs can record them. The Python client is tested by replaying the add-in's side to it. C# `Core` is tested by replaying the core's requests and comparing its responses, with timestamps and IDs masked |
 | Core-service protocol | The same transcript format, for front-end ↔ core scenarios: two front-ends sharing a queue, a front-end leaving mid-job, version skew (ADR-041) |
 
 **Keeping fixtures honest.** Every live-suite run (15.2) records fresh transcripts and snapshots for its scenarios. A pull request that changes recorded fixtures shows the diff for review like code. A fixture older than the oldest supported SOLIDWORKS version (ADR-045) is re-recorded or removed.

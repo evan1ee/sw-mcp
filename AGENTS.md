@@ -19,11 +19,13 @@ Instructions and development workflow for AI coding agents working in the `sw-mc
 
 ## 2. Hard Rules
 
+Design changes must respect the core design principles in [spec 1.3](docs/specifications/product-spec.md#13-core-design-principles): IR-first, CAD-neutral semantics, deterministic execution, semantic references, verifiable output, recoverability.
+
 - **Clean-room implementation (ADR-010):** Never copy code from the reference implementation (SolidPilot). Study its observable behavior, tool contracts, and failure modes only.
 - **Custody of source files (ADR-022):** Never write to source parts, assemblies, or PDM-vaulted files without explicit permission. Never run SOLIDWORKS macros (section 14).
 - **Schema-first contracts (ADR-035):** `schemas/` is the single source of truth for contracts. Generated Python and C# types are build outputs; never edit generated files by hand.
 - **Python layering & purity (Guideline G2):** Strictly enforce dependency direction. Pure core packages (`cad-ir`, `cad-compiler`, `cad-drawing`, `cad-geometry`, `cad-references`, `cad-verification`) must perform **zero I/O**, have no network/clock dependencies, and contain no CAD vendor imports. Enforced by `lint-imports`.
-- **C# COM object safety (Guideline G1):** The add-in runs in-process inside SOLIDWORKS (`ISwAddin`). Release COM objects explicitly with `Marshal.ReleaseComObject` in `finally` blocks. Never call `Marshal.FinalReleaseComObject`. Never cache COM proxies across commands. No COM objects leave the STA UI thread.
+- **C# COM object safety (Guideline G1):** The add-in runs in-process inside SOLIDWORKS (`ISwAddin`). Release only the temporary COM objects your code obtained (enumerators, faces, edges, selection data and similar) with `Marshal.ReleaseComObject` in `finally` blocks or through `ComScope`. Never release `ISldWorks`, `IModelDoc2`, manager objects, or an object obtained from another owner (ADR-059). Never call `Marshal.FinalReleaseComObject`. Never cache COM proxies across commands. No COM objects leave the STA UI thread.
 - **ExecutionServer.Core CAD-free (ADR-038):** `ExecutionServer.Core` must have no SOLIDWORKS references and remain cross-platform testable. Banned SOLIDWORKS APIs are enforced by analyzer rules in `apps/execution-server/BannedSymbols.txt`.
 - **Logging & correlation (Guideline G3):** JSON Lines format with `request_id`, `job_id`, and `operation_id` propagated across all processes (front-end -> core -> add-in). Never log geometry or file contents.
 
@@ -114,3 +116,19 @@ dotnet build apps/execution-server/ExecutionServer.sln
 ### Live SOLIDWORKS Tests
 - Live suites require a dedicated Windows x64 environment with a licensed SOLIDWORKS 2025+ install, an active interactive user desktop session, and a visible SOLIDWORKS window (Section 15.2, ADR-039).
 - Live tests do not run in headless CI environments.
+- `uv run pytest` leaves them out. Run them with `uv run pytest tests/live -m live`, only on a throwaway SOLIDWORKS instance, because they drive whichever instance has the add-in loaded.
+
+---
+
+## 5. Session Handoff
+
+[`HANDOFF.md`](HANDOFF.md) carries project state between sessions and agents.
+
+- **At the start of a session:** read it after this file, and check anything you rely on against the repository.
+- **At the end of each session:** update it under these headings:
+  - **Current State:** what is complete and the project's current status.
+  - **Changes Made:** key implementations, decisions and files modified.
+  - **Next Steps:** prioritized tasks and recommended actions.
+  - **Known Issues:** outstanding bugs, blockers and unresolved decisions.
+- **Keep it accurate:** rewrite existing content instead of appending, remove what is outdated, and report only state you verified, including what is unverified.
+- **Keep it concise:** link to the spec, ADRs and plans instead of repeating them. `HANDOFF.md` never overrides `docs/`; decisions still go in the spec or an ADR.

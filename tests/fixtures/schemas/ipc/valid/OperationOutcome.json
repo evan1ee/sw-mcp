@@ -1,0 +1,30 @@
+[
+  {
+    "operation_id": "j1:1",
+    "result": {
+      "owned": true
+    }
+  },
+  {
+    "operation_id": "j1:2",
+    "error": {
+      "code": "BACKEND_BUSY",
+      "message": "busy",
+      "retryable": "safe",
+      "details": {
+        "n": 1
+      }
+    }
+  },
+  {
+    "operation_id": "j1:2",
+    "result": {
+      "closed": true
+    },
+    "error": {
+      "code": "DUPLICATE_OPERATION",
+      "message": "The job was cancelled.",
+      "retryable": "never"
+    }
+  }
+]

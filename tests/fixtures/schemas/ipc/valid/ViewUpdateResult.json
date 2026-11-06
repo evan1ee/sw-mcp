@@ -1,0 +1,23 @@
+[
+  {
+    "native_id": "Drawing View1"
+  },
+  {
+    "native_id": "Drawing View1",
+    "position_mm": [
+      160.0,
+      170.0
+    ],
+    "scale": 2.0,
+    "outline_mm": {
+      "min": [
+        110.0,
+        120.0
+      ],
+      "max": [
+        210.0,
+        220.0
+      ]
+    }
+  }
+]

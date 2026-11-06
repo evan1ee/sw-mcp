@@ -1,0 +1,13 @@
+[
+  {
+    "effect": "none"
+  },
+  {
+    "effect": "unknown",
+    "stage": "invoke",
+    "native": {
+      "call": "FeatureCut4",
+      "returned": "null"
+    }
+  }
+]

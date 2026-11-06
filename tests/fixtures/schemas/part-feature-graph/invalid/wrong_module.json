@@ -1,0 +1,16 @@
+{
+  "module": "drawing_intent",
+  "id": "plate_4h",
+  "schema_version": "0.1",
+  "units": "mm",
+  "origin": "built",
+  "nodes": {
+    "sketch_base": {
+      "type": "sketch",
+      "plane": "plane:front",
+      "entities": {
+        "l1": { "type": "line", "start": [-50, -30], "end": [50, -30] }
+      }
+    }
+  }
+}
