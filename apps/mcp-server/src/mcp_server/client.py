@@ -58,12 +58,15 @@ class CorePipeClient:
         )
         self._pipe_name = pipe_name
         self._token = token
+        # Explicit pipe and token are pinned; otherwise rediscover through the session file,
+        # since a restarted core issues a new pipe and token.
+        self._pinned = pipe_name is not None and token is not None
         self._auto_start = (
             (pipe_name is None and token is None) if auto_start is None else auto_start
         )
         self._handle: int | None = None
         self._next_id = 1
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     def _read_session_file(self) -> tuple[str, str] | None:
         if not self._session_file.is_file():
@@ -138,7 +141,7 @@ class CorePipeClient:
         )
 
     def connect(self, timeout_s: float = 10.0) -> None:
-        if self._pipe_name and self._token:
+        if self._pinned and self._pipe_name and self._token:
             if not self._try_open_and_handshake(self._pipe_name, self._token, timeout_s):
                 raise ConnectionError(f"Failed to connect to core pipe {self._pipe_name}")
             return
@@ -208,12 +211,17 @@ class CorePipeClient:
         assert _winapi is not None
         with self._lock:
             if self._handle is None:
+                # A dropped connection is re-established before the next request. A request
+                # that failed mid-flight is never resent: the caller sees the error.
+                self.connect()
+            handle = self._handle
+            if handle is None:
                 raise ConnectionError("Not connected")
 
             payload = json.dumps(req).encode("utf-8")
             frame = len(payload).to_bytes(4, "little") + payload
             try:
-                _winapi.WriteFile(self._handle, frame)
+                _winapi.WriteFile(handle, frame)
                 header = self._read_exact(4)
                 length = int.from_bytes(header, "little")
                 body = self._read_exact(length)

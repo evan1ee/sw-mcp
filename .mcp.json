@@ -8,12 +8,10 @@
       ]
     },
     "sw-mcp": {
-      "command": "uv",
+      "command": "D:\\01_Data\\code\\sw-mcp\\.venv\\Scripts\\python.exe",
       "args": [
-        "run",
-        "--directory",
-        "D:\\01_Data\\code\\sw-mcp",
-        "sw-mcp-mcp"
+        "-m",
+        "mcp_server"
       ]
     }
   }
