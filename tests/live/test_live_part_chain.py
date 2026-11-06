@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Final, cast
 
 import pytest
+from cad_application.authoring_guide import EXAMPLES
 from cad_application.config.settings import ConfigError
 from cad_application.jobs.part_files import failed_path, working_path
 from cad_application.ports import Backend, BackendProvider
@@ -419,6 +420,42 @@ def test_plate_end_to_end(tmp_path: Path) -> None:
             )
             backend.apply_ops([OperationGroup(document=str(target), operations=(close_op,))])
         backend.close()
+
+
+def _top_face_hole_graph() -> dict[str, JsonValue]:
+    """A 40 x 30 x 10 mm block with a 5 mm hole, 4 mm deep, in the middle of its end (top) face."""
+    return cast(dict[str, JsonValue], EXAMPLES["block_top_hole"].graph)
+
+
+def test_blind_hole_in_top_face(tmp_path: Path) -> None:
+    """ADR-070: a sketch on the end face, a blind cut into the body, then a read-only reopen."""
+    session = _get_live_session()
+    template = _resolve_template()
+    proj = tmp_path / "proj"
+    proj.mkdir(parents=True, exist_ok=True)
+    target = proj / "block_top_hole.SLDPRT"
+
+    provider = NamedPipeBackendProvider(target_session=str(session.pid))
+    service = _start_core(
+        tmp_path, allowed_roots=(proj,), template_path=template, provider=provider
+    )
+    try:
+        applied = _call_ok(
+            service,
+            "apply_part_graph",
+            {"graph": _top_face_hole_graph(), "target_path": str(target)},
+        )
+        final = _wait_for_job(service, str(applied["execution_id"]))
+        assert final["state"] == "COMMITTED", final
+        assert target.is_file()
+
+        part_result = cast(dict[str, Any], final["part_result"])
+        checks = cast(list[dict[str, Any]], part_result["checks"])
+        assert len(checks) > 0
+        assert all(c["status"] == "passed" for c in checks), checks
+    finally:
+        service.stop()
+        _close_in_solidworks_by_path(target)
 
 
 def test_wrong_plan_fails(tmp_path: Path) -> None:

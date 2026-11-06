@@ -6,7 +6,9 @@ from typing import Any, Final
 
 from cad_ir.core.issues import ValidationIssue
 from cad_ir.generated import ErrorCode
+from cad_ir.part_feature_graph.faces import face_frame, parse_face_plane
 from cad_ir.part_feature_graph.model import Line, PartGraph, SketchNode, SolidNode
+from cad_ir.part_feature_graph.planes import plane_axes
 
 from cad_compiler.graph.analyze import GraphAnalysis
 from cad_compiler.profile import CapabilityProfile
@@ -44,12 +46,15 @@ def _check_capabilities(graph: PartGraph, profile: CapabilityProfile) -> list[Va
                 )
             )
         if isinstance(node, SketchNode):
-            if node.plane not in STANDARD_PLANES:
+            if node.plane not in STANDARD_PLANES and parse_face_plane(node.plane) is None:
                 issues.append(
                     ValidationIssue(
                         code=ErrorCode.COMPILE_UNSUPPORTED_FEATURE,
                         pointer=f"/nodes/{node_id}/plane",
-                        message=f"Plane '{node.plane}' unsupported; standard planes required",
+                        message=(
+                            f"Plane '{node.plane}' unsupported; use a standard plane or the"
+                            " start_face or end_face of the extrude"
+                        ),
                     )
                 )
             if not profile.supports_operation("sketch.create"):
@@ -71,7 +76,30 @@ def _check_capabilities(graph: PartGraph, profile: CapabilityProfile) -> list[Va
     return issues
 
 
-def _lower_sketch(node_id: str, node: SketchNode, seq: int, deps: list[str]) -> dict[str, Any]:
+def _face_params(graph: PartGraph, plane: str) -> dict[str, Any] | None:
+    """The ``face`` parameter of a sketch on a cap face, or None for any other host (ADR-070)."""
+    face = parse_face_plane(plane)
+    if face is None:
+        return None
+    extrude = graph.nodes[face.node_id]
+    assert isinstance(extrude, SolidNode)
+    assert extrude.end_condition.depth is not None
+    base = graph.nodes[extrude.profile]
+    assert isinstance(base, SketchNode)
+    frame = face_frame(plane_axes(base.plane), float(extrude.end_condition.depth), face.role)
+    return {
+        "feature": face.node_id,
+        "role": face.role,
+        "normal": [float(v) for v in frame.normal],
+        "offset_mm": float(frame.offset_mm),
+        "x_axis": [float(v) for v in frame.x_axis],
+        "y_axis": [float(v) for v in frame.y_axis],
+    }
+
+
+def _lower_sketch(
+    graph: PartGraph, node_id: str, node: SketchNode, seq: int, deps: list[str]
+) -> dict[str, Any]:
     entities_list: list[dict[str, Any]] = []
     for ent_id in sorted(node.entities.keys()):
         ent = node.entities[ent_id]
@@ -95,19 +123,27 @@ def _lower_sketch(node_id: str, node: SketchNode, seq: int, deps: list[str]) -> 
         "sequence": seq,
         "document": WORKING,
         "op": "sketch.create",
-        "params": {
-            "node_id": node_id,
-            "plane": node.plane,
-            "entities": entities_list,
-        },
+        "params": _sketch_params(graph, node_id, node, entities_list),
         "source": node_id,
         "depends_on": deps,
         "postconditions": ["entity_count"],
     }
 
 
+def _sketch_params(
+    graph: PartGraph, node_id: str, node: SketchNode, entities: list[dict[str, Any]]
+) -> dict[str, Any]:
+    params: dict[str, Any] = {"node_id": node_id, "entities": entities}
+    face = _face_params(graph, node.plane)
+    if face is None:
+        params["plane"] = node.plane
+    else:
+        params["face"] = face
+    return params
+
+
 def _lower_solid(
-    node_id: str, node: SolidNode, seq: int, deps: list[str]
+    graph: PartGraph, node_id: str, node: SolidNode, seq: int, deps: list[str]
 ) -> tuple[dict[str, Any], str]:
     end_cond: dict[str, Any] = {"type": node.end_condition.type}
     if node.end_condition.depth is not None:
@@ -119,6 +155,13 @@ def _lower_solid(
         "profile": node.profile,
         "end_condition": end_cond,
     }
+    profile = graph.nodes.get(node.profile)
+    if (
+        node.type == "cut_extrude"
+        and isinstance(profile, SketchNode)
+        and parse_face_plane(profile.plane) is not None
+    ):
+        params["host"] = "face"
 
     op_id = f"op_{seq}"
     op_body = {
@@ -172,9 +215,9 @@ def lower_graph(
         ]
 
         if isinstance(node, SketchNode):
-            operations[op_id] = _lower_sketch(node_id, node, seq, dep_op_ids)
+            operations[op_id] = _lower_sketch(graph, node_id, node, seq, dep_op_ids)
         else:
-            op_body, vp_id = _lower_solid(node_id, node, seq, dep_op_ids)
+            op_body, vp_id = _lower_solid(graph, node_id, node, seq, dep_op_ids)
             operations[op_id] = op_body
             verification_points.append(vp_id)
 

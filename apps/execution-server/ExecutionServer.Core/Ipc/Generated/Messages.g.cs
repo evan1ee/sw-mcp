@@ -96,6 +96,15 @@ public enum FeatureCreateParamsType
 }
 
 [JsonConverter(typeof(StringEnumConverter))]
+public enum FeatureCreateParamsHost
+{
+    [EnumMember(Value = "plane")]
+    Plane,
+    [EnumMember(Value = "face")]
+    Face
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
 public enum FeatureCreateResultStatus
 {
     [EnumMember(Value = "ok")]
@@ -135,6 +144,15 @@ public enum SketchCreateParamsPlane
     PlaneTop,
     [EnumMember(Value = "plane:right")]
     PlaneRight
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum SketchCreateFaceRole
+{
+    [EnumMember(Value = "start_face")]
+    StartFace,
+    [EnumMember(Value = "end_face")]
+    EndFace
 }
 
 [JsonConverter(typeof(StringEnumConverter))]
@@ -954,6 +972,9 @@ public sealed class FeatureCreateParams
     [JsonProperty("end_condition", Required = Required.Always)]
     public FeatureCreateEndCondition EndCondition { get; set; } = null!;
 
+    [JsonProperty("host", NullValueHandling = NullValueHandling.Ignore)]
+    public FeatureCreateParamsHost? Host { get; set; }
+
     [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
     public Meta? Meta { get; set; }
 }
@@ -1084,13 +1105,37 @@ public sealed class SketchCreateEntity
     public double? Diameter { get; set; }
 }
 
+public sealed class SketchCreateFace
+{
+    [JsonProperty("feature", Required = Required.Always)]
+    public string Feature { get; set; } = string.Empty;
+
+    [JsonProperty("role", Required = Required.Always)]
+    public SketchCreateFaceRole Role { get; set; }
+
+    [JsonProperty("normal", Required = Required.Always)]
+    public List<double> Normal { get; set; } = new List<double>();
+
+    [JsonProperty("offset_mm", Required = Required.Always)]
+    public double OffsetMm { get; set; }
+
+    [JsonProperty("x_axis", Required = Required.Always)]
+    public List<double> XAxis { get; set; } = new List<double>();
+
+    [JsonProperty("y_axis", Required = Required.Always)]
+    public List<double> YAxis { get; set; } = new List<double>();
+}
+
 public sealed class SketchCreateParams
 {
     [JsonProperty("node_id", Required = Required.Always)]
     public string NodeId { get; set; } = string.Empty;
 
-    [JsonProperty("plane", Required = Required.Always)]
-    public SketchCreateParamsPlane Plane { get; set; }
+    [JsonProperty("plane", NullValueHandling = NullValueHandling.Ignore)]
+    public SketchCreateParamsPlane? Plane { get; set; }
+
+    [JsonProperty("face", NullValueHandling = NullValueHandling.Ignore)]
+    public SketchCreateFace? Face { get; set; }
 
     [JsonProperty("entities", Required = Required.Always)]
     public List<SketchCreateEntity> Entities { get; set; } = new List<SketchCreateEntity>();

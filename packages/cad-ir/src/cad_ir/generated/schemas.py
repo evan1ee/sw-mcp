@@ -1961,6 +1961,36 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                            'type': 'object'},
                                                                           'Params': {'properties': {'_meta': {'$ref': '../v0.json#/$defs/Meta'},
                                                                                                     'end_condition': {'$ref': '#/$defs/EndCondition'},
+                                                                                                    'host': {'description': 'What '
+                                                                                                                            'the '
+                                                                                                                            'profile '
+                                                                                                                            'sketch '
+                                                                                                                            'sits '
+                                                                                                                            'on. '
+                                                                                                                            'A '
+                                                                                                                            'blind '
+                                                                                                                            'cut '
+                                                                                                                            'from '
+                                                                                                                            'a '
+                                                                                                                            'face '
+                                                                                                                            'goes '
+                                                                                                                            'into '
+                                                                                                                            'the '
+                                                                                                                            'body '
+                                                                                                                            '(Flip=false, '
+                                                                                                                            'Dir=false); '
+                                                                                                                            'from '
+                                                                                                                            'an '
+                                                                                                                            'origin '
+                                                                                                                            'plane '
+                                                                                                                            'it '
+                                                                                                                            'needs '
+                                                                                                                            'Dir=true. '
+                                                                                                                            'Absent '
+                                                                                                                            'means '
+                                                                                                                            'plane.',
+                                                                                                             'enum': ['plane',
+                                                                                                                      'face']},
                                                                                                     'node_id': {'type': 'string'},
                                                                                                     'profile': {'type': 'string'},
                                                                                                     'type': {'enum': ['extrude',
@@ -2102,16 +2132,94 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                                                      'circle']}},
                                                                                     'required': ['type'],
                                                                                     'type': 'object'},
-                                                                         'Params': {'properties': {'_meta': {'$ref': '../v0.json#/$defs/Meta'},
+                                                                         'Face': {'additionalProperties': False,
+                                                                                  'description': 'A '
+                                                                                                 'cap '
+                                                                                                 'face '
+                                                                                                 'of '
+                                                                                                 'an '
+                                                                                                 'extrude, '
+                                                                                                 'found '
+                                                                                                 'by '
+                                                                                                 'normal '
+                                                                                                 'and '
+                                                                                                 'offset '
+                                                                                                 '(ADR-070). '
+                                                                                                 'feature '
+                                                                                                 'is '
+                                                                                                 'the '
+                                                                                                 "extrude's "
+                                                                                                 'node '
+                                                                                                 'id '
+                                                                                                 'in '
+                                                                                                 'the '
+                                                                                                 'plan '
+                                                                                                 'and '
+                                                                                                 'its '
+                                                                                                 'feature '
+                                                                                                 'id '
+                                                                                                 'once '
+                                                                                                 'the '
+                                                                                                 'core '
+                                                                                                 'substitutes '
+                                                                                                 'it.',
+                                                                                  'properties': {'feature': {'type': 'string'},
+                                                                                                 'normal': {'items': {'type': 'number'},
+                                                                                                            'maxItems': 3,
+                                                                                                            'minItems': 3,
+                                                                                                            'type': 'array'},
+                                                                                                 'offset_mm': {'type': 'number'},
+                                                                                                 'role': {'enum': ['start_face',
+                                                                                                                   'end_face']},
+                                                                                                 'x_axis': {'items': {'type': 'number'},
+                                                                                                            'maxItems': 3,
+                                                                                                            'minItems': 3,
+                                                                                                            'type': 'array'},
+                                                                                                 'y_axis': {'items': {'type': 'number'},
+                                                                                                            'maxItems': 3,
+                                                                                                            'minItems': 3,
+                                                                                                            'type': 'array'}},
+                                                                                  'required': ['feature',
+                                                                                               'role',
+                                                                                               'normal',
+                                                                                               'offset_mm',
+                                                                                               'x_axis',
+                                                                                               'y_axis'],
+                                                                                  'type': 'object'},
+                                                                         'Params': {'description': 'Exactly '
+                                                                                                   'one '
+                                                                                                   'of '
+                                                                                                   'plane '
+                                                                                                   '(an '
+                                                                                                   'origin '
+                                                                                                   'plane) '
+                                                                                                   'or '
+                                                                                                   'face '
+                                                                                                   '(a '
+                                                                                                   'cap '
+                                                                                                   'face '
+                                                                                                   'of '
+                                                                                                   'the '
+                                                                                                   'extrude, '
+                                                                                                   'ADR-070) '
+                                                                                                   'is '
+                                                                                                   'given; '
+                                                                                                   'the '
+                                                                                                   'add-in '
+                                                                                                   'rejects '
+                                                                                                   'any '
+                                                                                                   'other '
+                                                                                                   'combination.',
+                                                                                    'properties': {'_meta': {'$ref': '../v0.json#/$defs/Meta'},
                                                                                                    'entities': {'items': {'$ref': '#/$defs/Entity'},
                                                                                                                 'minItems': 1,
                                                                                                                 'type': 'array'},
+                                                                                                   'face': {'$ref': '#/$defs/Face'},
                                                                                                    'node_id': {'type': 'string'},
                                                                                                    'plane': {'enum': ['plane:front',
                                                                                                                       'plane:top',
                                                                                                                       'plane:right']}},
                                                                                     'required': ['node_id',
-                                                                                                 'plane',
                                                                                                  'entities'],
                                                                                     'type': 'object'},
                                                                          'Result': {'properties': {'entity_count': {'type': 'integer'},

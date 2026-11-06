@@ -13,6 +13,7 @@ from cad_ir.part_feature_graph.planes import plane_axes
 from cad_verification.part import expected_geometry
 
 PLANES = ("plane:front", "plane:top", "plane:right")
+TOP_FACE_Z = 10
 
 
 def test_guide_names_every_supported_node_type() -> None:
@@ -66,3 +67,20 @@ def test_block_example_matches_its_stated_size() -> None:
 def test_every_example_has_a_request_sentence() -> None:
     for example in EXAMPLES.values():
         assert re.search(r"\d", example.request)
+
+
+def test_guide_explains_the_face_frame_and_its_limit() -> None:
+    guide = build_guide()
+    assert "end_face" in guide
+    assert "start_face" in guide
+    assert "mirrored" in guide
+    assert "REF_SIGNATURE_MISMATCH" in guide
+
+
+def test_top_face_hole_example_has_the_blind_depth_and_the_face() -> None:
+    graph = EXAMPLES["block_top_hole"].graph
+    assert graph["nodes"]["sketch_hole"]["plane"] == "extrude_base.end_face"
+    assert graph["nodes"]["cut_hole"]["end_condition"] == {"type": "blind", "depth": 4}
+    parsed = parse_part_graph(graph)
+    assert isinstance(parsed, PartGraph)
+    assert expected_geometry(parsed).cylinders[0].point.z == TOP_FACE_Z

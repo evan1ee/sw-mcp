@@ -4,6 +4,8 @@ Last updated: 2026-11-06. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Current State
 
+- **Sketch on a cap face (2026-11-06, spec v1.37, PR 14):** a hole in the top face builds in code: `sketch.plane` may be `<extrude>.end_face` or `.start_face` ([ADR-070](docs/adr/ADR-070-sketch-on-extrude-cap-face.md), [face spike](docs/superpowers/review/2026-11-06-face-sketch-spike.md), [plan](docs/superpowers/plans/2026-11-06-face-reference-sketches.md)). Python and C# unit tests pass. **Not verified in SOLIDWORKS:** the new add-in code (`CapFaceSketch.cs`, `SketchAdapter`, `FeatureAdapter`) has not run; `tests/live/test_live_part_chain.py::test_blind_hole_in_top_face` is written and not run. The owner runs it.
+
 - **Agent IR authoring (2026-11-06, PR 14, spec v1.36):** an MCP client can now turn a user's request into a valid graph with `get_authoring_guide`, the server `instructions`, better validator messages and an evaluation set. Unsupported requests are refused, never approximated (owner decision). Plan: [agent IR authoring](docs/superpowers/plans/2026-11-06-agent-ir-authoring.md). Not verified: no LLM was run against the evaluation set, and the running `sw-mcp` MCP process predates the new tool (restart it to see `get_authoring_guide`).
 
 - **Current focus (owner decision, [ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md)):** drawing work is **frozen at `eea9389`** ([freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)). Development moves to the Part Feature Graph IR and an end-to-end MVP that produces a verified `.SLDPRT`. The owner approved the MVP [design](docs/superpowers/specs/2026-11-05-part-chain-mvp-design.md) and [plan](docs/superpowers/plans/2026-11-05-part-chain-mvp.md). **The part chain MVP is done and signed off by the owner on 2026-11-06** (details in [section 18](docs/specifications/roadmap.md#current-focus-the-part-chain-adr-057)). Tasks 0 to 13 are complete on `feat/part-chain-mvp`. The sign-off run found and fixed three defects (`cd70b87`, `32f4905`).
@@ -20,12 +22,14 @@ Last updated: 2026-11-06. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
   - `uv run ruff check` passes. `uv run ruff format --check` passes (436 files).
   - `uv run pyright` passes (0 errors, 0 warnings across all packages, apps, tests).
   - `uv run lint-imports` passes (5 contracts kept, 0 broken).
-  - `uv run pytest` passes (3,323 passed, 31 deselected, re-run 2026-11-06); ruff, pyright and lint-imports clean.
-  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (330 passed, 0 failed, 0 skipped in 1s).
+  - `uv run pytest` passes (3,369 passed, 31 deselected, re-run 2026-11-06); ruff, pyright and lint-imports clean.
+  - `dotnet test apps/execution-server/ExecutionServer.Tests/ExecutionServer.Tests.csproj` passes (340 passed, 0 failed, 0 skipped in 1s).
   - `dotnet build apps/execution-server/ExecutionServer.sln` passes cleanly (0 warnings, 0 errors in 3.2s).
   - `uv run pytest tests/live/ -m live -v` baseline: 5 passed, 1 skipped.
 
 ## Changes Made
+
+- **Sketch on a cap face:** `cad_ir/part_feature_graph/faces.py` (frames, `in_base_frame`); validator `_check_face_planes`; lowering emits `face` on `sketch.create` and `host` on a cut's `feature.create` (stage `feature_lowering` 0.3.0, golden plan provenance updated); `expected_geometry` places a face cut; `resolve_node_refs` in `plan_job.py`; C# `FaceSignature.cs` (CAD-free, 8 tests), `CapFaceSketch.cs`, `FeatureLookup.cs`, and the blind direction by host in `FeatureAdapter`. The spike program has a `face` mode (`tests/live/spikes/PartChainSpike/FaceSpike.cs`). Guide and evaluation set updated (12 prompts: 9 build, 3 refuse).
 
 - **Agent IR authoring:** `cad_application/authoring_guide.py` and the `get_authoring_guide` tool (`schemas/mcp/get_authoring_guide.json`); `INSTRUCTIONS` in `mcp_server/server/app.py`; fix hints in five `semantic.py` messages; `cad_application/authoring_eval/` (11 prompts: 8 build, 3 refuse; checker; references) scored by `scripts/score_part_ir.py`. It is a tool and not an MCP resource because the front-end may import no `cad_*` package. Review fixes on the branch: separate sketch loops are rejected (`_is_connected` in `semantic.py`), `AnnotationPlacementAdapter` no longer releases `IModelDoc2` (G1), `SketchAdapter.CreateSketch` closes a half-built sketch on failure.
 
@@ -101,6 +105,9 @@ Last updated: 2026-11-06. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Next Steps
 
+- **Run the new live test** with SOLIDWORKS open on a throwaway session: `uv run pytest tests/live/test_live_part_chain.py -m live -k blind_hole_in_top_face`. It drives the open instance. If `REF_SIGNATURE_MISMATCH` appears, the frame rule is wrong for that case (K29). Rebuild the add-in with SOLIDWORKS closed first: the DLLs are locked while it runs, so the new C# is not loaded yet.
+- **K29:** extend the face spike to parts built on `plane:top` and `plane:right`.
+
 - **Run the evaluation set against a real agent:** `uv run python scripts/score_part_ir.py --prompts`, collect the graphs (null for a refusal) into a file, score it, and record the pass rate here. Then re-run the `block_centre_hole` case live (SOLIDWORKS running, the owner starts it); the job for it failed with `BACKEND_LOST` because SOLIDWORKS was closed.
 - **Later, separate spec and ADR:** sketches on a face (`<node>.end_face`, K23, K26, K28), blind holes from a face, arcs and patterns. The authoring guide lists them as unsupported until then.
 
@@ -145,6 +152,9 @@ Do not continue drawing work, including the ADR-056 list below, until the owner 
    - K10: The form of the `produce_drawing` orchestrator (settled through O1 and ADR-056).
 
 ## Known Issues
+
+- **The running add-in is old:** `dotnet build` of the solution fails to copy DLLs while SOLIDWORKS holds them. `ExecutionServer.Adapters` builds clean (0 errors, 0 warnings).
+- **Face frames measured on `plane:front` only (K29):** other base planes may fail safely with `REF_SIGNATURE_MISMATCH`. `side_faces`, edges and faces of cuts stay unsupported.
 
 - **Authoring guide limits are hand-written** (`_RULES`, `_UNSUPPORTED` in `authoring_guide.py`); tests check that the examples validate and that planes and node types match the code, not that every rule sentence matches the validator.
 - **Blind cut direction from the far face is not expressible:** a blind cut starts at its sketch plane. The guide tells the agent to refuse a hole "in the top face" with a depth.

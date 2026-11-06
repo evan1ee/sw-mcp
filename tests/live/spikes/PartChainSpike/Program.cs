@@ -50,6 +50,7 @@ namespace PartChainSpike
             {
                 case "scratch": return MakeScratch();
                 case "busy": return Busy(args.Length > 1 ? double.Parse(args[1]) : 10);
+                case "face": return FaceSpikeRun();
                 default: return RunAll(mode);
             }
         }

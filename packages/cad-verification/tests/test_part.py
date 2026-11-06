@@ -12,6 +12,7 @@ from cad_ir.part_feature_graph.model import (
     SketchNode,
     SolidNode,
 )
+from cad_ir.part_feature_graph.parse import parse_part_graph
 from cad_verification.part import (
     CheckResult,
     ExpectedGeometry,
@@ -701,3 +702,92 @@ def test_reason_follows_the_status(status: str, reason: str | None) -> None:
     """Spec 8.9.6: only ``not_evaluated`` and ``not_applicable`` carry a reason, and need one."""
     with pytest.raises(ValueError, match="reason"):
         _with_status(status, reason)
+
+
+# ---- sketches on a cap face (ADR-070) ----
+
+BLOCK_VOLUME = 40 * 30 * 10
+HOLE_DEPTH = 4.0
+HOLE_DIA = 5.0
+HOLE_AREA = math.pi * (HOLE_DIA / 2) ** 2
+
+
+def _block_with_face_hole(plane: str, center: tuple[float, float], blind: bool = True) -> PartGraph:
+    box = [(-20, -15), (20, -15), (20, 15), (-20, 15)]
+    lines = {
+        f"l{i + 1}": {
+            "type": "line",
+            "start": list(box[i]),
+            "end": list(box[(i + 1) % 4]),
+        }
+        for i in range(4)
+    }
+    cut_end = {"type": "blind", "depth": HOLE_DEPTH} if blind else {"type": "through_all_both"}
+    raw: dict[str, Any] = {
+        "module": "part",
+        "id": "face_hole",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {"type": "sketch", "plane": "plane:front", "entities": lines},
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10},
+            },
+            "sketch_hole": {
+                "type": "sketch",
+                "plane": plane,
+                "dependencies": ["extrude_base"],
+                "entities": {
+                    "c1": {"type": "circle", "center": list(center), "diameter": HOLE_DIA}
+                },
+            },
+            "cut_hole": {
+                "type": "cut_extrude",
+                "dependencies": ["sketch_hole", "extrude_base"],
+                "profile": "sketch_hole",
+                "end_condition": cut_end,
+            },
+        },
+    }
+    graph = parse_part_graph(raw)
+    assert isinstance(graph, PartGraph), graph
+    return graph
+
+
+def test_blind_hole_from_the_end_face() -> None:
+    geometry = expected_geometry(_block_with_face_hole("extrude_base.end_face", (0, 0)))
+    removed = HOLE_AREA * HOLE_DEPTH
+    assert geometry.volume_mm3 == pytest.approx(BLOCK_VOLUME - removed)
+    assert geometry.surface_area_mm2 == pytest.approx(
+        2 * 1200 + 140 * 10 + math.pi * HOLE_DIA * HOLE_DEPTH
+    )
+    # The removed material sits between z = 6 and z = 10, centred at z = 8.
+    assert geometry.center_of_mass_mm.z == pytest.approx(
+        (BLOCK_VOLUME * 5 - removed * 8) / geometry.volume_mm3
+    )
+    (cyl,) = geometry.cylinders
+    assert (cyl.point.x, cyl.point.y, cyl.point.z) == pytest.approx((0, 0, 10))
+    assert cyl.radius == pytest.approx(2.5)
+
+
+def test_blind_hole_from_the_start_face_is_mirrored_in_x() -> None:
+    geometry = expected_geometry(_block_with_face_hole("extrude_base.start_face", (10, 5)))
+    removed = HOLE_AREA * HOLE_DEPTH
+    # Sketch x = +10 on the start face is model x = -10. The hole spans z 0 to 4, centred at 2.
+    assert geometry.center_of_mass_mm.x == pytest.approx(removed * 10 / geometry.volume_mm3)
+    assert geometry.center_of_mass_mm.z == pytest.approx(
+        (BLOCK_VOLUME * 5 - removed * 2) / geometry.volume_mm3
+    )
+    (cyl,) = geometry.cylinders
+    assert (cyl.point.x, cyl.point.y, cyl.point.z) == pytest.approx((-10, 5, 0))
+
+
+def test_through_hole_from_a_face_removes_the_full_depth() -> None:
+    geometry = expected_geometry(
+        _block_with_face_hole("extrude_base.end_face", (0, 0), blind=False)
+    )
+    assert geometry.volume_mm3 == pytest.approx(BLOCK_VOLUME - HOLE_AREA * 10)

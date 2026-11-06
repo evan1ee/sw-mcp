@@ -60,7 +60,6 @@
       "type": "object",
       "required": [
         "node_id",
-        "plane",
         "entities"
       ],
       "properties": {
@@ -74,6 +73,9 @@
             "plane:right"
           ]
         },
+        "face": {
+          "$ref": "#/$defs/Face"
+        },
         "entities": {
           "type": "array",
           "items": {
@@ -84,7 +86,8 @@
         "_meta": {
           "$ref": "../v0.json#/$defs/Meta"
         }
-      }
+      },
+      "description": "Exactly one of plane (an origin plane) or face (a cap face of the extrude, ADR-070) is given; the add-in rejects any other combination."
     },
     "Result": {
       "type": "object",
@@ -107,6 +110,57 @@
           "$ref": "../v0.json#/$defs/Observation"
         }
       }
+    },
+    "Face": {
+      "type": "object",
+      "description": "A cap face of an extrude, found by normal and offset (ADR-070). feature is the extrude's node id in the plan and its feature id once the core substitutes it.",
+      "required": [
+        "feature",
+        "role",
+        "normal",
+        "offset_mm",
+        "x_axis",
+        "y_axis"
+      ],
+      "properties": {
+        "feature": {
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "start_face",
+            "end_face"
+          ]
+        },
+        "normal": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "offset_mm": {
+          "type": "number"
+        },
+        "x_axis": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "y_axis": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

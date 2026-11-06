@@ -31,12 +31,25 @@ public sealed class SketchAdapter
 
         var doc = DocumentLocator.FindDocument(_sw, document);
 
-        // 1. Resolve standard plane by RefPlane order and verify normal (spike answer 3)
-        var targetPlane = ResolveAndVerifyPlane(doc, p.Plane);
+        if ((p.Plane == null) == (p.Face == null))
+        {
+            throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "sketch.create needs exactly one of plane or face.");
+        }
 
-        // 2. Select plane (Select2 with mark 0, never SelectByID2)
-        doc.ClearSelection2(true);
-        targetPlane.Select2(false, 0);
+        if (p.Face != null)
+        {
+            // 1-2. Find the cap face by signature and select it (ADR-070)
+            CapFaceSketch.Select(doc, p.Face);
+        }
+        else
+        {
+            // 1. Resolve standard plane by RefPlane order and verify normal (spike answer 3)
+            var targetPlane = ResolveAndVerifyPlane(doc, p.Plane!.Value);
+
+            // 2. Select plane (Select2 with mark 0, never SelectByID2)
+            doc.ClearSelection2(true);
+            targetPlane.Select2(false, 0);
+        }
 
         // 3. Create sketch entities with AddToDB=true and AutoInference=false
         var sm = doc.SketchManager;
@@ -51,6 +64,11 @@ public sealed class SketchAdapter
 
             sm.InsertSketch(true);
             sketchOpen = true;
+
+            if (p.Face != null)
+            {
+                CapFaceSketch.VerifyFrame(_sw, sm, p.Face);
+            }
 
             foreach (var entity in p.Entities)
             {

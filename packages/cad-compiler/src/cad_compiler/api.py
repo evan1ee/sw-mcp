@@ -9,6 +9,7 @@ from cad_ir.bundle.manifest import BundleManifest
 from cad_ir.core.issues import IssueReport, ValidationIssue
 from cad_ir.core.json_types import JsonValue
 from cad_ir.generated import ErrorCode
+from cad_ir.part_feature_graph.faces import parse_face_plane
 from cad_ir.part_feature_graph.model import PartGraph, SketchNode
 from cad_ir.part_feature_graph.parse import parse_part_graph
 
@@ -25,7 +26,7 @@ STAGE_VERSIONS: Final[Mapping[str, str]] = MappingProxyType(
         "semantic_validator": "0.1.0",
         "graph_analyzer": "0.1.0",
         "geometry_resolver": "0.1.0",
-        "feature_lowering": "0.2.0",
+        "feature_lowering": "0.3.0",
         "execution_planner": "0.1.0",
     }
 )
@@ -222,13 +223,20 @@ class GeometryResolverStage:
     def run(graph: PartGraph, ctx: CompileContext) -> StageResult[PartGraph]:
         diags: list[Diagnostic] = []
         for node_id, node in graph.nodes.items():
-            if isinstance(node, SketchNode) and node.plane not in STANDARD_PLANES:
+            if (
+                isinstance(node, SketchNode)
+                and node.plane not in STANDARD_PLANES
+                and parse_face_plane(node.plane) is None
+            ):
                 diags.append(
                     Diagnostic(
                         stage="geometry_resolver",
                         code=ErrorCode.COMPILE_UNSUPPORTED_FEATURE,
                         pointer=f"/nodes/{node_id}/plane",
-                        message=f"Unsupported plane '{node.plane}'; standard planes required",
+                        message=(
+                            f"Unsupported plane '{node.plane}'; use a standard plane or the"
+                            " start_face or end_face of the extrude"
+                        ),
                         module="part",
                     )
                 )

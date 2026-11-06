@@ -25,6 +25,9 @@ _RULES: Final[tuple[str, ...]] = (
     " exactly one `circle`. Lines and circles are never mixed in one extrude profile.",
     "A cut profile is lines or circles, never both. Every cut shape lies strictly inside the"
     " extrude profile (not touching its edge) and cut shapes do not overlap each other.",
+    "A sketch's `plane` is an origin plane or a cap face of the extrude: `<extrude_id>.end_face`"
+    " (the face the extrude grows towards) or `<extrude_id>.start_face` (the face on the sketch"
+    " plane). A sketch on a face lists the extrude in its `dependencies`.",
     "Lines have a non-zero length, circle diameters are at least 0.01 and depths are positive.",
     '`extrude` takes `{"type": "blind", "depth": D}`. `cut_extrude` takes the same, with D'
     ' smaller than the extrude depth, or `{"type": "through_all_both"}`.',
@@ -36,7 +39,8 @@ _UNSUPPORTED: Final[tuple[str, ...]] = (
     " or a single circle",
     "patterns (linear, circular, mirror) as a feature; only write out shapes the user lists",
     "revolves, sweeps, lofts, shells, ribs, threads, sheet metal",
-    "sketches on a part face, an offset plane or a datum - only the three origin planes",
+    "sketches on any face other than the extrude's start_face or end_face (side faces, faces"
+    " of a cut), on an offset plane or on a datum",
     "more than one base extrude, or adding material after a cut",
     "assemblies, drawings, materials, custom properties and editing an existing part",
 )
@@ -99,7 +103,28 @@ def _build_examples() -> dict[str, Example]:
         "profile": "sketch_hole",
         "end_condition": {"type": "through_all_both"},
     }
+    top_hole_sketch = _circle_sketch(5)
+    top_hole_sketch["plane"] = "extrude_base.end_face"
+    top_hole_sketch["dependencies"] = ["extrude_base"]
+    top_hole_cut = {
+        "type": "cut_extrude",
+        "dependencies": ["sketch_hole", "extrude_base"],
+        "profile": "sketch_hole",
+        "end_condition": {"type": "blind", "depth": 4},
+    }
     return {
+        "block_top_hole": Example(
+            "Make a 40 x 30 x 10 mm block with a 5 mm hole, 4 mm deep, in the top face.",
+            _header(
+                "block_40x30x10_top_hole",
+                {
+                    "sketch_base": rectangle,
+                    "extrude_base": _extrude(10),
+                    "sketch_hole": top_hole_sketch,
+                    "cut_hole": top_hole_cut,
+                },
+            ),
+        ),
         "block": Example(
             "Make a 40 x 30 x 10 mm block.",
             _header("block_40x30x10", {"sketch_base": rectangle, "extrude_base": _extrude(10)}),
@@ -177,8 +202,19 @@ def build_guide() -> str:
         "",
         *_plane_rows(),
         "",
-        "A blind cut starts at its sketch plane and goes into the body along the normal."
-        " Use `through_all_both` for a hole through the part.",
+        "A blind cut from an origin plane starts at that plane and goes into the body along the"
+        " normal. A blind cut from a cap face goes into the body, against the face's outward"
+        " normal, so a hole from `end_face` is that deep below the top. Use `through_all_both`"
+        " for a hole through the part.",
+        "",
+        "## Sketching on a cap face",
+        "The top of a part built on `plane:front` is its `end_face` (z = the extrude depth) and the"
+        " bottom is its `start_face` (z = 0). Coordinates are in mm from the model origin."
+        " On `end_face` the sketch axes equal the base plane's axes. On `start_face` the sketch x"
+        " axis is mirrored (you look at the face from outside), so x = 10 is model x = -10."
+        " The build checks the real frame and fails with `REF_SIGNATURE_MISMATCH` when it differs."
+        " That check was measured on `plane:front` only (K29): for a part built on `plane:top` or"
+        " `plane:right`, tell the user a face sketch may fail to build.",
         "",
         "## Rules the validator enforces",
     ]

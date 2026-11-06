@@ -102,6 +102,8 @@ type FeatureCreateEndConditionType = Literal['blind', 'through_all_both']
 
 type FeatureCreateParamsType = Literal['extrude', 'cut_extrude']
 
+type FeatureCreateParamsHost = Literal['plane', 'face']
+
 type FeatureCreateResultStatus = Literal['ok', 'warning', 'error', 'suppressed']
 
 type ModelItemsInsertParamsSource = Literal['entire_model', 'selected_feature']
@@ -109,6 +111,8 @@ type ModelItemsInsertParamsSource = Literal['entire_model', 'selected_feature']
 type SketchCreateEntityType = Literal['line', 'circle']
 
 type SketchCreateParamsPlane = Literal['plane:front', 'plane:top', 'plane:right']
+
+type SketchCreateFaceRole = Literal['start_face', 'end_face']
 
 type ViewCreateParamsViewType = Literal['base', 'projected', 'isometric', 'flat_pattern']
 
@@ -1836,6 +1840,7 @@ class FeatureCreateParams:
     type: FeatureCreateParamsType
     profile: str
     end_condition: FeatureCreateEndCondition
+    host: FeatureCreateParamsHost | None = None
     meta: Meta | None = None
 
     @classmethod
@@ -1850,6 +1855,7 @@ class FeatureCreateParams:
             type=_str(_req(obj, "type", where), f"{where}.type"),
             profile=_str(_req(obj, "profile", where), f"{where}.profile"),
             end_condition=FeatureCreateEndCondition._at(_req(obj, "end_condition", where), f"{where}.end_condition"),
+            host=_opt(obj, "host", where, _str),
             meta=_opt(obj, "_meta", where, Meta._at),
         )
 
@@ -1859,6 +1865,8 @@ class FeatureCreateParams:
         out["type"] = _dump(self.type)
         out["profile"] = _dump(self.profile)
         out["end_condition"] = _dump(self.end_condition)
+        if self.host is not None:
+            out["host"] = _dump(self.host)
         if self.meta is not None:
             out["_meta"] = _dump(self.meta)
         return out
@@ -2142,9 +2150,46 @@ class SketchCreateEntity:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class SketchCreateFace:
+    feature: str
+    role: SketchCreateFaceRole
+    normal: tuple[float, ...]
+    offset_mm: float
+    x_axis: tuple[float, ...]
+    y_axis: tuple[float, ...]
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "SketchCreateFace")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            feature=_str(_req(obj, "feature", where), f"{where}.feature"),
+            role=_str(_req(obj, "role", where), f"{where}.role"),
+            normal=_list_of(_num)(_req(obj, "normal", where), f"{where}.normal"),
+            offset_mm=_num(_req(obj, "offset_mm", where), f"{where}.offset_mm"),
+            x_axis=_list_of(_num)(_req(obj, "x_axis", where), f"{where}.x_axis"),
+            y_axis=_list_of(_num)(_req(obj, "y_axis", where), f"{where}.y_axis"),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["feature"] = _dump(self.feature)
+        out["role"] = _dump(self.role)
+        out["normal"] = _dump(self.normal)
+        out["offset_mm"] = _dump(self.offset_mm)
+        out["x_axis"] = _dump(self.x_axis)
+        out["y_axis"] = _dump(self.y_axis)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class SketchCreateParams:
     node_id: str
-    plane: SketchCreateParamsPlane
+    plane: SketchCreateParamsPlane | None = None
+    face: SketchCreateFace | None = None
     entities: tuple[SketchCreateEntity, ...]
     meta: Meta | None = None
 
@@ -2157,7 +2202,8 @@ class SketchCreateParams:
         obj = _obj(value, where)
         return cls(
             node_id=_str(_req(obj, "node_id", where), f"{where}.node_id"),
-            plane=_str(_req(obj, "plane", where), f"{where}.plane"),
+            plane=_opt(obj, "plane", where, _str),
+            face=_opt(obj, "face", where, SketchCreateFace._at),
             entities=_list_of(SketchCreateEntity._at)(_req(obj, "entities", where), f"{where}.entities"),
             meta=_opt(obj, "_meta", where, Meta._at),
         )
@@ -2165,7 +2211,10 @@ class SketchCreateParams:
     def to_json(self) -> dict[str, JsonValue]:
         out: dict[str, JsonValue] = {}
         out["node_id"] = _dump(self.node_id)
-        out["plane"] = _dump(self.plane)
+        if self.plane is not None:
+            out["plane"] = _dump(self.plane)
+        if self.face is not None:
+            out["face"] = _dump(self.face)
         out["entities"] = _dump(self.entities)
         if self.meta is not None:
             out["_meta"] = _dump(self.meta)

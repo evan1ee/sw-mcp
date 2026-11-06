@@ -2,6 +2,18 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.37
+
+A sketch may sit on an extrude's cap face, so "a hole, 4 mm deep, in the top face" can be built. Decided in [ADR-070](../adr/ADR-070-sketch-on-extrude-cap-face.md); measured by the [face spike](../superpowers/review/2026-11-06-face-sketch-spike.md); planned in [the face reference plan](../superpowers/plans/2026-11-06-face-reference-sketches.md).
+
+- **IR (5.7.4):** a sketch `plane` may be `<extrude_id>.end_face` or `<extrude_id>.start_face`. No other faces, edges or offset planes. The sketch lists the extrude in its `dependencies`. The schema pattern already accepted `name.name`; the compiler now accepts these two roles.
+- **Frames (measured on `plane:front`):** an end face has the base plane's axes with the origin moved by the depth; a start face has x mirrored and the normal reversed. A blind cut from a face goes into the body with `Flip=false`, `Dir=false`; from an origin plane it still needs `Dir=true`.
+- **No persisted references:** the compiler states the face's outward normal and offset, and the add-in finds the extrude's planar face with that signature, selects it with `IEntity.Select4` and checks the opened sketch's axes (`REF_NOT_FOUND`, `REF_AMBIGUOUS`, `REF_SIGNATURE_MISMATCH`). K28 stays open for edges and later phases.
+- **Contracts:** `sketch.create` takes `plane` or `face`; `feature.create` takes `host` (`face` for a cut whose sketch is on a face). The stage version of feature lowering is 0.3.0, so plan hashes change for graphs that use a face, and the golden plan's provenance changed.
+- **Verification:** expected geometry places a cut from a face between `depth - h` and `depth` (end face) or `0` and `h` (start face), with x mirrored on the start face.
+- **Authoring guide and evaluation set:** the guide teaches the face syntax and its frame; `blind_hole_top_face` is now a build case and `refuse_hole_in_side_face` replaces the old refusal.
+- **Register:** adds K29 (the frame rule is unmeasured on `plane:top` and `plane:right`; the add-in fails safely).
+
 ## What changed in 1.36
 
 Adds `get_authoring_guide`, the tool an agent reads before it turns a user's request into a Part Feature Graph, and states the refusal rule. No IR schema or add-in code changed, and no live SOLIDWORKS run was made.

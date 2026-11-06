@@ -1,6 +1,6 @@
 # 23. Compiler Architecture Specification
 
-> Specification v1.36, section 23. Index and section map: [README.md](README.md).
+> Specification v1.37, section 23. Index and section map: [README.md](README.md).
 
 **Status: Proposed, awaiting the owner.** This section describes the compiler and the path from IR to a verified result as one architecture. It changes no schema and no code. Companions: [§22 IR](ir-specification.md) and [§8.9 Adapter Interface](solidworks-adapter.md). Labels **N**, **B**, **P** and **O** mean what they mean in [22.0](ir-specification.md#220-how-to-read-this-section). The topic sections [6](../architecture/cad-compiler.md), [6.5 to 6.6](../architecture/backend-operations.md) and [10](../architecture/verification-engine.md) stay authoritative wherever they already decide.
 
@@ -144,7 +144,7 @@ From the golden plate plan, with the sketch entities and two operations removed 
     "profile_hash": "sha256:cd069d6336aeab8d84cd057a3a55923567a277d3e1d9cbc40d816eb7cbd67a11",
     "stage_versions": {
       "execution_planner": "0.1.0",
-      "feature_lowering": "0.2.0",
+      "feature_lowering": "0.3.0",
       "geometry_resolver": "0.1.0",
       "graph_analyzer": "0.1.0",
       "parser": "0.1.0",

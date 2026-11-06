@@ -75,6 +75,28 @@ _NO_CLOSE: Final = frozenset(
 )
 
 
+def resolve_node_refs(
+    op_name: str, params: dict[str, JsonValue], feature_ids: dict[str, str]
+) -> dict[str, JsonValue]:
+    """Swap node ids in an operation's parameters for the feature ids the add-in returned.
+
+    ``feature.create`` names its profile sketch; ``sketch.create`` names the extrude whose cap
+    face it sits on (ADR-070). An id not yet known is left as it is. The input is not changed.
+    """
+    resolved = dict(params)
+    if op_name == "feature.create":
+        profile = resolved.get("profile")
+        if isinstance(profile, str) and profile in feature_ids:
+            resolved["profile"] = feature_ids[profile]
+    elif op_name == "sketch.create":
+        face = resolved.get("face")
+        if isinstance(face, dict):
+            node = face.get("feature")
+            if isinstance(node, str) and node in feature_ids:
+                resolved["face"] = {**face, "feature": feature_ids[node]}
+    return resolved
+
+
 @dataclass(frozen=True, slots=True)
 class RunContext:
     handle: JobHandle[PlanSpec]
@@ -349,10 +371,8 @@ class _Run:
 
         if op_name == "part.create":
             params["template"] = self._template
-        elif op_name == "feature.create":
-            profile_ref = params.get("profile")
-            if profile_ref and profile_ref in self._feature_ids:
-                params["profile"] = self._feature_ids[profile_ref]
+        else:
+            params = resolve_node_refs(op_name, params, self._feature_ids)
 
         res = self._send(backend, op_name, params, check=True)
 

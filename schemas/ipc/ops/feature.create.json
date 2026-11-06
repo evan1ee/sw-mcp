@@ -56,6 +56,13 @@
         "end_condition": {
           "$ref": "#/$defs/EndCondition"
         },
+        "host": {
+          "enum": [
+            "plane",
+            "face"
+          ],
+          "description": "What the profile sketch sits on. A blind cut from a face goes into the body (Flip=false, Dir=false); from an origin plane it needs Dir=true. Absent means plane."
+        },
         "_meta": {
           "$ref": "../v0.json#/$defs/Meta"
         }

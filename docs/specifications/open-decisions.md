@@ -15,7 +15,7 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-Twenty-one open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, K19, K20, K21, K23, K24, K25, K26, K27 and K28. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+Twenty-two open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, K19, K20, K21, K23, K24, K25, K26, K27, K28 and K29. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
 
 ### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
 
@@ -169,6 +169,13 @@ Twenty-one open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, 
 - **Recommendation.** At the start of A6, measure references on a part's faces and edges across save and reopen, a depth change, a change that splits a face, and deleting the owner. Record which `swPersistReferencedObject_e` status each gives, and whether a signature check catches a wrong answer. Decide then whether a written entity name on a job-owned part is worth allowing.
 - **Document:** Spec (7.5, 8.9.12), ADR-067.
 - **Blocks:** `later` (A6).
+
+### K29: Sketch frame on a face of a part built on `plane:top` or `plane:right`
+
+- **Why it matters.** ADR-070's frame rule (an end face has the base plane's axes; a start face mirrors x) was measured only on `plane:front`. On the other two planes the real frame may differ, and every coordinate the IR places on that face depends on it. The add-in compares the frame and fails safely, so a wrong rule costs a failed job, not a wrong part.
+- **Recommendation.** Extend the face spike to parts built on `plane:top` and `plane:right`, for both caps, and record the frames in 5.7.4. Until then the authoring guide steers faces to parts built on `plane:front`.
+- **Document:** Spec (5.7.4), ADR-070.
+- **Blocks:** `later` (faces on parts built on `plane:top` or `plane:right`).
 
 ---
 

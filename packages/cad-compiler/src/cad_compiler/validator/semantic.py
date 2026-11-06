@@ -5,6 +5,7 @@ from typing import Final
 
 from cad_ir.core.issues import ValidationIssue, issue_sort_key
 from cad_ir.generated import ErrorCode
+from cad_ir.part_feature_graph.faces import SUPPORTED_ROLES, in_base_frame, parse_face_plane
 from cad_ir.part_feature_graph.model import Circle, Line, PartGraph, SketchNode, SolidNode
 
 from cad_compiler.graph.analyze import analyze_graph, resolve_dependencies
@@ -167,6 +168,44 @@ def _check_headers(graph: PartGraph, issues: list[ValidationIssue]) -> None:
                 message="Origin must be 'built'",
             )
         )
+
+
+_STANDARD_PLANES: Final = ("plane:front", "plane:top", "plane:right")
+
+
+def _check_face_planes(graph: PartGraph, issues: list[ValidationIssue]) -> None:
+    """A sketch may sit on an origin plane or on the start or end face of the extrude (ADR-070)."""
+    for node_id, node in graph.nodes.items():
+        if not isinstance(node, SketchNode) or node.plane in _STANDARD_PLANES:
+            continue
+        face = parse_face_plane(node.plane)
+        if face is None:
+            continue  # other hosts are rejected at lowering
+        pointer = f"/nodes/{node_id}/plane"
+        host = graph.nodes.get(face.node_id)
+        if face.role not in SUPPORTED_ROLES:
+            message = f"Face '{face.role}' is not supported: use start_face or end_face"
+            issues.append(ValidationIssue(ErrorCode.IR_RULE_VIOLATED, pointer, message))
+        elif host is None:
+            message = f"Face reference '{node.plane}': node '{face.node_id}' not found in graph"
+            issues.append(
+                ValidationIssue(
+                    ErrorCode.IR_REFERENCE_UNRESOLVED, pointer, message, ref=face.node_id
+                )
+            )
+        elif not (isinstance(host, SolidNode) and host.type == "extrude"):
+            message = f"Face reference '{node.plane}': '{face.node_id}' must be the extrude"
+            issues.append(ValidationIssue(ErrorCode.IR_RULE_VIOLATED, pointer, message))
+        elif face.node_id not in node.dependencies:
+            message = (
+                f"Sketch on '{node.plane}' must depend on '{face.node_id}':"
+                " add the extrude to its dependencies"
+            )
+            issues.append(
+                ValidationIssue(
+                    ErrorCode.IR_RULE_VIOLATED, f"/nodes/{node_id}/dependencies", message
+                )
+            )
 
 
 def _check_references(graph: PartGraph, issues: list[ValidationIssue]) -> None:
@@ -536,7 +575,11 @@ def _check_cut_profiles(graph: PartGraph, issues: list[ValidationIssue]) -> None
         if not isinstance(cut_prof, SketchNode):
             continue
 
-        if extrude_sketch is not None and cut_prof.plane != extrude_sketch.plane:
+        if (
+            extrude_sketch is not None
+            and cut_prof.plane != extrude_sketch.plane
+            and parse_face_plane(cut_prof.plane) is None
+        ):
             msg = (
                 f"Cut sketch plane '{cut_prof.plane}' "
                 f"must match extrude plane '{extrude_sketch.plane}'"
@@ -589,6 +632,7 @@ def validate_graph(graph: PartGraph) -> tuple[ValidationIssue, ...]:
 
     _check_headers(graph, issues)
     _check_references(graph, issues)
+    _check_face_planes(graph, issues)
 
     analysis = analyze_graph(graph)
     if analysis.cycle is not None:
@@ -614,6 +658,6 @@ def validate_graph(graph: PartGraph) -> tuple[ValidationIssue, ...]:
         if isinstance(prof_node, SketchNode):
             _check_extrude_profile(extrudes[0][0], prof_node, issues)
 
-    _check_cut_profiles(graph, issues)
+    _check_cut_profiles(in_base_frame(graph), issues)
 
     return tuple(sorted(issues, key=issue_sort_key))

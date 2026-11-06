@@ -1,6 +1,6 @@
 # 5.7 Part Feature Graph Schema Guide
 
-> Specification v1.36, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.37, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
 
 Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3.2) read as one language and the compiler's defaults are explicit. Each type has one schema file, `schemas/part-feature-graph/features/<type>.json`, with one minimal example of at most 400 tokens (12.3).
 
@@ -72,6 +72,16 @@ Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3
 - **Blind cut direction [Builder's call].** A blind `cut_extrude` goes the opposite way to a blind `extrude` by default: against the normal, so on a plate's own plane it finds nothing to cut and `FeatureCut4` returns null. The flip argument (`Flip=true`) selects which side of the profile is removed and does not help. The compiler's plan and the adapter must therefore pass the cut's direction argument `Dir=true`, which sends the blind cut along the normal, into the body. `through_all_both` is unaffected and works whichever way the normal points.
 - **Selection [Builder's call].** A plane or sketch is selected with `IFeature.Select2(false, 0)`; entities (faces, edges, sketch segments) with `IEntity.Select4`. `SelectByID2` stays banned (8.3 rule 11).
 - **Units [Builder's call].** The API takes metres whatever the document units are. The spike built the same plate in a millimetre and in an inch document with identical geometry. Mass properties are read with `IMassProperty.UseSystemUnits = true`; with `false` the values follow neither metres nor the document's linear unit.
+
+- **Sketch on a face [ADR-070, spike 2026-11-06].** `plane` may be `<extrude_id>.end_face` or `<extrude_id>.start_face` (not `side_faces`, edges or faces of a cut). The compiler states the face's outward normal and offset; the add-in finds the extrude's planar face with that normal and offset, selects it with `Entity.Select4`, and opens the sketch (live record: [face spike](../superpowers/review/2026-11-06-face-sketch-spike.md)). On `plane:front`, SOLIDWORKS 2025 gave these sketch frames:
+
+  | Face | Sketch origin | Sketch +x | Sketch +y | Sketch normal |
+  | --- | --- | --- | --- | --- |
+  | `end_face` | (0, 0, depth) | +X | +Y | +Z |
+  | `start_face` | (0, 0, 0) | -X | +Y | -Z |
+
+  The rule the compiler uses: an end face has the base plane's axes, the origin moved by the depth along the normal; a start face has x mirrored and the normal reversed. Only `plane:front` was measured (K29), so the add-in compares the opened sketch's axes with the stated ones and fails the operation on a mismatch.
+- **Blind cut from a face [ADR-070].** A blind `cut_extrude` whose sketch is on a face goes into the body with `Flip=false` and `Dir=false`. `Dir=true` finds nothing and `Flip=true` removes the material outside the profile. A cut from an origin plane keeps `Dir=true` (above).
 
 ## 5.7.5 Roles
 

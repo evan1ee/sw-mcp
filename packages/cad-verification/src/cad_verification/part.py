@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Final, Literal, NamedTuple, cast
 
 from cad_ir.core.json_types import JsonValue
+from cad_ir.part_feature_graph.faces import face_frame, parse_face_plane
 from cad_ir.part_feature_graph.model import (
     Circle,
     Line,
@@ -374,14 +375,22 @@ def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
         if not isinstance(cut_sketch_raw, SketchNode):
             continue
 
-        cut_plane = plane_axes(cut_sketch_raw.plane)
         is_through = cut_node.end_condition.type in ("through_all", "through_all_both")
         cut_depth = base_depth if is_through else float(cut_node.end_condition.depth or 0.0)
-        depth_center = cut_depth * 0.5
+        face = parse_face_plane(cut_sketch_raw.plane)
+        if face is None:
+            cut_plane = plane_axes(cut_sketch_raw.plane)
+            x_sign, depth_center, circle_depth = 1.0, cut_depth * 0.5, 0.0
+        else:
+            # A cut from a cap face goes into the body (ADR-070); its x may be mirrored.
+            frame = face_frame(base_plane, base_depth, face.role)
+            low, high = frame.into_body_depth_from_base(base_depth, cut_depth)
+            cut_plane = base_plane
+            x_sign, depth_center, circle_depth = frame.x_sign, (low + high) * 0.5, frame.offset_mm
 
         for area, perimeter, center_x, center_y in _cut_regions(cut_sketch_raw):
             region_vol = area * cut_depth
-            region_com = cut_plane.to_model(center_x, center_y, depth_center)
+            region_com = cut_plane.to_model(x_sign * center_x, center_y, depth_center)
 
             total_volume -= region_vol
             total_moment[0] -= region_vol * region_com[0]
@@ -395,7 +404,9 @@ def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
             if isinstance(entity, Circle):
                 cylinders.append(
                     ExpectedCylinder(
-                        point=cut_plane.to_model(entity.center[0], entity.center[1], 0.0),
+                        point=cut_plane.to_model(
+                            x_sign * entity.center[0], entity.center[1], circle_depth
+                        ),
                         direction=cut_plane.normal,
                         radius=entity.diameter * 0.5,
                     )

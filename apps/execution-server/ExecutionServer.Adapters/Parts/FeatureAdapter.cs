@@ -33,7 +33,7 @@ public sealed class FeatureAdapter
         var doc = DocumentLocator.FindDocument(_sw, document);
 
         // 1. Locate profile sketch by feature_id
-        var profileFeature = FindFeatureById(doc, p.Profile);
+        var profileFeature = FeatureLookup.FindById(doc, p.Profile);
         if (profileFeature == null)
         {
             throw new IpcException(ErrorCodes.IR_REFERENCE_UNRESOLVED, $"Profile feature '{p.Profile}' not found in document.");
@@ -84,13 +84,16 @@ public sealed class FeatureAdapter
             }
             else if (endType == FeatureCreateEndConditionType.Blind)
             {
-                // Blind cut: Dir = true (third arg) cuts into body! (spike answer 4)
+                // Blind cut from an origin plane: Dir = true cuts into the body (spike answer 4).
+                // From a cap face the default direction already goes into the body, and Dir = true cuts
+                // nothing (face spike 2026-11-06, ADR-070).
                 double depthM = PartUnits.MmToMetres(p.EndCondition?.Depth ?? 0.0);
+                bool dir = p.Host != FeatureCreateParamsHost.Face;
 
                 createdFeature = (IFeature?)doc.FeatureManager.FeatureCut4(
                     true, // Sd
                     false, // Flip
-                    true, // Dir = true
+                    dir, // Dir
                     (int)swEndConditions_e.swEndCondBlind, // T1
                     0, // T2
                     depthM, // D1
