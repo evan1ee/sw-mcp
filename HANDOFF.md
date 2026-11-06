@@ -4,7 +4,7 @@ Last updated: 2026-11-06. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Current State
 
-- **Sketch on a cap face (2026-11-06, spec v1.37, PR 14):** a hole in the top face builds in code: `sketch.plane` may be `<extrude>.end_face` or `.start_face` ([ADR-070](docs/adr/ADR-070-sketch-on-extrude-cap-face.md), [face spike](docs/superpowers/review/2026-11-06-face-sketch-spike.md), [plan](docs/superpowers/plans/2026-11-06-face-reference-sketches.md)). Python and C# unit tests pass. **Not verified in SOLIDWORKS:** the new add-in code (`CapFaceSketch.cs`, `SketchAdapter`, `FeatureAdapter`) has not run; `tests/live/test_live_part_chain.py::test_blind_hole_in_top_face` is written and not run. The owner runs it.
+- **Sketch on a cap face (2026-11-06, spec v1.37, PR 14):** a hole in the top face builds in code: `sketch.plane` may be `<extrude>.end_face` or `.start_face` ([ADR-070](docs/adr/ADR-070-sketch-on-extrude-cap-face.md), [face spike](docs/superpowers/review/2026-11-06-face-sketch-spike.md), [plan](docs/superpowers/plans/2026-11-06-face-reference-sketches.md)). Python and C# unit tests pass. **Verified live (2026-11-06, SOLIDWORKS 2025 SP0.0, after rebuilding the add-in):** `tests/live/test_live_part_chain.py::test_blind_hole_in_top_face` passed in 14.9 s: the job reached `COMMITTED` and every check passed. Only that one live test was run on the new build; the other 13 were not re-run.
 
 - **Agent IR authoring (2026-11-06, PR 14, spec v1.36):** an MCP client can now turn a user's request into a valid graph with `get_authoring_guide`, the server `instructions`, better validator messages and an evaluation set. Unsupported requests are refused, never approximated (owner decision). Plan: [agent IR authoring](docs/superpowers/plans/2026-11-06-agent-ir-authoring.md). Not verified: no LLM was run against the evaluation set, and the running `sw-mcp` MCP process predates the new tool (restart it to see `get_authoring_guide`).
 
@@ -105,7 +105,7 @@ Last updated: 2026-11-06. Rules for this file: [AGENTS.md section 5](AGENTS.md#5
 
 ## Next Steps
 
-- **Run the new live test** with SOLIDWORKS open on a throwaway session: `uv run pytest tests/live/test_live_part_chain.py -m live -k blind_hole_in_top_face`. It drives the open instance. If `REF_SIGNATURE_MISMATCH` appears, the frame rule is wrong for that case (K29). Rebuild the add-in with SOLIDWORKS closed first: the DLLs are locked while it runs, so the new C# is not loaded yet.
+- **Re-run the rest of the live part chain tests** on the rebuilt add-in (`-k test_ -m live`, owner's call: they drive the open instance), and a start-face hole, which no live test covers yet.
 - **K29:** extend the face spike to parts built on `plane:top` and `plane:right`.
 
 - **Run the evaluation set against a real agent:** `uv run python scripts/score_part_ir.py --prompts`, collect the graphs (null for a refusal) into a file, score it, and record the pass rate here. Then re-run the `block_centre_hole` case live (SOLIDWORKS running, the owner starts it); the job for it failed with `BACKEND_LOST` because SOLIDWORKS was closed.
@@ -153,7 +153,7 @@ Do not continue drawing work, including the ADR-056 list below, until the owner 
 
 ## Known Issues
 
-- **The running add-in is old:** `dotnet build` of the solution fails to copy DLLs while SOLIDWORKS holds them. `ExecutionServer.Adapters` builds clean (0 errors, 0 warnings).
+- **Rebuild with SOLIDWORKS closed:** the add-in DLLs are locked while it runs, so a build while it is open does not update the loaded add-in.
 - **Face frames measured on `plane:front` only (K29):** other base planes may fail safely with `REF_SIGNATURE_MISMATCH`. `side_faces`, edges and faces of cuts stay unsupported.
 
 - **Authoring guide limits are hand-written** (`_RULES`, `_UNSUPPORTED` in `authoring_guide.py`); tests check that the examples validate and that planes and node types match the code, not that every rule sentence matches the validator.
