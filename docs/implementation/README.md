@@ -49,9 +49,9 @@ Do not edit this block. Refresh it with `uv run python scripts/check_implementat
 <!-- BEGIN DERIVED SUMMARY (scripts/check_implementation_checklists.py --write) -->
 | Category | Capabilities | Items | Not Started | Specified | Partially Implemented | Implemented | Tested | Verified | Deferred | Under Evaluation | Not Applicable |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Sketch | 7 | 136 | 0 | 57 | 0 | 5 | 9 | 20 | 1 | 41 | 3 |
-| Part Features | 64 | 451 | 0 | 155 | 9 | 4 | 14 | 42 | 32 | 182 | 13 |
-| **Total** | **71** | **587** | **0** | **212** | **9** | **9** | **23** | **62** | **33** | **223** | **16** |
+| Sketch | 7 | 136 | 0 | 55 | 0 | 5 | 9 | 22 | 1 | 41 | 3 |
+| Part Features | 64 | 451 | 0 | 143 | 9 | 4 | 14 | 54 | 32 | 182 | 13 |
+| **Total** | **71** | **587** | **0** | **198** | **9** | **9** | **23** | **76** | **33** | **223** | **16** |
 
 | Scope | In Scope | Out of Scope | Under Evaluation |
 |---|---:|---:|---:|
@@ -64,9 +64,9 @@ Do not edit this block. Refresh it with `uv run python scripts/check_implementat
 | Document | Capabilities | Items | Verified | Tested | Partially Implemented |
 |---|---:|---:|---:|---:|---:|
 | [part-features/advanced-and-excluded.md](part-features/advanced-and-excluded.md) | 3 | 17 | 0 | 0 | 0 |
-| [part-features/base-features.md](part-features/base-features.md) | 5 | 81 | 8 | 2 | 3 |
+| [part-features/base-features.md](part-features/base-features.md) | 5 | 81 | 16 | 2 | 3 |
 | [part-features/common-and-document.md](part-features/common-and-document.md) | 5 | 45 | 13 | 6 | 4 |
-| [part-features/cut-features.md](part-features/cut-features.md) | 6 | 56 | 9 | 6 | 2 |
+| [part-features/cut-features.md](part-features/cut-features.md) | 6 | 56 | 13 | 6 | 2 |
 | [part-features/hole-thread-features.md](part-features/hole-thread-features.md) | 3 | 31 | 0 | 0 | 0 |
 | [part-features/multi-body-features.md](part-features/multi-body-features.md) | 6 | 18 | 0 | 0 | 0 |
 | [part-features/patterns-mirrors.md](part-features/patterns-mirrors.md) | 7 | 33 | 12 | 0 | 0 |
@@ -75,7 +75,7 @@ Do not edit this block. Refresh it with `uv run python scripts/check_implementat
 | [part-features/sheet-metal-features.md](part-features/sheet-metal-features.md) | 7 | 43 | 0 | 0 | 0 |
 | [part-features/surface-features.md](part-features/surface-features.md) | 5 | 23 | 0 | 0 | 0 |
 | [sketch/sketch-dimensions.md](sketch/sketch-dimensions.md) | 1 | 11 | 0 | 0 | 0 |
-| [sketch/sketch-entities.md](sketch/sketch-entities.md) | 1 | 26 | 8 | 0 | 0 |
+| [sketch/sketch-entities.md](sketch/sketch-entities.md) | 1 | 26 | 10 | 0 | 0 |
 | [sketch/sketch-management.md](sketch/sketch-management.md) | 2 | 26 | 11 | 1 | 0 |
 | [sketch/sketch-operations.md](sketch/sketch-operations.md) | 1 | 29 | 0 | 0 | 0 |
 | [sketch/sketch-relations.md](sketch/sketch-relations.md) | 1 | 22 | 0 | 0 | 0 |

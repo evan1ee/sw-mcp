@@ -1024,13 +1024,30 @@ def _expected_geometry_revolve(
         cut_sketch_raw = graph.nodes.get(cut_node.profile)
         if not isinstance(cut_sketch_raw, SketchNode):
             continue
-        cut_vol, cut_com, cut_cyls, _ = _compute_revolve_profile(
+        cut_vol, cut_com, cut_cyls, cut_bounds = _compute_revolve_profile(
             cut_sketch_raw, cut_node.axis, cut_node.angle, is_cut=True
         )
         total_volume -= cut_vol
         total_moment[0] -= cut_vol * cut_com.x
         total_moment[1] -= cut_vol * cut_com.y
         total_moment[2] -= cut_vol * cut_com.z
+
+        cut_r_max, cut_v_min, cut_v_max, _ = cut_bounds
+        cut_height = cut_v_max - cut_v_min
+        floor_r = cut_cyls[0].radius if cut_cyls else 0.0
+
+        total_area += (
+            2.0 * math.pi * floor_r * cut_height
+            - 2.0 * math.pi * cut_r_max * cut_height
+            + 2.0 * math.pi * (cut_r_max**2 - floor_r**2)
+        )
+
+        if (
+            cut_v_min > v_min + REVOLVE_RADIUS_TOL
+            and cut_v_max < v_max - REVOLVE_RADIUS_TOL
+            and base_cylinders
+        ):
+            cylinders.append(base_cylinders[0])
         cylinders.extend(cut_cyls)
 
     com_3d = Point3(

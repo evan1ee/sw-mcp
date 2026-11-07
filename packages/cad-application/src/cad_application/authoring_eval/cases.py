@@ -109,6 +109,17 @@ CASES: tuple[Case, ...] = (
         " and mirror it across the right plane.",
         Facts((10, 50, 100), 100 * 50 * 10 - 2 * _disc(10, 10), (10, 10)),
     ),
+    Case(
+        "turned_shaft",
+        "Turn a cylindrical shaft 30 mm diameter by 50 mm long revolving around a centerline.",
+        Facts((30, 30, 50), _disc(30, 50), (30,)),
+    ),
+    Case(
+        "grooved_shaft",
+        "Turn a shaft 30 mm diameter by 50 mm long and cut a 3 mm deep by 5 mm wide"
+        " circumferential groove revolving around its centerline.",
+        Facts((30, 30, 50), _disc(30, 50) - (_disc(30, 5) - _disc(24, 5)), (24, 30, 30)),
+    ),
     Case("refuse_fillet", "Make a 40 x 30 x 10 block and fillet all edges with 3 mm.", None),
     Case(
         "refuse_hole_in_side_face",

@@ -75,6 +75,39 @@ _NO_CLOSE: Final = frozenset(
 )
 
 
+def _resolve_axis_ref(axis: str, feature_ids: dict[str, str]) -> str:
+    if axis in feature_ids:
+        return feature_ids[axis]
+    if "." in axis:
+        prefix, suffix = axis.split(".", 1)
+        if prefix in feature_ids:
+            return f"{feature_ids[prefix]}.{suffix}"
+    return axis
+
+
+def _resolve_feature_create_refs(
+    resolved: dict[str, JsonValue], feature_ids: dict[str, str]
+) -> None:
+    profile = resolved.get("profile")
+    if isinstance(profile, str) and profile in feature_ids:
+        resolved["profile"] = feature_ids[profile]
+    seeds = resolved.get("seeds")
+    if isinstance(seeds, list):
+        resolved["seeds"] = [feature_ids.get(s, s) if isinstance(s, str) else s for s in seeds]
+    for d_key in ("direction_1", "direction_2"):
+        d_val = resolved.get(d_key)
+        if isinstance(d_val, dict):
+            dir_ref = d_val.get("direction")
+            if isinstance(dir_ref, str) and dir_ref in feature_ids:
+                resolved[d_key] = {**d_val, "direction": feature_ids[dir_ref]}
+    axis = resolved.get("axis")
+    if isinstance(axis, str):
+        resolved["axis"] = _resolve_axis_ref(axis, feature_ids)
+    plane = resolved.get("plane")
+    if isinstance(plane, str) and plane in feature_ids:
+        resolved["plane"] = feature_ids[plane]
+
+
 def resolve_node_refs(
     op_name: str, params: dict[str, JsonValue], feature_ids: dict[str, str]
 ) -> dict[str, JsonValue]:
@@ -86,28 +119,7 @@ def resolve_node_refs(
     """
     resolved = dict(params)
     if op_name == "feature.create":
-        profile = resolved.get("profile")
-        if isinstance(profile, str) and profile in feature_ids:
-            resolved["profile"] = feature_ids[profile]
-        seeds = resolved.get("seeds")
-        if isinstance(seeds, list):
-            resolved["seeds"] = [feature_ids.get(s, s) if isinstance(s, str) else s for s in seeds]
-        d1 = resolved.get("direction_1")
-        if isinstance(d1, dict):
-            dir_ref = d1.get("direction")
-            if isinstance(dir_ref, str) and dir_ref in feature_ids:
-                resolved["direction_1"] = {**d1, "direction": feature_ids[dir_ref]}
-        d2 = resolved.get("direction_2")
-        if isinstance(d2, dict):
-            dir_ref = d2.get("direction")
-            if isinstance(dir_ref, str) and dir_ref in feature_ids:
-                resolved["direction_2"] = {**d2, "direction": feature_ids[dir_ref]}
-        axis = resolved.get("axis")
-        if isinstance(axis, str) and axis in feature_ids:
-            resolved["axis"] = feature_ids[axis]
-        plane = resolved.get("plane")
-        if isinstance(plane, str) and plane in feature_ids:
-            resolved["plane"] = feature_ids[plane]
+        _resolve_feature_create_refs(resolved, feature_ids)
     elif op_name == "sketch.create":
         face = resolved.get("face")
         if isinstance(face, dict):

@@ -979,7 +979,10 @@
         "entities": {
           "r1": {
             "type": "center_rectangle",
-            "center": [0.0, 0.0],
+            "center": [
+              0.0,
+              0.0
+            ],
             "width": 100.0,
             "height": 60.0
           }
@@ -987,7 +990,9 @@
       },
       "extrude_base": {
         "type": "extrude",
-        "dependencies": ["sketch_base"],
+        "dependencies": [
+          "sketch_base"
+        ],
         "profile": "sketch_base",
         "end_condition": {
           "type": "blind",
@@ -1000,14 +1005,20 @@
         "entities": {
           "c1": {
             "type": "circle",
-            "center": [-30.0, 0.0],
+            "center": [
+              -30.0,
+              0.0
+            ],
             "diameter": 10.0
           }
         }
       },
       "cut_hole": {
         "type": "cut_extrude",
-        "dependencies": ["sketch_hole", "extrude_base"],
+        "dependencies": [
+          "sketch_hole",
+          "extrude_base"
+        ],
         "profile": "sketch_hole",
         "end_condition": {
           "type": "through_all_both"
@@ -1015,8 +1026,13 @@
       },
       "pattern_holes": {
         "type": "linear_pattern",
-        "dependencies": ["cut_hole", "extrude_base"],
-        "seeds": ["cut_hole"],
+        "dependencies": [
+          "cut_hole",
+          "extrude_base"
+        ],
+        "seeds": [
+          "cut_hole"
+        ],
         "direction_1": {
           "direction": "plane:right",
           "spacing": 20.0,
@@ -1038,14 +1054,19 @@
         "entities": {
           "c1": {
             "type": "circle",
-            "center": [0.0, 0.0],
+            "center": [
+              0.0,
+              0.0
+            ],
             "diameter": 100.0
           }
         }
       },
       "extrude_base": {
         "type": "extrude",
-        "dependencies": ["sketch_base"],
+        "dependencies": [
+          "sketch_base"
+        ],
         "profile": "sketch_base",
         "end_condition": {
           "type": "blind",
@@ -1058,14 +1079,20 @@
         "entities": {
           "c1": {
             "type": "circle",
-            "center": [0.0, 35.0],
+            "center": [
+              0.0,
+              35.0
+            ],
             "diameter": 8.0
           }
         }
       },
       "cut_hole": {
         "type": "cut_extrude",
-        "dependencies": ["sketch_hole", "extrude_base"],
+        "dependencies": [
+          "sketch_hole",
+          "extrude_base"
+        ],
         "profile": "sketch_hole",
         "end_condition": {
           "type": "through_all_both"
@@ -1073,8 +1100,13 @@
       },
       "pattern_holes": {
         "type": "circular_pattern",
-        "dependencies": ["cut_hole", "extrude_base"],
-        "seeds": ["cut_hole"],
+        "dependencies": [
+          "cut_hole",
+          "extrude_base"
+        ],
+        "seeds": [
+          "cut_hole"
+        ],
         "axis": "plane:front",
         "count": 6,
         "spacing": 360.0,
@@ -1093,15 +1125,57 @@
         "type": "sketch",
         "plane": "plane:front",
         "entities": {
-          "l1": {"type": "line", "start": [-50.0, -25.0], "end": [50.0, -25.0]},
-          "l2": {"type": "line", "start": [50.0, -25.0], "end": [50.0, 25.0]},
-          "l3": {"type": "line", "start": [50.0, 25.0], "end": [-50.0, 25.0]},
-          "l4": {"type": "line", "start": [-50.0, 25.0], "end": [-50.0, -25.0]}
+          "l1": {
+            "type": "line",
+            "start": [
+              -50.0,
+              -25.0
+            ],
+            "end": [
+              50.0,
+              -25.0
+            ]
+          },
+          "l2": {
+            "type": "line",
+            "start": [
+              50.0,
+              -25.0
+            ],
+            "end": [
+              50.0,
+              25.0
+            ]
+          },
+          "l3": {
+            "type": "line",
+            "start": [
+              50.0,
+              25.0
+            ],
+            "end": [
+              -50.0,
+              25.0
+            ]
+          },
+          "l4": {
+            "type": "line",
+            "start": [
+              -50.0,
+              25.0
+            ],
+            "end": [
+              -50.0,
+              -25.0
+            ]
+          }
         }
       },
       "extrude_base": {
         "type": "extrude",
-        "dependencies": ["sketch_base"],
+        "dependencies": [
+          "sketch_base"
+        ],
         "profile": "sketch_base",
         "end_condition": {
           "type": "blind",
@@ -1114,14 +1188,20 @@
         "entities": {
           "c1": {
             "type": "circle",
-            "center": [25.0, 0.0],
+            "center": [
+              25.0,
+              0.0
+            ],
             "diameter": 10.0
           }
         }
       },
       "cut_hole": {
         "type": "cut_extrude",
-        "dependencies": ["sketch_hole", "extrude_base"],
+        "dependencies": [
+          "sketch_hole",
+          "extrude_base"
+        ],
         "profile": "sketch_hole",
         "end_condition": {
           "type": "through_all_both"
@@ -1129,10 +1209,247 @@
       },
       "mirror_hole": {
         "type": "mirror",
-        "dependencies": ["cut_hole", "extrude_base"],
-        "seeds": ["cut_hole"],
+        "dependencies": [
+          "cut_hole",
+          "extrude_base"
+        ],
+        "seeds": [
+          "cut_hole"
+        ],
         "plane": "plane:right",
         "merge": true
+      }
+    }
+  },
+  "turned_shaft": {
+    "module": "part",
+    "id": "turned_shaft",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_shaft": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "cl": {
+            "type": "line",
+            "start": [
+              0.0,
+              0.0
+            ],
+            "end": [
+              0.0,
+              50.0
+            ],
+            "construction": true
+          },
+          "l1": {
+            "type": "line",
+            "start": [
+              0.0,
+              0.0
+            ],
+            "end": [
+              15.0,
+              0.0
+            ]
+          },
+          "l2": {
+            "type": "line",
+            "start": [
+              15.0,
+              0.0
+            ],
+            "end": [
+              15.0,
+              50.0
+            ]
+          },
+          "l3": {
+            "type": "line",
+            "start": [
+              15.0,
+              50.0
+            ],
+            "end": [
+              0.0,
+              50.0
+            ]
+          },
+          "l4": {
+            "type": "line",
+            "start": [
+              0.0,
+              50.0
+            ],
+            "end": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "shaft_body": {
+        "type": "revolve",
+        "dependencies": [
+          "sketch_shaft"
+        ],
+        "profile": "sketch_shaft",
+        "axis": "sketch_shaft.cl",
+        "angle": 360.0
+      }
+    }
+  },
+  "grooved_shaft": {
+    "module": "part",
+    "id": "grooved_shaft",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_shaft": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "cl": {
+            "type": "line",
+            "start": [
+              0.0,
+              0.0
+            ],
+            "end": [
+              0.0,
+              50.0
+            ],
+            "construction": true
+          },
+          "l1": {
+            "type": "line",
+            "start": [
+              0.0,
+              0.0
+            ],
+            "end": [
+              15.0,
+              0.0
+            ]
+          },
+          "l2": {
+            "type": "line",
+            "start": [
+              15.0,
+              0.0
+            ],
+            "end": [
+              15.0,
+              50.0
+            ]
+          },
+          "l3": {
+            "type": "line",
+            "start": [
+              15.0,
+              50.0
+            ],
+            "end": [
+              0.0,
+              50.0
+            ]
+          },
+          "l4": {
+            "type": "line",
+            "start": [
+              0.0,
+              50.0
+            ],
+            "end": [
+              0.0,
+              0.0
+            ]
+          }
+        }
+      },
+      "shaft_body": {
+        "type": "revolve",
+        "dependencies": [
+          "sketch_shaft"
+        ],
+        "profile": "sketch_shaft",
+        "axis": "sketch_shaft.cl",
+        "angle": 360.0
+      },
+      "sketch_groove": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "cl": {
+            "type": "line",
+            "start": [
+              0.0,
+              0.0
+            ],
+            "end": [
+              0.0,
+              50.0
+            ],
+            "construction": true
+          },
+          "g1": {
+            "type": "line",
+            "start": [
+              12.0,
+              20.0
+            ],
+            "end": [
+              15.0,
+              20.0
+            ]
+          },
+          "g2": {
+            "type": "line",
+            "start": [
+              15.0,
+              20.0
+            ],
+            "end": [
+              15.0,
+              25.0
+            ]
+          },
+          "g3": {
+            "type": "line",
+            "start": [
+              15.0,
+              25.0
+            ],
+            "end": [
+              12.0,
+              25.0
+            ]
+          },
+          "g4": {
+            "type": "line",
+            "start": [
+              12.0,
+              25.0
+            ],
+            "end": [
+              12.0,
+              20.0
+            ]
+          }
+        }
+      },
+      "cut_groove": {
+        "type": "cut_revolve",
+        "dependencies": [
+          "sketch_groove",
+          "shaft_body"
+        ],
+        "profile": "sketch_groove",
+        "axis": "sketch_groove.cl",
+        "angle": 360.0
       }
     }
   }

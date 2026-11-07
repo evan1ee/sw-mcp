@@ -312,6 +312,99 @@ def _mirror_hole_plate() -> dict[str, Any]:
     }
 
 
+def _turned_shaft() -> dict[str, Any]:
+    return {
+        "module": "part",
+        "id": "turned_shaft",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_shaft": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "cl": {
+                        "type": "line",
+                        "start": [0.0, 0.0],
+                        "end": [0.0, 50.0],
+                        "construction": True,
+                    },
+                    "l1": {"type": "line", "start": [0.0, 0.0], "end": [15.0, 0.0]},
+                    "l2": {"type": "line", "start": [15.0, 0.0], "end": [15.0, 50.0]},
+                    "l3": {"type": "line", "start": [15.0, 50.0], "end": [0.0, 50.0]},
+                    "l4": {"type": "line", "start": [0.0, 50.0], "end": [0.0, 0.0]},
+                },
+            },
+            "shaft_body": {
+                "type": "revolve",
+                "dependencies": ["sketch_shaft"],
+                "profile": "sketch_shaft",
+                "axis": "sketch_shaft.cl",
+                "angle": 360.0,
+            },
+        },
+    }
+
+
+def _grooved_shaft() -> dict[str, Any]:
+    return {
+        "module": "part",
+        "id": "grooved_shaft",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_shaft": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "cl": {
+                        "type": "line",
+                        "start": [0.0, 0.0],
+                        "end": [0.0, 50.0],
+                        "construction": True,
+                    },
+                    "l1": {"type": "line", "start": [0.0, 0.0], "end": [15.0, 0.0]},
+                    "l2": {"type": "line", "start": [15.0, 0.0], "end": [15.0, 50.0]},
+                    "l3": {"type": "line", "start": [15.0, 50.0], "end": [0.0, 50.0]},
+                    "l4": {"type": "line", "start": [0.0, 50.0], "end": [0.0, 0.0]},
+                },
+            },
+            "shaft_body": {
+                "type": "revolve",
+                "dependencies": ["sketch_shaft"],
+                "profile": "sketch_shaft",
+                "axis": "sketch_shaft.cl",
+                "angle": 360.0,
+            },
+            "sketch_groove": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "cl": {
+                        "type": "line",
+                        "start": [0.0, 0.0],
+                        "end": [0.0, 50.0],
+                        "construction": True,
+                    },
+                    "g1": {"type": "line", "start": [12.0, 20.0], "end": [15.0, 20.0]},
+                    "g2": {"type": "line", "start": [15.0, 20.0], "end": [15.0, 25.0]},
+                    "g3": {"type": "line", "start": [15.0, 25.0], "end": [12.0, 25.0]},
+                    "g4": {"type": "line", "start": [12.0, 25.0], "end": [12.0, 20.0]},
+                },
+            },
+            "cut_groove": {
+                "type": "cut_revolve",
+                "dependencies": ["sketch_groove", "shaft_body"],
+                "profile": "sketch_groove",
+                "axis": "sketch_groove.cl",
+                "angle": 360.0,
+            },
+        },
+    }
+
+
 # A None answer is a refusal.
 REFERENCE_ANSWERS: dict[str, dict[str, Any] | None] = {
     "block": part("block", _lines(_rect(40, 30)), 10),
@@ -334,6 +427,8 @@ REFERENCE_ANSWERS: dict[str, dict[str, Any] | None] = {
     "plate_pattern_holes": _pattern_holes_plate(),
     "round_flange_pattern_holes": _circular_pattern_flange(),
     "plate_mirror_hole": _mirror_hole_plate(),
+    "turned_shaft": _turned_shaft(),
+    "grooved_shaft": _grooved_shaft(),
     "refuse_fillet": None,
     "refuse_hole_in_side_face": None,
     "refuse_assembly": None,

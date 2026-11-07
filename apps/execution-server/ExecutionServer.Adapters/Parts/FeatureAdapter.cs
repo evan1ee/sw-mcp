@@ -281,6 +281,43 @@ public sealed class FeatureAdapter
                         throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, $"Unsupported end condition type '{endType}' for cut_extrude.");
                     }
                 }
+                else if (p.Type == FeatureCreateParamsType.Revolve || p.Type == FeatureCreateParamsType.CutRevolve)
+                {
+                    SelectRevolveAxis(doc, profileFeature, p.Axis, scope);
+
+                    bool isCut = p.Type == FeatureCreateParamsType.CutRevolve;
+                    bool midPlane = p.MidPlane ?? false;
+                    int dir1Type = midPlane
+                        ? (int)swEndConditions_e.swEndCondMidPlane
+                        : (int)swEndConditions_e.swEndCondBlind;
+                    double angleDeg = p.Angle ?? 360.0;
+                    double dir1Angle = angleDeg * Math.PI / 180.0;
+                    bool reverseDir = p.Reverse ?? false;
+                    bool merge = isCut || (p.Merge ?? true);
+
+                    createdFeature = scope.Track((IFeature?)doc.FeatureManager.FeatureRevolve2(
+                        true,        // SingleDir
+                        true,        // IsSolid
+                        false,       // IsThin
+                        isCut,       // IsCut
+                        reverseDir,  // ReverseDir
+                        false,       // BothDirectionUpToSameEntity
+                        dir1Type,    // Dir1Type
+                        0,           // Dir2Type
+                        dir1Angle,   // Dir1Angle
+                        0.0,         // Dir2Angle
+                        false,       // OffsetReverse1
+                        false,       // OffsetReverse2
+                        0.0,         // OffsetDistance1
+                        0.0,         // OffsetDistance2
+                        0,           // ThinType
+                        0.0,         // ThinThickness1
+                        0.0,         // ThinThickness2
+                        merge,       // Merge
+                        true,        // UseFeatScope
+                        true         // UseAutoSelect
+                    ));
+                }
                 else
                 {
                     throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, $"Unsupported feature type '{p.Type}'.");
@@ -296,6 +333,8 @@ public sealed class FeatureAdapter
                 FeatureCreateParamsType.LinearPattern => "CreateFeature(ILinearPatternFeatureData)",
                 FeatureCreateParamsType.CircularPattern => "CreateFeature(ICircularPatternFeatureData)",
                 FeatureCreateParamsType.Mirror => "InsertMirrorFeature2",
+                FeatureCreateParamsType.Revolve => "FeatureRevolve2",
+                FeatureCreateParamsType.CutRevolve => "FeatureRevolve2",
                 _ => "Unknown"
             };
             var details = new JObject
@@ -321,6 +360,8 @@ public sealed class FeatureAdapter
                 FeatureCreateParamsType.LinearPattern => "CreateFeature(ILinearPatternFeatureData)",
                 FeatureCreateParamsType.CircularPattern => "CreateFeature(ICircularPatternFeatureData)",
                 FeatureCreateParamsType.Mirror => "InsertMirrorFeature2",
+                FeatureCreateParamsType.Revolve => "FeatureRevolve2",
+                FeatureCreateParamsType.CutRevolve => "FeatureRevolve2",
                 _ => "Unknown"
             };
             var details = new JObject
@@ -405,6 +446,8 @@ public sealed class FeatureAdapter
             FeatureCreateParamsType.LinearPattern => "linear_pattern",
             FeatureCreateParamsType.CircularPattern => "circular_pattern",
             FeatureCreateParamsType.Mirror => "mirror",
+            FeatureCreateParamsType.Revolve => "revolve",
+            FeatureCreateParamsType.CutRevolve => "cut_revolve",
             _ => "unknown"
         };
 
@@ -470,6 +513,65 @@ public sealed class FeatureAdapter
         }
 
         return FindDirectionEdge(doc, targetDir, scope);
+    }
+
+    private static void SelectRevolveAxis(IModelDoc2 doc, IFeature profileFeature, string? axisRef, ComScope scope)
+    {
+        // 1. If axisRef refers to a sketch entity (e.g. "sketch.cl" or matching profile), look for centerline in sketch
+        IFeature? targetSketchFeature = profileFeature;
+        if (axisRef != null && axisRef.Contains("."))
+        {
+            var parts = axisRef.Split('.');
+            var resolvedFeature = FeatureLookup.FindById(doc, parts[0], scope);
+            if (resolvedFeature != null)
+            {
+                targetSketchFeature = resolvedFeature;
+            }
+        }
+
+        // Try finding a centerline in targetSketchFeature
+        if (targetSketchFeature != null)
+        {
+            var sketch = scope.Track((ISketch?)targetSketchFeature.GetSpecificFeature2());
+            if (sketch != null)
+            {
+                var segs = (object[]?)sketch.GetSketchSegments();
+                if (segs != null)
+                {
+                    foreach (object segObj in segs)
+                    {
+                        var seg = scope.Track((ISketchSegment?)segObj);
+                        if (seg != null && seg.ConstructionGeometry)
+                        {
+                            seg.Select2(true, 4);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. If axisRef is provided and not resolved to a sketch centerline, try resolving via ResolveCircularPatternAxisEntity
+        if (axisRef != null)
+        {
+            try
+            {
+                var axisEntity = ResolveCircularPatternAxisEntity(doc, axisRef, scope);
+                var selMgr = (ISelectionMgr)doc.SelectionManager;
+                var selData = scope.Track((SelectData?)selMgr.CreateSelectData());
+                if (selData != null) selData.Mark = 4;
+                axisEntity.Select4(true, selData);
+                return;
+            }
+            catch
+            {
+                // Fall through to error
+            }
+        }
+
+        throw new IpcException(
+            ErrorCodes.IR_REFERENCE_UNRESOLVED,
+            $"Could not resolve revolution axis for profile '{profileFeature.Name}' and axis reference '{axisRef}'.");
     }
 
     private static IEntity ResolveCircularPatternAxisEntity(IModelDoc2 doc, string axisRef, ComScope scope)

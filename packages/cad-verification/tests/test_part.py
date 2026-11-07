@@ -38,7 +38,7 @@ EXPECTED_PATTERN_CYLINDERS = 4
 EXPECTED_PATTERN_FEATURES = 5
 EXPECTED_MIRROR_CYLINDERS = 2
 EXPECTED_REVOLVE_FEATURES = 2
-EXPECTED_GROOVE_CYLINDERS = 2
+EXPECTED_GROOVE_CYLINDERS = 3
 EXPECTED_GROOVE_FEATURES = 4
 
 
@@ -1353,11 +1353,13 @@ def test_expected_geometry_revolve_groove() -> None:
     expected_vol = 10845.0 * math.pi
     assert geom.volume_mm3 == pytest.approx(expected_vol, rel=1e-4)
 
-    # 2 cylinders: outer (15.0) and inner groove floor (12.0)
+    # 3 cylinders: 2 outer (15.0) and inner groove floor (12.0)
     assert len(geom.cylinders) == EXPECTED_GROOVE_CYLINDERS
     radii = sorted([c.radius for c in geom.cylinders])
     assert radii[0] == pytest.approx(12.0, abs=1e-3)
     assert radii[1] == pytest.approx(15.0, abs=1e-3)
+    assert radii[2] == pytest.approx(15.0, abs=1e-3)
+    assert geom.surface_area_mm2 == pytest.approx(2082.0 * math.pi, rel=1e-4)
 
     assert len(geom.features) == EXPECTED_GROOVE_FEATURES
     assert geom.features[3].feature_type == "cut_revolve"

@@ -16,7 +16,7 @@ from tests.integration.test_plan_job import PLATE_FIXTURE, PartRig
 
 TARGET = "C:\\Work\\plate.SLDPRT"
 MAX_WIN_PATH = 260
-EXPECTED_MVP_TYPES = 6
+EXPECTED_MVP_TYPES = 8
 
 
 def _plate_graph() -> dict[str, JsonValue]:
@@ -238,6 +238,8 @@ def test_list_types() -> None:
         "linear_pattern",
         "circular_pattern",
         "mirror",
+        "revolve",
+        "cut_revolve",
     ]
 
 

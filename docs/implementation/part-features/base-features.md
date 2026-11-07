@@ -100,21 +100,21 @@ Adds material by revolving a profile about an axis. IR type `revolve`.
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BF-REV-001` | Profile from a sketch | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Tier 1 |
-| `BF-REV-002` | Axis: sketch centerline | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 `axis`; mark 4 or 16 ◐ |
+| `BF-REV-001` | Profile from a sketch | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Tier 1; `test_live_revolve_shaft` |
+| `BF-REV-002` | Axis: sketch centerline | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 22.5.2 `axis`; mark 4; `test_live_revolve_shaft` |
 | `BF-REV-003` | Axis: sketch line | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `BF-REV-004` | Axis: model edge | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Needs edge references (K28); not named in the spec |
-| `BF-REV-005` | Axis: reference axis | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.3.4 `axis` role |
+| `BF-REV-005` | Axis: reference axis | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 22.3.4 `axis` role; `test_expected_geometry_revolve_shaft` |
 | `BF-REV-006` | Selected contours | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
 ### Angle and direction
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BF-REV-007` | Blind angle (0 to 360) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | `angle` |
-| `BF-REV-008` | Full 360 degrees | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 `angle` up to 360 |
-| `BF-REV-009` | Mid Plane | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | `mid_plane` |
-| `BF-REV-010` | Reverse direction | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | `reverse` |
+| `BF-REV-007` | Blind angle (0 to 360) | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `angle`; `test_expected_geometry_revolve_shaft` |
+| `BF-REV-008` | Full 360 degrees | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 22.5.2 `angle` up to 360; `test_live_revolve_shaft` |
+| `BF-REV-009` | Mid Plane | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `mid_plane`; `test_expected_geometry_revolve_shaft` |
+| `BF-REV-010` | Reverse direction | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `reverse`; `test_expected_geometry_revolve_shaft` |
 | `BF-REV-011` | Two directions (direction 2 angle) | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not in 22.5.2 |
 | `BF-REV-012` | Up To Vertex / Surface / Body | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Mark 32 ◐; not in 22.5.2 |
 
@@ -123,7 +123,7 @@ Adds material by revolving a profile about an axis. IR type `revolve`.
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `BF-REV-013` | Thin feature | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 `thin`; options defined in [`SHP-THN`](shape-modification.md#shp-thn--thin-feature-shared-object), this row tracks only this feature's support |
-| `BF-REV-014` | Merge result | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | `merge_result` |
+| `BF-REV-014` | Merge result | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `merge_result`; `test_live_revolve_shaft` |
 | `BF-REV-015` | `faces_by_axial_order` role | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `BF-REV-016` | `body` role | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 

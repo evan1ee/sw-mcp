@@ -103,10 +103,10 @@ Removes material by revolving a profile. IR type `cut_revolve`.
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `CF-REV-001` | Profile and axis | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | See [`BF-REV`](base-features.md#bf-rev--revolved-bossbase) axis kinds |
-| `CF-REV-002` | Blind angle / full 360 | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
-| `CF-REV-003` | Mid Plane | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
-| `CF-REV-004` | Reverse direction | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
+| `CF-REV-001` | Profile and axis | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `test_live_revolve_groove`; `test_live_direct_revolve_ops` |
+| `CF-REV-002` | Blind angle / full 360 | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 22.5.2; `test_live_revolve_groove` |
+| `CF-REV-003` | Mid Plane | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 22.5.2; `test_expected_geometry_revolve_groove` |
+| `CF-REV-004` | Reverse direction | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 22.5.2; `test_expected_geometry_revolve_groove` |
 | `CF-REV-005` | Thin feature | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 `thin`; options defined in [`SHP-THN`](shape-modification.md#shp-thn--thin-feature-shared-object), this row tracks only this feature's support |
 | `CF-REV-006` | Selected contours | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
