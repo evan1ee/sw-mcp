@@ -40,13 +40,18 @@ _RULES: Final[tuple[str, ...]] = (
     " `direction_2`): `direction` is an origin plane (e.g. `plane:right`), `spacing` >= 0.01 mm,"
     " `count` >= 2. Seeds must be in `dependencies` and all instances must remain strictly"
     " inside the extrude profile.",
+    "A `circular_pattern` patterns seed `cut_extrude` features around an `axis`: `axis` is a"
+    " coordinate axis (`x`, `y`, `z`), an origin plane (`plane:front`, `plane:top`, `plane:right`),"
+    " or a cylindrical feature id; `spacing` > 0 degrees (total angle when `equal_spacing` is"
+    " true), `count` >= 2. Seeds must be in `dependencies` and all patterned instances must"
+    " remain strictly inside the extrude profile.",
 )
 
 _UNSUPPORTED: Final[tuple[str, ...]] = (
     "fillets and chamfers",
     "splines, ellipses, text, and any outline that is not a closed loop of straight lines and"
     " arcs, a rectangle, a straight slot, or a single circle",
-    "circular patterns, mirror patterns (linear pattern is supported); only write out shapes"
+    "mirror patterns (linear pattern and circular pattern are supported); only write out shapes"
     " the user lists",
     "revolves, sweeps, lofts, shells, ribs, threads, sheet metal",
     "sketches on any face other than the extrude's start_face or end_face (side faces, faces"
@@ -274,6 +279,58 @@ def _build_examples() -> dict[str, Example]:
                             "spacing": 20.0,
                             "count": 4,
                         },
+                    },
+                },
+            ),
+        ),
+        "round_flange_pattern_holes": Example(
+            "Make a round flange 100 mm diameter and 12 mm thick with 6 holes of 8 mm diameter"
+            " circularly patterned around the center on a 70 mm bolt circle.",
+            _header(
+                "round_flange",
+                {
+                    "sketch_base": {
+                        "type": "sketch",
+                        "plane": "plane:front",
+                        "entities": {
+                            "c1": {
+                                "type": "circle",
+                                "center": [0.0, 0.0],
+                                "diameter": 100.0,
+                            }
+                        },
+                    },
+                    "extrude_base": {
+                        "type": "extrude",
+                        "dependencies": ["sketch_base"],
+                        "profile": "sketch_base",
+                        "end_condition": {"type": "blind", "depth": 12.0},
+                    },
+                    "sketch_hole": {
+                        "type": "sketch",
+                        "plane": "plane:front",
+                        "entities": {
+                            "c1": {
+                                "type": "circle",
+                                "center": [0.0, 35.0],
+                                "diameter": 8.0,
+                            }
+                        },
+                    },
+                    "cut_hole": {
+                        "type": "cut_extrude",
+                        "dependencies": ["sketch_hole", "extrude_base"],
+                        "profile": "sketch_hole",
+                        "end_condition": {"type": "through_all_both"},
+                    },
+                    "pattern_holes": {
+                        "type": "circular_pattern",
+                        "dependencies": ["cut_hole", "extrude_base"],
+                        "seeds": ["cut_hole"],
+                        "axis": "plane:front",
+                        "count": 6,
+                        "spacing": 360.0,
+                        "equal_spacing": True,
                     },
                 },
             ),

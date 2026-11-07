@@ -205,6 +205,61 @@ def _pattern_holes_plate() -> dict[str, Any]:
     }
 
 
+def _circular_pattern_flange() -> dict[str, Any]:
+    return {
+        "module": "part",
+        "id": "round_flange",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "c1": {
+                        "type": "circle",
+                        "center": [0.0, 0.0],
+                        "diameter": 100.0,
+                    }
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 12.0},
+            },
+            "sketch_hole": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "c1": {
+                        "type": "circle",
+                        "center": [0.0, 35.0],
+                        "diameter": 8.0,
+                    }
+                },
+            },
+            "cut_hole": {
+                "type": "cut_extrude",
+                "dependencies": ["sketch_hole", "extrude_base"],
+                "profile": "sketch_hole",
+                "end_condition": {"type": "through_all_both"},
+            },
+            "pattern_holes": {
+                "type": "circular_pattern",
+                "dependencies": ["cut_hole", "extrude_base"],
+                "seeds": ["cut_hole"],
+                "axis": "plane:front",
+                "count": 6,
+                "spacing": 360.0,
+                "equal_spacing": True,
+            },
+        },
+    }
+
+
 # A None answer is a refusal.
 REFERENCE_ANSWERS: dict[str, dict[str, Any] | None] = {
     "block": part("block", _lines(_rect(40, 30)), 10),
@@ -225,6 +280,7 @@ REFERENCE_ANSWERS: dict[str, dict[str, Any] | None] = {
     "plate_slot": part("plate_slot", _slot(60, 20), 10),
     "plate_rectangles": _rectangles_plate(),
     "plate_pattern_holes": _pattern_holes_plate(),
+    "round_flange_pattern_holes": _circular_pattern_flange(),
     "refuse_fillet": None,
     "refuse_hole_in_side_face": None,
     "refuse_assembly": None,

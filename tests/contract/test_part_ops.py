@@ -1,7 +1,7 @@
 """Contract tests for part operations, part.measure, and ErrorCode catalogue."""
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from cad_ir.core.schema_validation import validate_against_schema
 from cad_ir.generated import ErrorCode
@@ -202,10 +202,9 @@ def test_feature_create_status_is_constrained() -> None:
 
 
 def test_feature_create_params_no_longer_carry_a_direction() -> None:
-    feature_create = SCHEMAS[FEATURE_CREATE_ID]
-    assert isinstance(feature_create, dict)
-    params = feature_create["$defs"]["Params"]
-    assert "dir" not in params["properties"]
+    feature_create = cast(dict[str, Any], SCHEMAS[FEATURE_CREATE_ID])
+    params = cast(dict[str, Any], cast(dict[str, Any], feature_create["$defs"])["Params"])
+    assert "dir" not in cast(dict[str, Any], params["properties"])
 
 
 def test_document_rebuild_separates_the_native_return_from_observed_state() -> None:

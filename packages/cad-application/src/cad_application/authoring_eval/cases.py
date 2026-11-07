@@ -97,6 +97,12 @@ CASES: tuple[Case, ...] = (
         " 20 mm spacing.",
         Facts((10, 60, 100), 100 * 60 * 10 - 4 * _disc(10, 10), (10, 10, 10, 10)),
     ),
+    Case(
+        "round_flange_pattern_holes",
+        "Make a round flange 100 mm diameter and 12 mm thick with 6 holes of 8 mm diameter"
+        " circularly patterned around the center on a 70 mm bolt circle.",
+        Facts((12, 100, 100), _disc(100, 12) - 6 * _disc(8, 12), (8, 8, 8, 8, 8, 8, 100)),
+    ),
     Case("refuse_fillet", "Make a 40 x 30 x 10 block and fillet all edges with 3 mm.", None),
     Case(
         "refuse_hole_in_side_face",

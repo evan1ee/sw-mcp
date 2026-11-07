@@ -1024,5 +1024,62 @@
         }
       }
     }
+  },
+  "round_flange_pattern_holes": {
+    "module": "part",
+    "id": "round_flange",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_base": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "c1": {
+            "type": "circle",
+            "center": [0.0, 0.0],
+            "diameter": 100.0
+          }
+        }
+      },
+      "extrude_base": {
+        "type": "extrude",
+        "dependencies": ["sketch_base"],
+        "profile": "sketch_base",
+        "end_condition": {
+          "type": "blind",
+          "depth": 12.0
+        }
+      },
+      "sketch_hole": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "c1": {
+            "type": "circle",
+            "center": [0.0, 35.0],
+            "diameter": 8.0
+          }
+        }
+      },
+      "cut_hole": {
+        "type": "cut_extrude",
+        "dependencies": ["sketch_hole", "extrude_base"],
+        "profile": "sketch_hole",
+        "end_condition": {
+          "type": "through_all_both"
+        }
+      },
+      "pattern_holes": {
+        "type": "circular_pattern",
+        "dependencies": ["cut_hole", "extrude_base"],
+        "seeds": ["cut_hole"],
+        "axis": "plane:front",
+        "count": 6,
+        "spacing": 360.0,
+        "equal_spacing": true
+      }
+    }
   }
 }
