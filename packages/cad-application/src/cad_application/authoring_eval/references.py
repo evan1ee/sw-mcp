@@ -30,25 +30,14 @@ def _rect(width: float, height: float) -> list[Point]:
 
 
 def _slot(length: float, width: float) -> dict[str, Any]:
-    r = width / 2.0
     half_l = (length - width) / 2.0
     return {
-        "l1": {"type": "line", "start": [-half_l, -r], "end": [half_l, -r]},
-        "a1": {
-            "type": "arc",
-            "center": [half_l, 0.0],
-            "start": [half_l, -r],
-            "end": [half_l, r],
-            "direction": "ccw",
-        },
-        "l2": {"type": "line", "start": [half_l, r], "end": [-half_l, r]},
-        "a2": {
-            "type": "arc",
-            "center": [-half_l, 0.0],
-            "start": [-half_l, r],
-            "end": [-half_l, -r],
-            "direction": "ccw",
-        },
+        "s1": {
+            "type": "straight_slot",
+            "start_point": [-half_l, 0.0],
+            "end_point": [half_l, 0.0],
+            "width": width,
+        }
     }
 
 
