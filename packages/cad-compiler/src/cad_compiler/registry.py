@@ -23,6 +23,8 @@ _REGISTRY: Final[Mapping[str, FeatureTypeInfo]] = MappingProxyType(
         "linear_pattern": FeatureTypeInfo(name="linear_pattern", is_solid=True),
         "circular_pattern": FeatureTypeInfo(name="circular_pattern", is_solid=True),
         "mirror": FeatureTypeInfo(name="mirror", is_solid=True),
+        "revolve": FeatureTypeInfo(name="revolve", is_solid=True),
+        "cut_revolve": FeatureTypeInfo(name="cut_revolve", is_solid=True),
     }
 )
 

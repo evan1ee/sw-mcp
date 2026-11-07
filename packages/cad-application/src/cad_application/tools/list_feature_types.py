@@ -15,6 +15,8 @@ MVP_TYPES: Final[tuple[tuple[str, str], ...]] = (
     ("linear_pattern", "Linear pattern of seed cut features along 1 or 2 directions."),
     ("circular_pattern", "Circular pattern of seed cut features around an axis."),
     ("mirror", "Mirror pattern of solid or cut features across a plane or planar face."),
+    ("revolve", "Revolved boss feature from a closed sketch profile around an axis."),
+    ("cut_revolve", "Revolved cut feature removing material around an axis."),
 )
 
 

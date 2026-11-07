@@ -13,8 +13,8 @@ Geometry primitives allowed in a sketch. Schema: [v0.json](../../../schemas/part
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `SK-ENT-001` | Line (start, end) | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Plate outline; `test_plate_end_to_end` |
-| `SK-ENT-002` | Construction flag (`construction: true`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.4 `construction`; not in schema |
-| `SK-ENT-003` | Centerline (construction line) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | `CreateCenterLine` ◐ |
+| `SK-ENT-002` | Construction flag (`construction: true`) | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ADR-077; Line.construction; `test_live_revolve_shaft` |
+| `SK-ENT-003` | Centerline (construction line) | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `CreateCenterLine`; ADR-077; `test_live_direct_revolve_ops` |
 
 ### Rectangles and polygons
 

@@ -1,39 +1,40 @@
 # Handoff
 
-Last updated: 2026-11-07 (branch `feat/mirror-feature`, spec v1.45).
+Last updated: 2026-11-07 (branch `feat/revolve-features`, spec v1.46).
 > **Handoff Rule ([AGENTS.md §5](AGENTS.md#5-session-handoff)):** Keep this file as short as possible. Rewrite in place — **never** append an incremental history (`git log` and [`CHANGELOG.md`](docs/specifications/CHANGELOG.md) record history). Keep only the current state snapshot, the latest session's **Changes Made**, prioritized **Next Steps**, and active **Known Issues**, linking to `docs/` instead of repeating details.
 
 ## Current State
 
 - **Active Focus — 3D Part Chain ([ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md), [Roadmap §18](docs/specifications/roadmap.md#current-focus-the-part-chain-adr-057)):**
-  - **Mirror Feature (`PAT-MIR-001`..`PAT-MIR-004`) Complete:** Mirror feature implemented end-to-end (Spec v1.45, [ADR-076](docs/adr/ADR-076-mirror-feature.md)) with pure core IR lowering, closed-form planar reflection verification geometry, C# add-in adapters with Mark 1 seed selection and Mark 2 plane selection, node ID reference resolution, authoring guide rules, and benchmark fixture (`plate_mirror_hole`). Verified live against SOLIDWORKS 2025 (`test_live_mirror_plate`, `test_live_direct_mirror_ops`) and promoted to `Verified`.
-  - **Agent IR Authoring:** `get_authoring_guide` MCP tool + 18-case benchmark in [`tests/cad-benchmark/`](tests/cad-benchmark/test_part_ir_benchmark.py) (`18/18` passing with `plate_mirror_hole`, 15 positive builds, 3 refusals).
+  - **Revolved Features & Centerline Construction Geometry (`BF-REV-001`..`016`, `CF-REV-001`..`006`, `SK-ENT-002`, `SK-ENT-003`) Complete:** Revolved boss and cut features implemented end-to-end (Spec v1.46, [ADR-077](docs/adr/ADR-077-revolve-features.md)) with pure core IR lowering, Pappus's centroid theorem and circumferential groove split-cylinder verification geometry, C# add-in adapters with Mark 0 profile and Mark 4 revolution axis selection via centerline segments, sketch centerline creation (`Line.construction`), authoring guide rules, and benchmark fixtures (`turned_shaft`, `grooved_shaft`). Verified live against SOLIDWORKS 2025 (`test_live_revolve_shaft`, `test_live_revolve_groove`, `test_live_direct_revolve_ops`) and promoted to `Verified`.
+  - **Agent IR Authoring:** `get_authoring_guide` MCP tool + 20-case benchmark in [`tests/cad-benchmark/`](tests/cad-benchmark/test_part_ir_benchmark.py) (`20/20` passing with `turned_shaft` and `grooved_shaft`, 17 positive builds, 3 refusals).
 - **2D Drawings — Frozen at `eea9389` ([ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md), [freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)):**
   - Do not modify `packages/cad-drawing`, `standards/iso`, `drawing-*` schemas, or `tests/drawing-benchmark` until the owner lifts the freeze.
-- **Verification Baseline (2026-11-07 on `feat/mirror-feature`):**
+- **Verification Baseline (2026-11-07 on `feat/revolve-features`):**
   - Contracts (`generate_contracts.py --check`), `ruff check`, `ruff format --check`, `pyright`, `lint-imports`: **0 errors/drift**.
-  - Implementation checklists audit (`check_implementation_checklists.py`): **587 items, 71 capabilities, 0 problems** (`patterns-mirrors.md` has 12 verified items; total verified items = 62).
-  - Python tests (`pytest --ignore=tests/drawing-benchmark`): **3,541 passed, 48 deselected**.
-  - Live SOLIDWORKS 2025 tests (`pytest tests/live -m live`): **41 passed, 7 skipped cleanly** (including `test_live_mirror_plate`, `test_live_direct_mirror_ops`).
-  - C# tests (`dotnet test apps/execution-server`): **355 passed**; `dotnet build -c Release` & `-c Debug`: **0 warnings/errors**.
-  - Prompt-to-IR benchmark (`scripts/score_part_ir.py`): **18/18 passed**.
+  - Implementation checklists audit (`check_implementation_checklists.py`): **587 items, 71 capabilities, 0 problems** (76 verified items; `base-features.md`, `cut-features.md`, and `sketch-entities.md` updated).
+  - Python tests (`pytest --ignore=tests/drawing-benchmark`): **3,556 passed, 51 deselected**.
+  - Live SOLIDWORKS 2025 tests (`pytest tests/live -m live`): **32 passed, 1 skipped cleanly** (including `test_live_revolve_shaft`, `test_live_revolve_groove`, `test_live_direct_revolve_ops`).
+  - C# tests (`dotnet test apps/execution-server`): **359 passed**; `dotnet build -c Release` & `-c Debug`: **0 warnings/errors**.
+  - Prompt-to-IR benchmark (`scripts/score_part_ir.py`): **20/20 passed**.
 
 ## Changes Made
 
-- **Mirror Solid Feature (`PAT-MIR-001`..`PAT-MIR-004`, [ADR-076](docs/adr/ADR-076-mirror-feature.md), Spec v1.45):**
-  - **Spec & Schemas:** Added [ADR-076](docs/adr/ADR-076-mirror-feature.md); added `schemas/part-feature-graph/features/mirror.json`; updated `part-feature-graph/v0.json` with `Mirror`; updated `ipc/ops/feature.create.json` with `mirror` type and fields (`plane`, `merge`); regenerated Python and C# contracts; bumped spec to v1.45 across 35 topic files, README, and CHANGELOG.
-  - **Pure Core IR & Compiler:** Added `Mirror` model in `cad-ir`; added semantic validation (seeds, plane reference, dependencies) in `cad-compiler`; implemented lowering to `feature.create` operation in `lower.py`; registered in `registry.py` and `profile.py`.
-  - **Verification Engine:** Implemented closed-form planar reflection expected geometry in `cad-verification/part.py` (volume deduction $2 \times \sum V_{\text{seed}}$, reflected moments, reflected `ExpectedCylinder` positions and directions); updated contract tests for `native_type="MirrorPattern"`.
-  - **Execution Server:** Implemented `Mirror` in `FeatureAdapter.cs` using pre-selection Mark 1 for seed features, Mark 2 for mirror plane (supporting standard planes and reference plane features via `ResolveMirrorPlaneFeature`) with ComScope tracking and `InsertMirrorFeature2`; unit tests in `MirrorParamTests.cs`.
-  - **Authoring & Benchmark:** Updated `authoring_guide.py` and `list_feature_types.py` with `mirror` syntax, rules, and example; added `plate_mirror_hole` to `cases.py`, `references.py`, and `part_ir_baseline_answers.json` (`18/18` scored passing).
-  - **Live SOLIDWORKS Verification & Promotion:** Added `test_live_mirror_plate` and `test_live_direct_mirror_ops` in `tests/live/test_live_part_chain.py`; resolved plane references in `plan_job.py`; verified against live SOLIDWORKS 2025; promoted `PAT-MIR-001` through `PAT-MIR-004` to `Verified` in `patterns-mirrors.md`.
+- **Revolved Features & Centerline Construction Geometry (`BF-REV-001`..`016`, `CF-REV-001`..`006`, `SK-ENT-002`, `SK-ENT-003`, [ADR-077](docs/adr/ADR-077-revolve-features.md), Spec v1.46):**
+  - **Spec & Schemas:** Added [ADR-077](docs/adr/ADR-077-revolve-features.md); added `schemas/part-feature-graph/features/revolve.json` and `cut_revolve.json`; updated `schemas/part-feature-graph/primitives/line.json` with `construction: boolean`; updated `part-feature-graph/v0.json` with `Revolve` and `CutRevolve`; updated `ipc/ops/feature.create.json` with `revolve` and `cut_revolve` types and fields (`axis`, `angle_deg`, `thin_wall`); regenerated Python and C# contracts; bumped spec to v1.46 across 35 topic files, README, and CHANGELOG.
+  - **Pure Core IR & Compiler:** Added `Revolve`, `CutRevolve`, and `Line.construction` in `cad-ir`; added semantic validation (axis reference, angle range, profile sketch, planar sketch, construction lines) in `cad-compiler`; implemented lowering to `feature.create` operation in `lower.py`; registered in `registry.py` and `profile.py`.
+  - **Verification Engine:** Implemented closed-form revolve expected geometry in `cad-verification/part.py` using Pappus's Centroid Theorem ($V = 2\pi R_c A$), circumferential groove surface area delta ($\Delta A = 2\pi R_{\text{floor}} h - 2\pi R_{\text{max}} h + 2\pi(R_{\text{max}}^2 - R_{\text{floor}}^2)$), and outer cylinder splitting logic; updated contract tests for `native_type="Revolution"` and `"RevCut"`.
+  - **Execution Server:** Implemented centerline creation in `SketchAdapter.cs` via `sm.CreateCenterLine` when `entity.Construction == true`; implemented `Revolve` and `CutRevolve` in `FeatureAdapter.cs` calling `FeatureRevolve2` with Mark 0 (profile sketch) and Mark 4 (axis sketch segment via `SelectRevolveAxis`), with ComScope tracking and observation type mapping; unit tests in `RevolveParamTests.cs`.
+  - **Authoring & Benchmark:** Updated `authoring_guide.py` and `list_feature_types.py` (MVP feature types count to 8) with revolve rules and `turned_shaft` worked example; added `turned_shaft` and `grooved_shaft` to `cases.py`, `references.py`, and `part_ir_baseline_answers.json` (`20/20` scored passing).
+  - **Live SOLIDWORKS Verification & Promotion:** Added `test_live_revolve_shaft`, `test_live_revolve_groove`, and `test_live_direct_revolve_ops` in `tests/live/test_live_part_chain.py`; resolved sketch axis references (`<sketch>.cl`) in `plan_job.py`; verified against live SOLIDWORKS 2025; promoted revolve and centerline checklist items to `Verified`.
 
 ## Next Steps
 
-1. **Commit, Push, PR & Merge `feat/mirror-feature`:**
-   - Commit Task 6 changes, push to origin and github, open PR, and merge into `main`.
+1. **Commit, Push, PR & Merge `feat/revolve-features`:**
+   - Commit changes, push to origin and github, open PR, and merge into `main`.
 2. **Next 3D Part Milestone (pick from [checklists](docs/implementation/README.md)):**
-   - **Revolved Boss / Cut Features (`BF-REV`, `CF-REV`):** Implement revolve features around a centerline or sketch axis.
+   - **Reference Planes / Reference Geometry (`REF-PLN-001`..`REF-PLN-007`):** Implement offset, angle, and mid-plane reference planes to support features on angled faces, offset sketches, and mirrors.
+   - **Hole Wizard / Standard Holes (`CF-HLW-001`..`CF-HLW-012`):** Implement counterbore, countersink, and tapped standard hole features.
    - **Semantic Edge References & Fillets/Chamfers (`BF-FIL`, `BF-CHM`, K23/K28):** Draft ADR and grammar for persistent semantic edge references required by constant-radius fillets and chamfers.
 3. **When Drawing Freeze Lifts ([architecture review](docs/superpowers/review/2026-11-05-architecture-review.md)):**
    - Resolve owner decisions O1–O6 and open items K3, K8–K10, J11 in [`open-decisions.md`](docs/specifications/open-decisions.md).

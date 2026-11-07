@@ -2,6 +2,17 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.46
+
+Adds Revolved Boss/Base (`BF-REV-001` through `BF-REV-016`) and Revolved Cut (`CF-REV-001` through `CF-REV-006`) features along with sketch centerline/construction geometry (`SK-ENT-002`, `SK-ENT-003`) to the Part Feature Graph IR and execution pipeline. Decided in [ADR-077](../adr/ADR-077-revolved-features.md).
+
+- **IR and Schemas (5.7.3, 22.5.2):** creates `schemas/part-feature-graph/features/revolve.json` and `cut_revolve.json`, adds them to `schemas/part-feature-graph/v0.json` node union, adds `construction: boolean` to `Line` entity, and updates `schemas/ipc/ops/feature.create.json` with `revolve`, `cut_revolve`, `axis`, `angle`, `mid_plane`, `reverse`, `thin`, and `merge` parameters.
+- **Compiler and lowering:** validates `revolve` and `cut_revolve` node constraints (profile exists, angle in $(0, 360]$, cut revolve requires prior solid feature); lowers `revolve` and `cut_revolve` to `feature.create` operations and lowers construction lines to `sketch.create` with `construction: true`.
+- **Verification:** computes closed-form volume using Pappus's Centroid Theorem ($V = \theta A \bar{r}$) and expected cylindrical faces for revolved geometry in `cad-verification`.
+- **Execution & Adapter:** handles `construction: true` lines in `SketchAdapter.cs` via `sm.CreateCenterLine`; handles `revolve` and `cut_revolve` in `FeatureAdapter.cs` via `IFeatureManager.FeatureRevolve2` with Mark 0 profile sketch selection, Mark 4 revolution axis selection, and COM cleanup (`Marshal.ReleaseComObject`).
+- **Authoring & Benchmark:** documents `revolve` and `cut_revolve` in authoring guide rules and examples, and adds turned shaft and grooved shaft cases to benchmark.
+- **Checklists & Live:** adds live SOLIDWORKS integration tests promoting `BF-REV` and `CF-REV` items to Verified.
+
 ## What changed in 1.45
 
 Adds mirror solid feature (`PAT-MIR-001` through `PAT-MIR-004`) to the Part Feature Graph IR and execution pipeline. Decided in [ADR-076](../adr/ADR-076-mirror-feature.md).

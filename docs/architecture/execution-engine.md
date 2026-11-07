@@ -1,6 +1,6 @@
 # 8. Execution Engine
 
-> Specification v1.45, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.46, section 8. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 8.1 Purpose
 

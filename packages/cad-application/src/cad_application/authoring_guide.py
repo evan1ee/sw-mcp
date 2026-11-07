@@ -19,8 +19,8 @@ _RULES: Final[tuple[str, ...]] = (
     'Units are millimetres: `units` is `"mm"` and `origin` is `"built"`.',
     "Node ids match `^[a-z][a-z0-9_]{0,63}$`. Every `profile` and `dependencies` entry names a"
     " node in the graph. A feature lists the sketch it uses and the nodes it builds on.",
-    "A part has exactly one `extrude`. It is the base body; `cut_extrude` nodes remove material"
-    " from it and must depend on it.",
+    "A part has exactly one base feature (either `extrude` or `revolve`). Cut features"
+    " (`cut_extrude`, `cut_revolve`) remove material from it and must depend on it.",
     "An extrude profile is either one closed, non-self-intersecting loop of `line` and `arc`"
     " entities, exactly one `circle`, a `corner_rectangle` or `center_rectangle`, or a"
     " `straight_slot`. Lines/arcs, circles, rectangles, and straight slots are never mixed in"
@@ -49,6 +49,12 @@ _RULES: Final[tuple[str, ...]] = (
     " an origin plane (`plane:front`, `plane:top`, `plane:right`) or a planar face / reference"
     " plane; seeds must be in `dependencies` and mirrored features must remain strictly inside the"
     " part body.",
+    "A `revolve` creates a revolved solid body from a closed sketch profile around an `axis`:"
+    " `axis` names a construction line centerline (`<sketch_id>.<line_id>`) in the sketch. `angle`"
+    " is in degrees (0, 360], defaulting to 360. `cut_revolve` removes material using a revolution"
+    " profile and must depend on the prior solid feature.",
+    "Lines in a sketch can set `construction: true` to indicate construction geometry / centerlines"
+    " (e.g. for revolution axes). Construction geometry is not part of the closed solid boundary.",
 )
 
 _UNSUPPORTED: Final[tuple[str, ...]] = (
@@ -56,7 +62,7 @@ _UNSUPPORTED: Final[tuple[str, ...]] = (
     "splines, ellipses, text, and any outline that is not a closed loop of straight lines and"
     " arcs, a rectangle, a straight slot, or a single circle",
     "patterns other than linear, circular, and mirror; only write out shapes the user lists",
-    "revolves, sweeps, lofts, shells, ribs, threads, sheet metal",
+    "sweeps, lofts, shells, ribs, threads, sheet metal",
     "sketches on any face other than the extrude's start_face or end_face (side faces, faces"
     " of a cut), on an offset plane or on a datum",
     "more than one base extrude, or adding material after a cut",
@@ -382,6 +388,37 @@ def _build_examples() -> dict[str, Example]:
                         "seeds": ["cut_hole"],
                         "plane": "plane:right",
                         "merge": True,
+                    },
+                },
+            ),
+        ),
+        "turned_shaft": Example(
+            "Turn a cylindrical shaft 30 mm diameter by 50 mm long revolving around a centerline.",
+            _header(
+                "turned_shaft",
+                {
+                    "sketch_shaft": {
+                        "type": "sketch",
+                        "plane": "plane:front",
+                        "entities": {
+                            "cl": {
+                                "type": "line",
+                                "start": [0.0, 0.0],
+                                "end": [0.0, 50.0],
+                                "construction": True,
+                            },
+                            "l1": {"type": "line", "start": [0.0, 0.0], "end": [15.0, 0.0]},
+                            "l2": {"type": "line", "start": [15.0, 0.0], "end": [15.0, 50.0]},
+                            "l3": {"type": "line", "start": [15.0, 50.0], "end": [0.0, 50.0]},
+                            "l4": {"type": "line", "start": [0.0, 50.0], "end": [0.0, 0.0]},
+                        },
+                    },
+                    "shaft_body": {
+                        "type": "revolve",
+                        "dependencies": ["sketch_shaft"],
+                        "profile": "sketch_shaft",
+                        "axis": "sketch_shaft.cl",
+                        "angle": 360.0,
                     },
                 },
             ),

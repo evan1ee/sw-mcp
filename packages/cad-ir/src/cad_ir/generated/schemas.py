@@ -1970,6 +1970,9 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                                                   'count'],
                                                                                                      'type': 'object'},
                                                                           'Params': {'properties': {'_meta': {'$ref': '../v0.json#/$defs/Meta'},
+                                                                                                    'angle': {'maximum': 360,
+                                                                                                              'minimum': 0,
+                                                                                                              'type': 'number'},
                                                                                                     'axis': {'type': 'string'},
                                                                                                     'count': {'minimum': 2,
                                                                                                               'type': 'integer'},
@@ -2008,6 +2011,7 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                                              'enum': ['plane',
                                                                                                                       'face']},
                                                                                                     'merge': {'type': 'boolean'},
+                                                                                                    'mid_plane': {'type': 'boolean'},
                                                                                                     'node_id': {'type': 'string'},
                                                                                                     'plane': {'type': 'string'},
                                                                                                     'profile': {'type': 'string'},
@@ -2020,7 +2024,9 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                                                       'cut_extrude',
                                                                                                                       'linear_pattern',
                                                                                                                       'circular_pattern',
-                                                                                                                      'mirror']}},
+                                                                                                                      'mirror',
+                                                                                                                      'revolve',
+                                                                                                                      'cut_revolve']}},
                                                                                      'required': ['node_id',
                                                                                                   'type'],
                                                                                      'type': 'object'},
@@ -2142,6 +2148,7 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                                               'maxItems': 2,
                                                                                                               'minItems': 2,
                                                                                                               'type': 'array'},
+                                                                                                   'construction': {'type': 'boolean'},
                                                                                                    'corner1': {'items': {'type': 'number'},
                                                                                                                'maxItems': 2,
                                                                                                                'minItems': 2,
@@ -3896,6 +3903,95 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                           '(spec '
                                                                                           '5.7)',
                                                                                  'type': 'object'},
+ 'https://sw-mcp.invalid/schemas/part-feature-graph/features/cut_revolve.json': {'$id': 'https://sw-mcp.invalid/schemas/part-feature-graph/features/cut_revolve.json',
+                                                                                 '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                                                                                 'additionalProperties': False,
+                                                                                 'examples': [{'angle': 360,
+                                                                                               'axis': 'sketch_groove.cl',
+                                                                                               'dependencies': ['shaft_body',
+                                                                                                                'sketch_groove'],
+                                                                                               'profile': 'sketch_groove',
+                                                                                               'type': 'cut_revolve'}],
+                                                                                 'properties': {'angle': {'default': 360,
+                                                                                                          'description': 'Revolution '
+                                                                                                                         'angle '
+                                                                                                                         'in '
+                                                                                                                         'degrees '
+                                                                                                                         '(0, '
+                                                                                                                         '360]. '
+                                                                                                                         'Default '
+                                                                                                                         '360 '
+                                                                                                                         'for '
+                                                                                                                         'full '
+                                                                                                                         'revolution.',
+                                                                                                          'exclusiveMinimum': 0,
+                                                                                                          'maximum': 360,
+                                                                                                          'type': 'number'},
+                                                                                                'axis': {'description': 'Revolution '
+                                                                                                                        'axis '
+                                                                                                                        'reference: '
+                                                                                                                        'sketch '
+                                                                                                                        'centerline, '
+                                                                                                                        'coordinate '
+                                                                                                                        'axis '
+                                                                                                                        "('axis:x', "
+                                                                                                                        "'axis:y', "
+                                                                                                                        "'axis:z', "
+                                                                                                                        "'plane:front', "
+                                                                                                                        'etc.), '
+                                                                                                                        'or '
+                                                                                                                        'model '
+                                                                                                                        'edge/axis. '
+                                                                                                                        'If '
+                                                                                                                        'omitted, '
+                                                                                                                        'defaults '
+                                                                                                                        'to '
+                                                                                                                        'the '
+                                                                                                                        'centerline '
+                                                                                                                        'in '
+                                                                                                                        'the '
+                                                                                                                        'profile '
+                                                                                                                        'sketch.',
+                                                                                                         'type': 'string'},
+                                                                                                'dependencies': {'items': {'$ref': '../../common/v0.json#/$defs/ItemId'},
+                                                                                                                 'type': 'array',
+                                                                                                                 'uniqueItems': True},
+                                                                                                'display_name': {'type': 'string'},
+                                                                                                'mid_plane': {'default': False,
+                                                                                                              'description': 'Revolve '
+                                                                                                                             'symmetrically '
+                                                                                                                             'both '
+                                                                                                                             'directions '
+                                                                                                                             'from '
+                                                                                                                             'sketch '
+                                                                                                                             'plane.',
+                                                                                                              'type': 'boolean'},
+                                                                                                'profile': {'$ref': '../../common/v0.json#/$defs/ItemId'},
+                                                                                                'realizes': {'items': {'$ref': '../../common/v0.json#/$defs/ItemId'},
+                                                                                                             'type': 'array',
+                                                                                                             'uniqueItems': True},
+                                                                                                'reverse': {'default': False,
+                                                                                                            'description': 'Reverse '
+                                                                                                                           'angle '
+                                                                                                                           'revolution '
+                                                                                                                           'direction.',
+                                                                                                            'type': 'boolean'},
+                                                                                                'thin': {'description': 'Thin '
+                                                                                                                        'feature '
+                                                                                                                        'options '
+                                                                                                                        '(SHP-THN).',
+                                                                                                         'type': 'object'},
+                                                                                                'type': {'const': 'cut_revolve'}},
+                                                                                 'required': ['type',
+                                                                                              'profile'],
+                                                                                 'title': 'Cut '
+                                                                                          'Revolve '
+                                                                                          'Feature '
+                                                                                          'Node '
+                                                                                          '(spec '
+                                                                                          '5.7, '
+                                                                                          '22.5.2)',
+                                                                                 'type': 'object'},
  'https://sw-mcp.invalid/schemas/part-feature-graph/features/extrude.json': {'$id': 'https://sw-mcp.invalid/schemas/part-feature-graph/features/extrude.json',
                                                                              '$schema': 'https://json-schema.org/draft/2020-12/schema',
                                                                              'additionalProperties': False,
@@ -4010,6 +4106,102 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                      '(spec 5.7, '
                                                                                      '22.5.2)',
                                                                             'type': 'object'},
+ 'https://sw-mcp.invalid/schemas/part-feature-graph/features/revolve.json': {'$id': 'https://sw-mcp.invalid/schemas/part-feature-graph/features/revolve.json',
+                                                                             '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                                                                             'additionalProperties': False,
+                                                                             'examples': [{'angle': 360,
+                                                                                           'axis': 'sketch_shaft.cl',
+                                                                                           'dependencies': ['sketch_shaft'],
+                                                                                           'profile': 'sketch_shaft',
+                                                                                           'type': 'revolve'}],
+                                                                             'properties': {'angle': {'default': 360,
+                                                                                                      'description': 'Revolution '
+                                                                                                                     'angle '
+                                                                                                                     'in '
+                                                                                                                     'degrees '
+                                                                                                                     '(0, '
+                                                                                                                     '360]. '
+                                                                                                                     'Default '
+                                                                                                                     '360 '
+                                                                                                                     'for '
+                                                                                                                     'full '
+                                                                                                                     'revolution.',
+                                                                                                      'exclusiveMinimum': 0,
+                                                                                                      'maximum': 360,
+                                                                                                      'type': 'number'},
+                                                                                            'axis': {'description': 'Revolution '
+                                                                                                                    'axis '
+                                                                                                                    'reference: '
+                                                                                                                    'sketch '
+                                                                                                                    'centerline '
+                                                                                                                    '(e.g. '
+                                                                                                                    "'sketch_id.cl'), "
+                                                                                                                    'coordinate '
+                                                                                                                    'axis '
+                                                                                                                    "('axis:x', "
+                                                                                                                    "'axis:y', "
+                                                                                                                    "'axis:z', "
+                                                                                                                    "'plane:front', "
+                                                                                                                    'etc.), '
+                                                                                                                    'or '
+                                                                                                                    'model '
+                                                                                                                    'edge/axis. '
+                                                                                                                    'If '
+                                                                                                                    'omitted, '
+                                                                                                                    'defaults '
+                                                                                                                    'to '
+                                                                                                                    'the '
+                                                                                                                    'centerline '
+                                                                                                                    'in '
+                                                                                                                    'the '
+                                                                                                                    'profile '
+                                                                                                                    'sketch.',
+                                                                                                     'type': 'string'},
+                                                                                            'dependencies': {'items': {'$ref': '../../common/v0.json#/$defs/ItemId'},
+                                                                                                             'type': 'array',
+                                                                                                             'uniqueItems': True},
+                                                                                            'display_name': {'type': 'string'},
+                                                                                            'merge_result': {'default': True,
+                                                                                                             'description': 'Merge '
+                                                                                                                            'solid '
+                                                                                                                            'result '
+                                                                                                                            'with '
+                                                                                                                            'existing '
+                                                                                                                            'bodies.',
+                                                                                                             'type': 'boolean'},
+                                                                                            'mid_plane': {'default': False,
+                                                                                                          'description': 'Revolve '
+                                                                                                                         'symmetrically '
+                                                                                                                         'both '
+                                                                                                                         'directions '
+                                                                                                                         'from '
+                                                                                                                         'sketch '
+                                                                                                                         'plane.',
+                                                                                                          'type': 'boolean'},
+                                                                                            'profile': {'$ref': '../../common/v0.json#/$defs/ItemId'},
+                                                                                            'realizes': {'items': {'$ref': '../../common/v0.json#/$defs/ItemId'},
+                                                                                                         'type': 'array',
+                                                                                                         'uniqueItems': True},
+                                                                                            'reverse': {'default': False,
+                                                                                                        'description': 'Reverse '
+                                                                                                                       'angle '
+                                                                                                                       'revolution '
+                                                                                                                       'direction.',
+                                                                                                        'type': 'boolean'},
+                                                                                            'thin': {'description': 'Thin '
+                                                                                                                    'feature '
+                                                                                                                    'options '
+                                                                                                                    '(SHP-THN).',
+                                                                                                     'type': 'object'},
+                                                                                            'type': {'const': 'revolve'}},
+                                                                             'required': ['type',
+                                                                                          'profile'],
+                                                                             'title': 'Revolve '
+                                                                                      'Feature '
+                                                                                      'Node (spec '
+                                                                                      '5.7, '
+                                                                                      '22.5.2)',
+                                                                             'type': 'object'},
  'https://sw-mcp.invalid/schemas/part-feature-graph/features/sketch.json': {'$id': 'https://sw-mcp.invalid/schemas/part-feature-graph/features/sketch.json',
                                                                             '$schema': 'https://json-schema.org/draft/2020-12/schema',
                                                                             'additionalProperties': False,
@@ -4060,6 +4252,8 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                                            'maxItems': 2,
                                                                                                            'minItems': 2,
                                                                                                            'type': 'array'},
+                                                                                                'construction': {'default': False,
+                                                                                                                 'type': 'boolean'},
                                                                                                 'direction': {'enum': ['ccw',
                                                                                                                        'cw'],
                                                                                                               'type': 'string'},
@@ -4139,7 +4333,9 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                                         'required': ['type'],
                                                                                                         'type': 'object'},
                                                                          'Line': {'additionalProperties': False,
-                                                                                  'properties': {'end': {'items': {'$ref': '../common/v0.json#/$defs/Length'},
+                                                                                  'properties': {'construction': {'default': False,
+                                                                                                                  'type': 'boolean'},
+                                                                                                 'end': {'items': {'$ref': '../common/v0.json#/$defs/Length'},
                                                                                                          'maxItems': 2,
                                                                                                          'minItems': 2,
                                                                                                          'type': 'array'},
@@ -4205,13 +4401,19 @@ SCHEMAS: Mapping[str, "JsonValue"] = MappingProxyType(
                                                                                                                            {'if': {'properties': {'type': {'const': 'circular_pattern'}}},
                                                                                                                             'then': {'$ref': 'features/circular_pattern.json'}},
                                                                                                                            {'if': {'properties': {'type': {'const': 'mirror'}}},
-                                                                                                                            'then': {'$ref': 'features/mirror.json'}}],
+                                                                                                                            'then': {'$ref': 'features/mirror.json'}},
+                                                                                                                           {'if': {'properties': {'type': {'const': 'revolve'}}},
+                                                                                                                            'then': {'$ref': 'features/revolve.json'}},
+                                                                                                                           {'if': {'properties': {'type': {'const': 'cut_revolve'}}},
+                                                                                                                            'then': {'$ref': 'features/cut_revolve.json'}}],
                                                                                                                  'properties': {'type': {'enum': ['sketch',
                                                                                                                                                   'extrude',
                                                                                                                                                   'cut_extrude',
                                                                                                                                                   'linear_pattern',
                                                                                                                                                   'circular_pattern',
-                                                                                                                                                  'mirror']}},
+                                                                                                                                                  'mirror',
+                                                                                                                                                  'revolve',
+                                                                                                                                                  'cut_revolve']}},
                                                                                                                  'required': ['type'],
                                                                                                                  'type': 'object'},
                                                                                         'minProperties': 1,

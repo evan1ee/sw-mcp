@@ -17,12 +17,14 @@ from cad_ir.part_feature_graph.model import (
     Circle,
     CircularPattern,
     CornerRectangle,
+    CutRevolve,
     EndCondition,
     Line,
     LinearPattern,
     LinearPatternDirection,
     Mirror,
     PartGraph,
+    Revolve,
     SketchNode,
     SolidNode,
     StraightSlot,
@@ -1201,4 +1203,89 @@ def test_mirror_missing_dependency_rejected() -> None:
     issues = validate_graph(graph)
     assert any(
         i.code == ErrorCode.IR_RULE_VIOLATED and "must depend on seed" in i.message for i in issues
+    )
+
+
+def _revolve_base_graph(
+    *,
+    angle: float = 360.0,
+    profile: str = "sketch_shaft",
+    revolve_deps: tuple[str, ...] = ("sketch_shaft",),
+    include_cut: bool = False,
+    cut_deps: tuple[str, ...] = ("sketch_groove", "shaft_body"),
+) -> PartGraph:
+    nodes: dict[str, Any] = {
+        "sketch_shaft": SketchNode(
+            plane="plane:front",
+            entities={
+                "cl": Line(start=(0.0, 0.0), end=(0.0, 50.0), construction=True),
+                "l1": Line(start=(0.0, 0.0), end=(15.0, 0.0)),
+                "l2": Line(start=(15.0, 0.0), end=(15.0, 50.0)),
+                "l3": Line(start=(15.0, 50.0), end=(0.0, 50.0)),
+                "l4": Line(start=(0.0, 50.0), end=(0.0, 0.0)),
+            },
+        ),
+        "shaft_body": Revolve(
+            profile=profile,
+            axis="sketch_shaft.cl",
+            angle=angle,
+            dependencies=revolve_deps,
+        ),
+    }
+    if include_cut:
+        nodes["sketch_groove"] = SketchNode(
+            plane="plane:front",
+            entities={
+                "cl": Line(start=(0.0, 0.0), end=(0.0, 50.0), construction=True),
+                "g1": Line(start=(12.0, 20.0), end=(15.0, 20.0)),
+                "g2": Line(start=(15.0, 20.0), end=(15.0, 25.0)),
+                "g3": Line(start=(15.0, 25.0), end=(12.0, 25.0)),
+                "g4": Line(start=(12.0, 25.0), end=(12.0, 20.0)),
+            },
+        )
+        nodes["cut_groove"] = CutRevolve(
+            profile="sketch_groove",
+            axis="sketch_groove.cl",
+            angle=360.0,
+            dependencies=cut_deps,
+        )
+    return PartGraph(
+        id="turned_shaft",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes=nodes,
+    )
+
+
+def test_revolve_accepted() -> None:
+    graph = _revolve_base_graph(include_cut=True)
+    assert validate_graph(graph) == ()
+
+
+def test_revolve_profile_not_sketch_rejected() -> None:
+    graph = _revolve_base_graph(profile="missing_sketch", revolve_deps=("missing_sketch",))
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_REFERENCE_UNRESOLVED and "missing_sketch" in i.message
+        for i in issues
+    )
+
+
+def test_revolve_invalid_angle_rejected() -> None:
+    graph = _revolve_base_graph(angle=0.0)
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "angle must be" in i.message for i in issues
+    )
+
+
+def test_cut_revolve_without_prior_solid_rejected() -> None:
+    # A cut_revolve that doesn't depend on any solid body
+    graph = _revolve_base_graph(include_cut=True, cut_deps=("sketch_groove",))
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED
+        and "must depend on at least one prior solid" in i.message
+        for i in issues
     )

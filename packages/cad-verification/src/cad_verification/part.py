@@ -13,11 +13,13 @@ from cad_ir.part_feature_graph.model import (
     Circle,
     CircularPattern,
     CornerRectangle,
+    CutRevolve,
     Line,
     LinearPattern,
     LinearPatternDirection,
     Mirror,
     PartGraph,
+    Revolve,
     SketchNode,
     SolidNode,
     StraightSlot,
@@ -32,6 +34,10 @@ MM_PER_M = 1000.0
 MM2_PER_M2 = 1e6
 MM3_PER_M3 = 1e9
 MIN_PATTERN_COUNT = 2
+REVOLVE_AXIS_TOL: Final[float] = 1e-5
+REVOLVE_AREA_TOL: Final[float] = 1e-9
+REVOLVE_PARALLEL_TOL: Final[float] = 1e-4
+REVOLVE_RADIUS_TOL: Final[float] = 1e-3
 
 type CheckStatus = Literal["passed", "failed", "warning", "not_applicable", "not_evaluated"]
 type NotEvaluatedReason = Literal["not_executed", "unsupported", "missing_data", "malformed_data"]
@@ -372,12 +378,28 @@ def _collect_features(
                     native_type="CirPattern",
                 )
             )
-        else:
+        elif isinstance(node, Mirror):
             features.append(
                 ExpectedFeature(
                     node_id=nid,
                     feature_type="mirror",
                     native_type="MirrorPattern",
+                )
+            )
+        elif isinstance(node, Revolve):
+            features.append(
+                ExpectedFeature(
+                    node_id=nid,
+                    feature_type="revolve",
+                    native_type="Revolution",
+                )
+            )
+        else:
+            features.append(
+                ExpectedFeature(
+                    node_id=nid,
+                    feature_type="cut_revolve",
+                    native_type="RevCut",
                 )
             )
     return features, solid_nodes
@@ -880,13 +902,183 @@ def _apply_mirror_instances(
             )
 
 
+def _compute_revolve_profile(
+    sketch: SketchNode,
+    axis_ref: str | None,
+    angle_deg: float,
+    *,
+    is_cut: bool = False,
+) -> tuple[float, Point3, list[ExpectedCylinder], tuple[float, float, float, float]]:
+    """Compute volume, centroid, cylinders, and bounds for a revolve profile (Pappus Theorem)."""
+    plane = plane_axes(sketch.plane)
+
+    # 1. Determine axis position u_axis (default 0.0)
+    u_axis = 0.0
+    for ent in sketch.entities.values():
+        if (
+            isinstance(ent, Line)
+            and getattr(ent, "construction", False)
+            and abs(ent.start[0] - ent.end[0]) < REVOLVE_AXIS_TOL
+        ):
+            u_axis = ent.start[0]
+            break
+
+    # 2. Extract outline lines
+    lines = [
+        e
+        for e in sketch.entities.values()
+        if isinstance(e, Line) and not getattr(e, "construction", False)
+    ]
+    if not lines:
+        raise ValueError("Sketch contains no outline lines for revolve")
+
+    vertices, _ = _order_polygon_vertices(lines)
+    n = len(vertices)
+
+    area_signed = 0.0
+    c_u_sum = 0.0
+    c_v_sum = 0.0
+    v_min = float("inf")
+    v_max = float("-inf")
+    r_max = 0.0
+
+    for i in range(n):
+        u_i, v_i = vertices[i]
+        u_next, v_next = vertices[(i + 1) % n]
+        cross = u_i * v_next - u_next * v_i
+        area_signed += cross
+        c_u_sum += (u_i + u_next) * cross
+        c_v_sum += (v_i + v_next) * cross
+
+        r_max = max(r_max, abs(u_i - u_axis))
+        v_min = min(v_min, v_i)
+        v_max = max(v_max, v_i)
+
+    area_2d = 0.5 * abs(area_signed)
+    if area_2d < REVOLVE_AREA_TOL:
+        raise ValueError("Revolve profile polygon has zero area")
+
+    denom = 6.0 * (0.5 * area_signed)
+    c_u = c_u_sum / denom
+    c_v = c_v_sum / denom
+
+    r_centroid = abs(c_u - u_axis)
+    theta_rad = math.radians(angle_deg)
+    vol = theta_rad * r_centroid * area_2d
+
+    com_3d_tuple = plane.to_model(u_axis, c_v, 0.0)
+    com_3d = Point3(com_3d_tuple[0], com_3d_tuple[1], com_3d_tuple[2])
+
+    # 3. Cylinders from lines parallel to axis
+    cylinders: list[ExpectedCylinder] = []
+    p0 = plane.to_model(u_axis, 0.0, 0.0)
+    p1 = plane.to_model(u_axis, 1.0, 0.0)
+    axis_dir = Point3(p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2])
+
+    for line in lines:
+        if abs(line.start[0] - line.end[0]) < REVOLVE_PARALLEL_TOL:
+            radius = abs(line.start[0] - u_axis)
+            if radius > REVOLVE_RADIUS_TOL:
+                if is_cut and radius >= r_max - REVOLVE_RADIUS_TOL:
+                    continue
+                mid_v = (line.start[1] + line.end[1]) * 0.5
+                c_pt = plane.to_model(u_axis, mid_v, 0.0)
+                cylinders.append(
+                    ExpectedCylinder(
+                        point=Point3(c_pt[0], c_pt[1], c_pt[2]),
+                        direction=axis_dir,
+                        radius=radius,
+                    )
+                )
+
+    return vol, com_3d, cylinders, (r_max, v_min, v_max, u_axis)
+
+
+def _expected_geometry_revolve(
+    graph: PartGraph,
+    features: Sequence[ExpectedFeature],
+    revolve_entries: Sequence[tuple[str, Revolve]],
+) -> ExpectedGeometry:
+    """Compute expected geometry for a revolved part."""
+    _, base_node = revolve_entries[0]
+    base_sketch_raw = graph.nodes.get(base_node.profile)
+    if not isinstance(base_sketch_raw, SketchNode):
+        raise ValueError(f"Profile {base_node.profile!r} is not a SketchNode")
+
+    base_vol, base_com, base_cylinders, bounds = _compute_revolve_profile(
+        base_sketch_raw, base_node.axis, base_node.angle
+    )
+    r_max, v_min, v_max, _ = bounds
+
+    p_min = Point3(-r_max, v_min, -r_max)
+    p_max = Point3(r_max, v_max, r_max)
+    bbox_mm = Box(min=p_min, max=p_max)
+
+    total_volume = base_vol
+    total_moment = [base_vol * base_com.x, base_vol * base_com.y, base_vol * base_com.z]
+    total_area = 2.0 * math.pi * r_max * (v_max - v_min) + 2.0 * math.pi * r_max**2
+    cylinders = list(base_cylinders)
+
+    cut_revolve_entries = [(nid, n) for nid, n in graph.nodes.items() if isinstance(n, CutRevolve)]
+    for _, cut_node in cut_revolve_entries:
+        cut_sketch_raw = graph.nodes.get(cut_node.profile)
+        if not isinstance(cut_sketch_raw, SketchNode):
+            continue
+        cut_vol, cut_com, cut_cyls, cut_bounds = _compute_revolve_profile(
+            cut_sketch_raw, cut_node.axis, cut_node.angle, is_cut=True
+        )
+        total_volume -= cut_vol
+        total_moment[0] -= cut_vol * cut_com.x
+        total_moment[1] -= cut_vol * cut_com.y
+        total_moment[2] -= cut_vol * cut_com.z
+
+        cut_r_max, cut_v_min, cut_v_max, _ = cut_bounds
+        cut_height = cut_v_max - cut_v_min
+        floor_r = cut_cyls[0].radius if cut_cyls else 0.0
+
+        total_area += (
+            2.0 * math.pi * floor_r * cut_height
+            - 2.0 * math.pi * cut_r_max * cut_height
+            + 2.0 * math.pi * (cut_r_max**2 - floor_r**2)
+        )
+
+        if (
+            cut_v_min > v_min + REVOLVE_RADIUS_TOL
+            and cut_v_max < v_max - REVOLVE_RADIUS_TOL
+            and base_cylinders
+        ):
+            cylinders.append(base_cylinders[0])
+        cylinders.extend(cut_cyls)
+
+    com_3d = Point3(
+        total_moment[0] / total_volume,
+        total_moment[1] / total_volume,
+        total_moment[2] / total_volume,
+    )
+
+    return ExpectedGeometry(
+        solid_body_count=1,
+        bbox_mm=bbox_mm,
+        volume_mm3=total_volume,
+        surface_area_mm2=total_area,
+        center_of_mass_mm=com_3d,
+        cylinders=tuple(cylinders),
+        features=tuple(features),
+    )
+
+
 def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
     """Compute expected geometry from a PartGraph alone (spec 10.2, design 9)."""
     features, solid_nodes = _collect_features(graph)
 
     extrude_entries = [e for e in solid_nodes if e[1].type == "extrude"]
-    if not extrude_entries:
-        raise ValueError("PartGraph has no solid extrude feature")
+    revolve_entries = [(nid, n) for nid, n in graph.nodes.items() if isinstance(n, Revolve)]
+
+    if not extrude_entries and not revolve_entries:
+        raise ValueError("PartGraph has no solid base feature (extrude or revolve)")
+
+    if revolve_entries:
+        return _expected_geometry_revolve(graph, features, revolve_entries)
 
     _, base_node = extrude_entries[0]
     base_sketch_raw = graph.nodes.get(base_node.profile)

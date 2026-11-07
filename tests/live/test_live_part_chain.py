@@ -1964,3 +1964,178 @@ def test_live_direct_mirror_ops(tmp_path: Path) -> None:
     finally:
         backend.close()
         _close_in_solidworks_by_path(target)
+
+
+def test_live_revolve_shaft(tmp_path: Path) -> None:
+    """Verify revolve feature end-to-end against live SOLIDWORKS."""
+    session = _get_live_session()
+    template = _resolve_template()
+    proj = tmp_path / "proj"
+    proj.mkdir(parents=True, exist_ok=True)
+    target = proj / "turned_shaft.SLDPRT"
+
+    provider = NamedPipeBackendProvider(target_session=str(session.pid))
+    service = _start_core(
+        tmp_path, allowed_roots=(proj,), template_path=template, provider=provider
+    )
+    try:
+        applied = _call_ok(
+            service,
+            "apply_part_graph",
+            {"graph": REFERENCE_ANSWERS["turned_shaft"], "target_path": str(target)},
+        )
+        final = _wait_for_job(service, str(applied["execution_id"]))
+        assert final["state"] == "COMMITTED", final
+        assert target.is_file()
+
+        part_result = cast(dict[str, Any], final["part_result"])
+        checks = cast(list[dict[str, Any]], part_result["checks"])
+        assert len(checks) > 0
+        assert all(c["status"] == "passed" for c in checks), checks
+    finally:
+        service.stop()
+        _close_in_solidworks_by_path(target)
+
+
+def test_live_revolve_groove(tmp_path: Path) -> None:
+    """Verify revolve and cut_revolve features end-to-end against live SOLIDWORKS."""
+    session = _get_live_session()
+    template = _resolve_template()
+    proj = tmp_path / "proj"
+    proj.mkdir(parents=True, exist_ok=True)
+    target = proj / "grooved_shaft.SLDPRT"
+
+    provider = NamedPipeBackendProvider(target_session=str(session.pid))
+    service = _start_core(
+        tmp_path, allowed_roots=(proj,), template_path=template, provider=provider
+    )
+    try:
+        applied = _call_ok(
+            service,
+            "apply_part_graph",
+            {"graph": REFERENCE_ANSWERS["grooved_shaft"], "target_path": str(target)},
+        )
+        final = _wait_for_job(service, str(applied["execution_id"]))
+        assert final["state"] == "COMMITTED", final
+        assert target.is_file()
+
+        part_result = cast(dict[str, Any], final["part_result"])
+        checks = cast(list[dict[str, Any]], part_result["checks"])
+        assert len(checks) > 0
+        assert all(c["status"] == "passed" for c in checks), checks
+    finally:
+        service.stop()
+        _close_in_solidworks_by_path(target)
+
+
+def test_live_direct_revolve_ops(tmp_path: Path) -> None:
+    """Verify direct IPC feature.create with revolve and cut_revolve."""
+    session = _get_live_session()
+    template = _resolve_template()
+    target = tmp_path / "direct_revolve.SLDPRT"
+    job_id = f"live_rev_{time.time_ns()}"
+
+    provider = NamedPipeBackendProvider(target_session=str(session.pid))
+    backend = cast(IpcBackend, provider.acquire(on_notification=lambda _m, _p: None))
+    try:
+        op_create = Operation(
+            operation_id=f"{job_id}:1",
+            op="part.create",
+            params={"template": template, "_meta": {"job_id": job_id}},
+        )
+        res_create = backend.apply_ops(
+            [OperationGroup(document=str(target), operations=(op_create,))]
+        )
+        assert res_create.outcomes[0].error is None
+
+        op_sk_shaft = Operation(
+            operation_id=f"{job_id}:2",
+            op="sketch.create",
+            params={
+                "node_id": "sk_shaft",
+                "plane": "plane:front",
+                "entities": [
+                    {
+                        "type": "line",
+                        "start": [0.0, 0.0],
+                        "end": [0.0, 50.0],
+                        "construction": True,
+                    },
+                    {"type": "line", "start": [0.0, 0.0], "end": [15.0, 0.0]},
+                    {"type": "line", "start": [15.0, 0.0], "end": [15.0, 50.0]},
+                    {"type": "line", "start": [15.0, 50.0], "end": [0.0, 50.0]},
+                    {"type": "line", "start": [0.0, 50.0], "end": [0.0, 0.0]},
+                ],
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_sk_shaft = backend.apply_ops(
+            [OperationGroup(document=str(target), operations=(op_sk_shaft,))]
+        )
+        assert res_sk_shaft.outcomes[0].error is None
+        shaft_sk_id = str(cast(dict[str, Any], res_sk_shaft.outcomes[0].result)["feature_id"])
+
+        op_rev = Operation(
+            operation_id=f"{job_id}:3",
+            op="feature.create",
+            params={
+                "node_id": "rev_shaft",
+                "type": "revolve",
+                "profile": shaft_sk_id,
+                "axis": f"{shaft_sk_id}.cl",
+                "angle": 360.0,
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_rev = backend.apply_ops([OperationGroup(document=str(target), operations=(op_rev,))])
+        assert res_rev.outcomes[0].error is None
+
+        op_sk_groove = Operation(
+            operation_id=f"{job_id}:4",
+            op="sketch.create",
+            params={
+                "node_id": "sk_groove",
+                "plane": "plane:front",
+                "entities": [
+                    {
+                        "type": "line",
+                        "start": [0.0, 0.0],
+                        "end": [0.0, 50.0],
+                        "construction": True,
+                    },
+                    {"type": "line", "start": [12.0, 20.0], "end": [15.0, 20.0]},
+                    {"type": "line", "start": [15.0, 20.0], "end": [15.0, 25.0]},
+                    {"type": "line", "start": [15.0, 25.0], "end": [12.0, 25.0]},
+                    {"type": "line", "start": [12.0, 25.0], "end": [12.0, 20.0]},
+                ],
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_sk_groove = backend.apply_ops(
+            [OperationGroup(document=str(target), operations=(op_sk_groove,))]
+        )
+        assert res_sk_groove.outcomes[0].error is None
+        groove_sk_id = str(cast(dict[str, Any], res_sk_groove.outcomes[0].result)["feature_id"])
+
+        op_cut = Operation(
+            operation_id=f"{job_id}:5",
+            op="feature.create",
+            params={
+                "node_id": "cut_groove",
+                "type": "cut_revolve",
+                "profile": groove_sk_id,
+                "axis": f"{groove_sk_id}.cl",
+                "angle": 360.0,
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_cut = backend.apply_ops([OperationGroup(document=str(target), operations=(op_cut,))])
+        assert res_cut.outcomes[0].error is None
+
+        meas = cast(dict[str, Any], backend.measure_part(str(target)))
+        # Expected volume: 10845 * pi mm3 = 10845 * pi * 1e-9 m3
+        expected_vol = 10845.0 * math.pi * 1e-9
+        assert meas["volume_m3"] == pytest.approx(expected_vol, rel=1e-3)
+    finally:
+        backend.close()
+        _close_in_solidworks_by_path(target)

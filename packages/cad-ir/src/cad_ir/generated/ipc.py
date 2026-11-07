@@ -100,7 +100,7 @@ type CompletenessState = Literal['present', 'empty', 'unavailable', 'unsupported
 
 type FeatureCreateEndConditionType = Literal['blind', 'through_all_both']
 
-type FeatureCreateParamsType = Literal['extrude', 'cut_extrude', 'linear_pattern', 'circular_pattern', 'mirror']
+type FeatureCreateParamsType = Literal['extrude', 'cut_extrude', 'linear_pattern', 'circular_pattern', 'mirror', 'revolve', 'cut_revolve']
 
 type FeatureCreateParamsHost = Literal['plane', 'face']
 
@@ -1882,6 +1882,8 @@ class FeatureCreateParams:
     spacing: float | None = None
     equal_spacing: bool | None = None
     reverse: bool | None = None
+    angle: float | None = None
+    mid_plane: bool | None = None
     plane: str | None = None
     merge: bool | None = None
     meta: Meta | None = None
@@ -1907,6 +1909,8 @@ class FeatureCreateParams:
             spacing=_opt(obj, "spacing", where, _num),
             equal_spacing=_opt(obj, "equal_spacing", where, _bool),
             reverse=_opt(obj, "reverse", where, _bool),
+            angle=_opt(obj, "angle", where, _num),
+            mid_plane=_opt(obj, "mid_plane", where, _bool),
             plane=_opt(obj, "plane", where, _str),
             merge=_opt(obj, "merge", where, _bool),
             meta=_opt(obj, "_meta", where, Meta._at),
@@ -1938,6 +1942,10 @@ class FeatureCreateParams:
             out["equal_spacing"] = _dump(self.equal_spacing)
         if self.reverse is not None:
             out["reverse"] = _dump(self.reverse)
+        if self.angle is not None:
+            out["angle"] = _dump(self.angle)
+        if self.mid_plane is not None:
+            out["mid_plane"] = _dump(self.mid_plane)
         if self.plane is not None:
             out["plane"] = _dump(self.plane)
         if self.merge is not None:
@@ -2201,6 +2209,7 @@ class SketchCreateEntity:
     height: float | None = None
     start_point: tuple[float, ...] | None = None
     end_point: tuple[float, ...] | None = None
+    construction: bool | None = None
 
     @classmethod
     def from_json(cls, value: JsonValue) -> Self:
@@ -2222,6 +2231,7 @@ class SketchCreateEntity:
             height=_opt(obj, "height", where, _num),
             start_point=_opt(obj, "start_point", where, _list_of(_num)),
             end_point=_opt(obj, "end_point", where, _list_of(_num)),
+            construction=_opt(obj, "construction", where, _bool),
         )
 
     def to_json(self) -> dict[str, JsonValue]:
@@ -2249,6 +2259,8 @@ class SketchCreateEntity:
             out["start_point"] = _dump(self.start_point)
         if self.end_point is not None:
             out["end_point"] = _dump(self.end_point)
+        if self.construction is not None:
+            out["construction"] = _dump(self.construction)
         return out
 
 

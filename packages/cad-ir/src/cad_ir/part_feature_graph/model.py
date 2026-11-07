@@ -9,18 +9,22 @@ PART_SCHEMA_ID: Final[str] = "https://sw-mcp.invalid/schemas/part-feature-graph/
 
 @dataclass(frozen=True, slots=True)
 class Line:
-    """2D line segment in sketch coordinates (spec 5.7.4)."""
+    """2D line segment in sketch coordinates (spec 5.7.4, SK-ENT-001..003)."""
 
     start: tuple[float, float]
     end: tuple[float, float]
     type: str = "line"
+    construction: bool = False
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        res: dict[str, Any] = {
             "type": self.type,
             "start": list(self.start),
             "end": list(self.end),
         }
+        if self.construction:
+            res["construction"] = True
+        return res
 
 
 @dataclass(frozen=True, slots=True)
@@ -292,7 +296,86 @@ class Mirror:
         return res
 
 
-PartNode = SketchNode | SolidNode | LinearPattern | CircularPattern | Mirror
+@dataclass(frozen=True, slots=True)
+class Revolve:
+    """Revolve boss/base feature node (spec 5.7.3, 22.5.2, ADR-077)."""
+
+    profile: str
+    axis: str | None = None
+    angle: float = 360.0
+    mid_plane: bool = False
+    reverse: bool = False
+    thin: Mapping[str, Any] | None = None
+    merge_result: bool = True
+    dependencies: tuple[str, ...] = ()
+    display_name: str | None = None
+    realizes: tuple[str, ...] = ()
+    type: str = "revolve"
+
+    def to_dict(self) -> dict[str, Any]:
+        res: dict[str, Any] = {
+            "type": self.type,
+            "profile": self.profile,
+            "angle": self.angle,
+        }
+        if self.axis is not None:
+            res["axis"] = self.axis
+        if self.mid_plane:
+            res["mid_plane"] = True
+        if self.reverse:
+            res["reverse"] = True
+        if self.thin is not None:
+            res["thin"] = dict(self.thin)
+        if not self.merge_result:
+            res["merge_result"] = False
+        if self.dependencies:
+            res["dependencies"] = list(self.dependencies)
+        if self.display_name is not None:
+            res["display_name"] = self.display_name
+        if self.realizes:
+            res["realizes"] = list(self.realizes)
+        return res
+
+
+@dataclass(frozen=True, slots=True)
+class CutRevolve:
+    """Cut revolve feature node (spec 5.7.3, 22.5.2, ADR-077)."""
+
+    profile: str
+    axis: str | None = None
+    angle: float = 360.0
+    mid_plane: bool = False
+    reverse: bool = False
+    thin: Mapping[str, Any] | None = None
+    dependencies: tuple[str, ...] = ()
+    display_name: str | None = None
+    realizes: tuple[str, ...] = ()
+    type: str = "cut_revolve"
+
+    def to_dict(self) -> dict[str, Any]:
+        res: dict[str, Any] = {
+            "type": self.type,
+            "profile": self.profile,
+            "angle": self.angle,
+        }
+        if self.axis is not None:
+            res["axis"] = self.axis
+        if self.mid_plane:
+            res["mid_plane"] = True
+        if self.reverse:
+            res["reverse"] = True
+        if self.thin is not None:
+            res["thin"] = dict(self.thin)
+        if self.dependencies:
+            res["dependencies"] = list(self.dependencies)
+        if self.display_name is not None:
+            res["display_name"] = self.display_name
+        if self.realizes:
+            res["realizes"] = list(self.realizes)
+        return res
+
+
+PartNode = SketchNode | SolidNode | LinearPattern | CircularPattern | Mirror | Revolve | CutRevolve
 
 
 @dataclass(frozen=True, slots=True)

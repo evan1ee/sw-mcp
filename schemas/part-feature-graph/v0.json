@@ -48,7 +48,9 @@
               "cut_extrude",
               "linear_pattern",
               "circular_pattern",
-              "mirror"
+              "mirror",
+              "revolve",
+              "cut_revolve"
             ]
           }
         },
@@ -127,6 +129,30 @@
             "then": {
               "$ref": "features/mirror.json"
             }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "revolve"
+                }
+              }
+            },
+            "then": {
+              "$ref": "features/revolve.json"
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "cut_revolve"
+                }
+              }
+            },
+            "then": {
+              "$ref": "features/cut_revolve.json"
+            }
           }
         ]
       }
@@ -160,6 +186,10 @@
           },
           "minItems": 2,
           "maxItems": 2
+        },
+        "construction": {
+          "type": "boolean",
+          "default": false
         }
       }
     },
@@ -226,6 +256,10 @@
           },
           "minItems": 2,
           "maxItems": 2
+        },
+        "construction": {
+          "type": "boolean",
+          "default": false
         },
         "direction": {
           "type": "string",

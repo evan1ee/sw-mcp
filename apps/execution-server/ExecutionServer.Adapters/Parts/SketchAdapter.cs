@@ -87,7 +87,9 @@ public sealed class SketchAdapter
                     double x1 = PartUnits.MmToMetres(entity.End[0]);
                     double y1 = PartUnits.MmToMetres(entity.End[1]);
 
-                    var line = sm.CreateLine(x0, y0, 0, x1, y1, 0);
+                    var line = (entity.Construction == true)
+                        ? sm.CreateCenterLine(x0, y0, 0, x1, y1, 0)
+                        : sm.CreateLine(x0, y0, 0, x1, y1, 0);
                     if (line != null && Marshal.IsComObject(line))
                     {
                         Marshal.ReleaseComObject(line);

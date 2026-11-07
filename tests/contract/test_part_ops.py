@@ -102,7 +102,7 @@ def test_feature_create_schema_validates_fields() -> None:
     # invalid feature type
     assert (
         _issues(
-            dict(valid_extrude, type="revolve"),
+            dict(valid_extrude, type="sweep"),
             f"{FEATURE_CREATE_ID}#/$defs/Params",
         )
         != []

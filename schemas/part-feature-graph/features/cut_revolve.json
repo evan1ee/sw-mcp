@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/part-feature-graph/features/cut_revolve.json",
+  "title": "Cut Revolve Feature Node (spec 5.7, 22.5.2)",
+  "type": "object",
+  "required": [
+    "type",
+    "profile"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "const": "cut_revolve"
+    },
+    "profile": {
+      "$ref": "../../common/v0.json#/$defs/ItemId"
+    },
+    "axis": {
+      "type": "string",
+      "description": "Revolution axis reference: sketch centerline, coordinate axis ('axis:x', 'axis:y', 'axis:z', 'plane:front', etc.), or model edge/axis. If omitted, defaults to the centerline in the profile sketch."
+    },
+    "angle": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 360,
+      "default": 360,
+      "description": "Revolution angle in degrees (0, 360]. Default 360 for full revolution."
+    },
+    "mid_plane": {
+      "type": "boolean",
+      "default": false,
+      "description": "Revolve symmetrically both directions from sketch plane."
+    },
+    "reverse": {
+      "type": "boolean",
+      "default": false,
+      "description": "Reverse angle revolution direction."
+    },
+    "thin": {
+      "type": "object",
+      "description": "Thin feature options (SHP-THN)."
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "realizes": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    }
+  },
+  "examples": [
+    {
+      "type": "cut_revolve",
+      "dependencies": [
+        "shaft_body",
+        "sketch_groove"
+      ],
+      "profile": "sketch_groove",
+      "axis": "sketch_groove.cl",
+      "angle": 360
+    }
+  ]
+}
