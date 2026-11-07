@@ -102,6 +102,9 @@ def resolve_node_refs(
             dir_ref = d2.get("direction")
             if isinstance(dir_ref, str) and dir_ref in feature_ids:
                 resolved["direction_2"] = {**d2, "direction": feature_ids[dir_ref]}
+        axis = resolved.get("axis")
+        if isinstance(axis, str) and axis in feature_ids:
+            resolved["axis"] = feature_ids[axis]
     elif op_name == "sketch.create":
         face = resolved.get("face")
         if isinstance(face, dict):

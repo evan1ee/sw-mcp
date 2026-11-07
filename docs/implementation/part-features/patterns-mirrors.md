@@ -52,11 +52,11 @@ Repeats seed features about an axis. IR type `circular_pattern`.
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `PAT-CIR-001` | Seed features | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
-| `PAT-CIR-002` | Axis (`direction`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
-| `PAT-CIR-003` | Angular spacing | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern`; degrees |
-| `PAT-CIR-004` | Instance count | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
-| `PAT-CIR-005` | Equal spacing (`equal_spacing`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
+| `PAT-CIR-001` | Seed features | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 5.7.3 `pattern`; ADR-075; `test_live_circular_pattern_flange` |
+| `PAT-CIR-002` | Axis (`direction`) | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 5.7.3 `pattern`; ADR-075; `test_live_circular_pattern_flange` |
+| `PAT-CIR-003` | Angular spacing | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 5.7.3 `pattern`; degrees; ADR-075; `test_live_circular_pattern_flange` |
+| `PAT-CIR-004` | Instance count | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 5.7.3 `pattern`; ADR-075; `test_live_circular_pattern_flange` |
+| `PAT-CIR-005` | Equal spacing (`equal_spacing`) | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 22.5.2; ADR-075; `test_live_circular_pattern_flange` |
 | `PAT-CIR-006` | Skip instances | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
 | `PAT-CIR-007` | Geometry pattern | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `PAT-CIR-008` | Reverse direction | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
@@ -66,8 +66,8 @@ Repeats seed features about an axis. IR type `circular_pattern`.
 | Item | Value |
 |---|---|
 | Spec | [5.7](../../../docs/architecture/feature-schema-guide.md) §5.7.3 `pattern`; [22.5](../../../docs/specifications/ir-specification.md#225-feature-model) |
-| SOLIDWORKS API | `CreateDefinition(swFmCirPattern)`, `ICircularPatternFeatureData` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); `FeatureCircularPattern5` is obsolete |
-| Tests | — |
+| SOLIDWORKS API | `CreateDefinition(swFmCirPattern)`, `ICircularPatternFeatureData` ● ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); `FeatureCircularPattern5` is obsolete |
+| Tests | `tests/live/test_live_part_chain.py::test_live_circular_pattern_flange`, `tests/live/test_live_part_chain.py::test_live_direct_circular_pattern_ops` |
 | Depends on | Seed features, axis ([`RG-AXS`](reference-geometry.md#rg-axs--reference-axis)) |
 
 ## PAT-CRV — Curve Driven Pattern
