@@ -21,6 +21,7 @@ _REGISTRY: Final[Mapping[str, FeatureTypeInfo]] = MappingProxyType(
         "extrude": FeatureTypeInfo(name="extrude", is_solid=True),
         "cut_extrude": FeatureTypeInfo(name="cut_extrude", is_solid=True),
         "linear_pattern": FeatureTypeInfo(name="linear_pattern", is_solid=True),
+        "circular_pattern": FeatureTypeInfo(name="circular_pattern", is_solid=True),
     }
 )
 

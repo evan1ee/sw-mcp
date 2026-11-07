@@ -11,6 +11,7 @@ from cad_ir.part_feature_graph.model import (
     Arc,
     CenterRectangle,
     Circle,
+    CircularPattern,
     CornerRectangle,
     Line,
     LinearPattern,
@@ -30,6 +31,9 @@ _MIN_CIRCLE_DIA: Final[float] = 0.01
 _TOL: Final[float] = 1e-12
 _LOOP_DEGREE: Final[int] = 2
 _FOUR_VERTICES: Final[int] = 4
+_MIN_PATTERN_COUNT: Final[int] = 2
+_MIN_CIRCULAR_SPACING_DEG: Final[float] = 0.001
+_MAX_CIRCULAR_SPACING_DEG: Final[float] = 360.0
 
 
 def _ccw(
@@ -249,7 +253,7 @@ def _check_references(graph: PartGraph, issues: list[ValidationIssue]) -> None:
                         message=f"Profile '{node.profile}' must be a sketch",
                     )
                 )
-        elif isinstance(node, LinearPattern):
+        elif isinstance(node, (LinearPattern, CircularPattern)):
             for seed in node.seeds:
                 if seed not in graph.nodes:
                     issues.append(
@@ -1025,6 +1029,71 @@ def _check_linear_patterns(graph: PartGraph, issues: list[ValidationIssue]) -> N
             _check_pattern_containment(pat_id, pat, graph, base_sketch, issues)
 
 
+def _check_circular_patterns(graph: PartGraph, issues: list[ValidationIssue]) -> None:
+    patterns = [(nid, n) for nid, n in graph.nodes.items() if isinstance(n, CircularPattern)]
+    if not patterns:
+        return
+
+    deps_map = resolve_dependencies(graph)
+
+    def get_transitive_deps(start: str) -> set[str]:
+        visited: set[str] = set()
+        queue = list(deps_map.get(start, set()))
+        while queue:
+            curr = queue.pop(0)
+            if curr not in visited:
+                visited.add(curr)
+                queue.extend(deps_map.get(curr, set()))
+        return visited
+
+    for pat_id, pat in patterns:
+        trans_deps = get_transitive_deps(pat_id)
+
+        for seed_id in pat.seeds:
+            seed_node = graph.nodes.get(seed_id)
+            if seed_node is not None and not (
+                isinstance(seed_node, SolidNode) and seed_node.type == "cut_extrude"
+            ):
+                issues.append(
+                    ValidationIssue(
+                        code=ErrorCode.IR_RULE_VIOLATED,
+                        pointer=f"/nodes/{pat_id}/seeds",
+                        message=f"Seed '{seed_id}' of pattern '{pat_id}' must be a cut feature",
+                    )
+                )
+            if seed_node is not None and seed_id not in trans_deps:
+                issues.append(
+                    ValidationIssue(
+                        code=ErrorCode.IR_RULE_VIOLATED,
+                        pointer=f"/nodes/{pat_id}/dependencies",
+                        message=f"Pattern '{pat_id}' must depend on seed feature '{seed_id}'",
+                    )
+                )
+
+        if pat.count < _MIN_PATTERN_COUNT:
+            issues.append(
+                ValidationIssue(
+                    code=ErrorCode.IR_RULE_VIOLATED,
+                    pointer=f"/nodes/{pat_id}/count",
+                    message=(
+                        f"Pattern '{pat_id}' instance count must be >= {_MIN_PATTERN_COUNT},"
+                        f" got {pat.count}"
+                    ),
+                )
+            )
+
+        if not (_MIN_CIRCULAR_SPACING_DEG <= pat.spacing <= _MAX_CIRCULAR_SPACING_DEG):
+            issues.append(
+                ValidationIssue(
+                    code=ErrorCode.IR_RULE_VIOLATED,
+                    pointer=f"/nodes/{pat_id}/spacing",
+                    message=(
+                        f"Pattern '{pat_id}' angular spacing must be in (0, 360], got {pat.spacing}"
+                    ),
+                )
+            )
+
+
 def validate_graph(graph: PartGraph) -> tuple[ValidationIssue, ...]:
     """Validate semantic rules of a Part Feature Graph (spec 5.7, 6.7.2).
 
@@ -1050,6 +1119,7 @@ def validate_graph(graph: PartGraph) -> tuple[ValidationIssue, ...]:
     _check_solids(graph, issues)
     _check_sketches(graph, issues)
     _check_linear_patterns(graph, issues)
+    _check_circular_patterns(graph, issues)
 
     extrudes = [
         (nid, n)

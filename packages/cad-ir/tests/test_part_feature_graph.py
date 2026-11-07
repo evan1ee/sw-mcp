@@ -14,6 +14,7 @@ from cad_ir.part_feature_graph import (
     Arc,
     CenterRectangle,
     Circle,
+    CircularPattern,
     CornerRectangle,
     Line,
     LinearPattern,
@@ -499,3 +500,71 @@ def test_linear_pattern_parses() -> None:
         direction="plane:right", spacing=20.0, count=4, reverse=False
     )
     assert pat.direction_2 is None
+
+
+def test_circular_pattern_parses() -> None:
+    doc = {
+        "module": "part",
+        "id": "circular_pattern_part",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "c1": {
+                        "type": "circle",
+                        "center": [0.0, 0.0],
+                        "diameter": 100.0,
+                    }
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+            "sketch_hole": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "c2": {
+                        "type": "circle",
+                        "center": [35.0, 0.0],
+                        "diameter": 10.0,
+                    }
+                },
+            },
+            "cut_hole": {
+                "type": "cut_extrude",
+                "dependencies": ["sketch_hole", "extrude_base"],
+                "profile": "sketch_hole",
+                "end_condition": {"type": "through_all_both"},
+            },
+            "pattern_holes": {
+                "type": "circular_pattern",
+                "dependencies": ["cut_hole", "extrude_base"],
+                "seeds": ["cut_hole"],
+                "axis": "plane:front",
+                "count": 6,
+                "spacing": 360.0,
+                "equal_spacing": True,
+            },
+        },
+    }
+    res = parse_part_graph(cast(JsonValue, doc))
+    assert isinstance(res, PartGraph)
+    pat = res.nodes["pattern_holes"]
+    assert isinstance(pat, CircularPattern)
+    assert pat.type == "circular_pattern"
+    assert pat.seeds == ("cut_hole",)
+    assert pat.axis == "plane:front"
+    expected_count = 6
+    expected_spacing = 360.0
+    assert pat.count == expected_count
+    assert pat.spacing == expected_spacing
+    assert pat.equal_spacing is True
+    assert pat.reverse is False

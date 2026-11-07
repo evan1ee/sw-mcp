@@ -15,6 +15,7 @@ from cad_ir.part_feature_graph.model import (
     Arc,
     CenterRectangle,
     Circle,
+    CircularPattern,
     CornerRectangle,
     EndCondition,
     Line,
@@ -1032,4 +1033,92 @@ def test_linear_pattern_spacing_too_small_rejected() -> None:
     issues = validate_graph(graph)
     assert any(
         i.code == ErrorCode.IR_RULE_VIOLATED and "overlap" in i.message.lower() for i in issues
+    )
+
+
+def _circular_pattern_base_graph(  # noqa: PLR0913
+    *,
+    hole: tuple[float, float, float] = (35.0, 0.0, 8.0),
+    spacing: float = 360.0,
+    count: int = 6,
+    equal_spacing: bool = True,
+    seeds: tuple[str, ...] = ("cut_hole",),
+    pattern_deps: tuple[str, ...] = ("cut_hole", "extrude_base"),
+    axis: str = "plane:front",
+) -> PartGraph:
+    return PartGraph(
+        id="circular_pattern_graph",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(
+                plane="plane:front",
+                entities={"c1": Circle(center=(0.0, 0.0), diameter=100.0)},
+            ),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+            "sketch_hole": SketchNode(
+                plane="plane:front",
+                entities={"c2": Circle(center=(hole[0], hole[1]), diameter=hole[2])},
+            ),
+            "cut_hole": SolidNode(
+                type="cut_extrude",
+                profile="sketch_hole",
+                end_condition=EndCondition(type="through_all_both"),
+                dependencies=("sketch_hole", "extrude_base"),
+            ),
+            "pattern_holes": CircularPattern(
+                seeds=seeds,
+                axis=axis,
+                count=count,
+                spacing=spacing,
+                equal_spacing=equal_spacing,
+                dependencies=pattern_deps,
+            ),
+        },
+    )
+
+
+def test_circular_pattern_accepted() -> None:
+    graph = _circular_pattern_base_graph()
+    assert validate_graph(graph) == ()
+
+
+def test_circular_pattern_unresolved_seed_rejected() -> None:
+    graph = _circular_pattern_base_graph(
+        seeds=("missing_cut",), pattern_deps=("missing_cut", "extrude_base")
+    )
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_REFERENCE_UNRESOLVED and "missing_cut" in i.message for i in issues
+    )
+
+
+def test_circular_pattern_non_cut_seed_rejected() -> None:
+    graph = _circular_pattern_base_graph(seeds=("extrude_base",), pattern_deps=("extrude_base",))
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "must be a cut feature" in i.message
+        for i in issues
+    )
+
+
+def test_circular_pattern_missing_dependency_rejected() -> None:
+    graph = _circular_pattern_base_graph(pattern_deps=("extrude_base",))
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "must depend on seed" in i.message for i in issues
+    )
+
+
+def test_circular_pattern_spacing_out_of_bounds_rejected() -> None:
+    graph = _circular_pattern_base_graph(spacing=400.0)
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "spacing" in i.message.lower() for i in issues
     )
