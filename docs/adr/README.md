@@ -80,3 +80,4 @@ New decisions: copy [template.md](template.md), take the next free number, and a
 | [ADR-072](ADR-072-sketch-rectangle-primitives.md) | Corner and center rectangle sketch primitives lowered to lines | Clean authoring for rectangular profiles | Accepted |
 | [ADR-073](ADR-073-sketch-straight-slot-primitive.md) | Straight slot sketch primitive lowered to lines and arcs | Standard slot geometry in Part Feature Graph IR | Accepted |
 | [ADR-074](ADR-074-linear-pattern-feature.md) | Linear pattern solid feature on seed cut features | Enables linear repeated feature patterns in 3D parts | Accepted |
+| [ADR-075](ADR-075-circular-pattern-feature.md) | Circular pattern solid feature on seed cut features | Enables circular repeated feature patterns in 3D parts | Accepted |

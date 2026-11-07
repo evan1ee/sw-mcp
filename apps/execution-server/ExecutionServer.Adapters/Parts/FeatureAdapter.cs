@@ -104,6 +104,63 @@ public sealed class FeatureAdapter
 
                 createdFeature = scope.Track((IFeature?)doc.FeatureManager.CreateFeature(featData));
             }
+            else if (p.Type == FeatureCreateParamsType.CircularPattern)
+            {
+                if (p.Seeds == null || p.Seeds.Count == 0)
+                {
+                    throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Circular pattern requires at least one seed feature.");
+                }
+                if (string.IsNullOrEmpty(p.Axis))
+                {
+                    throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Circular pattern requires axis.");
+                }
+                if (p.Count == null || p.Count < 2)
+                {
+                    throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Circular pattern requires count >= 2.");
+                }
+                if (p.Spacing == null || p.Spacing <= 0)
+                {
+                    throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Circular pattern requires spacing > 0.");
+                }
+
+                doc.ClearSelection2(true);
+
+                // 1. Select seed features with Mark = 4 (pattern feature array)
+                bool append = false;
+                foreach (var seedId in p.Seeds)
+                {
+                    var sf = FeatureLookup.FindById(doc, seedId, scope);
+                    if (sf == null)
+                    {
+                        throw new IpcException(ErrorCodes.IR_REFERENCE_UNRESOLVED, $"Seed feature '{seedId}' not found in document.");
+                    }
+                    sf.Select2(append, 4);
+                    append = true;
+                }
+
+                var selMgr = (ISelectionMgr)doc.SelectionManager;
+
+                // 2. Select rotation axis entity with Mark = 1
+                var axisEntity = ResolveCircularPatternAxisEntity(doc, p.Axis!, scope);
+                var selData = scope.Track((SelectData?)selMgr.CreateSelectData());
+                if (selData != null) selData.Mark = 1;
+                axisEntity.Select4(true, selData);
+
+                // 3. Create definition
+                var featData = scope.Track((ICircularPatternFeatureData?)doc.FeatureManager.CreateDefinition((int)swFeatureNameID_e.swFmCirPattern));
+                if (featData == null)
+                {
+                    throw new IpcException(ErrorCodes.BACKEND_OPERATION_FAILED, "Failed to create circular pattern definition.");
+                }
+
+                featData.TotalInstances = (int)p.Count.Value;
+                featData.EqualSpacing = p.EqualSpacing ?? true;
+                double angleDeg = p.Spacing.Value;
+                featData.Spacing = angleDeg * Math.PI / 180.0;
+                featData.ReverseDirection = p.Reverse ?? false;
+
+                createdFeature = scope.Track((IFeature?)doc.FeatureManager.CreateFeature(featData));
+            }
             else
             {
                 if (string.IsNullOrEmpty(p.Profile))
@@ -198,6 +255,7 @@ public sealed class FeatureAdapter
                 FeatureCreateParamsType.Extrude => "FeatureExtrusion3",
                 FeatureCreateParamsType.CutExtrude => "FeatureCut4",
                 FeatureCreateParamsType.LinearPattern => "CreateFeature(ILinearPatternFeatureData)",
+                FeatureCreateParamsType.CircularPattern => "CreateFeature(ICircularPatternFeatureData)",
                 _ => "Unknown"
             };
             var details = new JObject
@@ -221,6 +279,7 @@ public sealed class FeatureAdapter
                 FeatureCreateParamsType.Extrude => "FeatureExtrusion3",
                 FeatureCreateParamsType.CutExtrude => "FeatureCut4",
                 FeatureCreateParamsType.LinearPattern => "CreateFeature(ILinearPatternFeatureData)",
+                FeatureCreateParamsType.CircularPattern => "CreateFeature(ICircularPatternFeatureData)",
                 _ => "Unknown"
             };
             var details = new JObject
@@ -303,6 +362,7 @@ public sealed class FeatureAdapter
             FeatureCreateParamsType.Extrude => "extrude",
             FeatureCreateParamsType.CutExtrude => "cut_extrude",
             FeatureCreateParamsType.LinearPattern => "linear_pattern",
+            FeatureCreateParamsType.CircularPattern => "circular_pattern",
             _ => "unknown"
         };
 
@@ -370,7 +430,160 @@ public sealed class FeatureAdapter
         return FindDirectionEdge(doc, targetDir, scope);
     }
 
-    private static (IEdge Edge, bool NeedsReverse) FindDirectionEdge(IModelDoc2 doc, double[] targetDir, ComScope callerScope)
+    private static IEntity ResolveCircularPatternAxisEntity(IModelDoc2 doc, string axisRef, ComScope scope)
+    {
+        double[]? targetAxis = null;
+        string lower = axisRef.ToLowerInvariant();
+        if (lower is "plane:right" or "x" or "axis:x")
+        {
+            targetAxis = new[] { 1.0, 0.0, 0.0 };
+        }
+        else if (lower is "plane:top" or "y" or "axis:y")
+        {
+            targetAxis = new[] { 0.0, 1.0, 0.0 };
+        }
+        else if (lower is "plane:front" or "z" or "axis:z")
+        {
+            targetAxis = new[] { 0.0, 0.0, 1.0 };
+        }
+        else if (lower is "-plane:right" or "-x" or "-axis:x")
+        {
+            targetAxis = new[] { -1.0, 0.0, 0.0 };
+        }
+        else if (lower is "-plane:top" or "-y" or "-axis:y")
+        {
+            targetAxis = new[] { 0.0, -1.0, 0.0 };
+        }
+        else if (lower is "-plane:front" or "-z" or "-axis:z")
+        {
+            targetAxis = new[] { 0.0, 0.0, -1.0 };
+        }
+
+        if (targetAxis != null)
+        {
+            var entity = FindAxisEntity(doc, targetAxis, scope);
+            if (entity != null)
+            {
+                return entity;
+            }
+        }
+
+        // Try as feature reference (e.g. cylinder/boss)
+        var feat = FeatureLookup.FindById(doc, axisRef, scope);
+        if (feat != null)
+        {
+            var faces = (object[]?)feat.GetFaces();
+            if (faces != null)
+            {
+                foreach (object faceObj in faces)
+                {
+                    var face = (IFace2)faceObj;
+                    using var localScope = new ComScope();
+                    var surf = localScope.Track((ISurface?)face.GetSurface());
+                    if (surf != null && surf.IsCylinder())
+                    {
+                        return (IEntity)scope.Track(face)!;
+                    }
+                    if (Marshal.IsComObject(face))
+                    {
+                        Marshal.ReleaseComObject(face);
+                    }
+                }
+            }
+        }
+
+        throw new IpcException(
+            ErrorCodes.IR_REFERENCE_UNRESOLVED,
+            $"No cylindrical face, circular edge, or axis entity found matching axis reference '{axisRef}'.");
+    }
+
+    private static IEntity? FindAxisEntity(IModelDoc2 doc, double[] targetAxis, ComScope callerScope)
+    {
+        var partDoc = (IPartDoc)doc;
+        var bodies = (object[]?)partDoc.GetBodies2((int)swBodyType_e.swSolidBody, false);
+        if (bodies == null) return null;
+
+        // 1. Circular edges aligned with axis normal
+        foreach (object bodyObj in bodies)
+        {
+            var body = (IBody2)bodyObj;
+            var edges = (object[]?)body.GetEdges();
+            if (edges != null)
+            {
+                foreach (object edgeObj in edges)
+                {
+                    var edge = (IEdge)edgeObj;
+                    using var localScope = new ComScope();
+                    var curve = localScope.Track((ICurve?)edge.GetCurve());
+                    if (curve != null && curve.IsCircle())
+                    {
+                        var circleParams = (double[]?)curve.CircleParams;
+                        if (circleParams != null && circleParams.Length >= 7)
+                        {
+                            double nx = circleParams[4];
+                            double ny = circleParams[5];
+                            double nz = circleParams[6];
+                            double dot = nx * targetAxis[0] + ny * targetAxis[1] + nz * targetAxis[2];
+                            if (Math.Abs(Math.Abs(dot) - 1.0) < 1e-3)
+                            {
+                                return (IEntity)callerScope.Track(edge)!;
+                            }
+                        }
+                    }
+                    if (Marshal.IsComObject(edge))
+                    {
+                        Marshal.ReleaseComObject(edge);
+                    }
+                }
+            }
+        }
+
+        // 2. Cylindrical faces aligned with axis direction
+        foreach (object bodyObj in bodies)
+        {
+            var body = (IBody2)bodyObj;
+            var faces = (object[]?)body.GetFaces();
+            if (faces != null)
+            {
+                foreach (object faceObj in faces)
+                {
+                    var face = (IFace2)faceObj;
+                    using var localScope = new ComScope();
+                    var surf = localScope.Track((ISurface?)face.GetSurface());
+                    if (surf != null && surf.IsCylinder())
+                    {
+                        var cylParams = (double[]?)surf.CylinderParams;
+                        if (cylParams != null && cylParams.Length >= 6)
+                        {
+                            double ax = cylParams[3];
+                            double ay = cylParams[4];
+                            double az = cylParams[5];
+                            double dot = ax * targetAxis[0] + ay * targetAxis[1] + az * targetAxis[2];
+                            if (Math.Abs(Math.Abs(dot) - 1.0) < 1e-3)
+                            {
+                                return (IEntity)callerScope.Track(face)!;
+                            }
+                        }
+                    }
+                    if (Marshal.IsComObject(face))
+                    {
+                        Marshal.ReleaseComObject(face);
+                    }
+                }
+            }
+        }
+
+        // 3. Linear edge aligned with direction
+        var (linearEdge, _) = TryFindDirectionEdge(doc, targetAxis, callerScope);
+        if (linearEdge != null)
+        {
+            return (IEntity)linearEdge;
+        }
+
+        return null;
+    }
+
+    private static (IEdge? Edge, bool NeedsReverse) TryFindDirectionEdge(IModelDoc2 doc, double[] targetDir, ComScope callerScope)
     {
         var partDoc = (IPartDoc)doc;
         var bodies = (object[]?)partDoc.GetBodies2((int)swBodyType_e.swSolidBody, false);
@@ -398,7 +611,7 @@ public sealed class FeatureAdapter
                             if (Math.Abs(Math.Abs(dot) - 1.0) < 1e-3)
                             {
                                 bool reverse = dot < 0;
-                                return (callerScope.Track(edge)!, reverse);
+                                return (callerScope.Track(edge), reverse);
                             }
                         }
                     }
@@ -408,6 +621,16 @@ public sealed class FeatureAdapter
                     }
                 }
             }
+        }
+        return (null, false);
+    }
+
+    private static (IEdge Edge, bool NeedsReverse) FindDirectionEdge(IModelDoc2 doc, double[] targetDir, ComScope callerScope)
+    {
+        var (edge, needsRev) = TryFindDirectionEdge(doc, targetDir, callerScope);
+        if (edge != null)
+        {
+            return (edge, needsRev);
         }
 
         throw new IpcException(

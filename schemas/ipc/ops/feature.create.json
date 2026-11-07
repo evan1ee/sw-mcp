@@ -70,7 +70,8 @@
           "enum": [
             "extrude",
             "cut_extrude",
-            "linear_pattern"
+            "linear_pattern",
+            "circular_pattern"
           ]
         },
         "profile": {
@@ -97,6 +98,23 @@
         },
         "direction_2": {
           "$ref": "#/$defs/LinearPatternDirection"
+        },
+        "axis": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "spacing": {
+          "type": "number",
+          "minimum": 0
+        },
+        "equal_spacing": {
+          "type": "boolean"
+        },
+        "reverse": {
+          "type": "boolean"
         },
         "_meta": {
           "$ref": "../v0.json#/$defs/Meta"

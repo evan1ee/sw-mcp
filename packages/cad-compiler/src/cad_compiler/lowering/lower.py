@@ -11,6 +11,7 @@ from cad_ir.part_feature_graph.model import (
     Arc,
     CenterRectangle,
     Circle,
+    CircularPattern,
     CornerRectangle,
     Line,
     LinearPattern,
@@ -267,6 +268,34 @@ def _lower_linear_pattern(
     return op_body, op_id
 
 
+def _lower_circular_pattern(
+    graph: PartGraph, node_id: str, node: CircularPattern, seq: int, deps: list[str]
+) -> tuple[dict[str, Any], str]:
+    params: dict[str, Any] = {
+        "node_id": node_id,
+        "type": "circular_pattern",
+        "seeds": list(node.seeds),
+        "axis": node.axis,
+        "count": node.count,
+        "spacing": node.spacing,
+        "equal_spacing": node.equal_spacing,
+    }
+    if node.reverse:
+        params["reverse"] = True
+
+    op_id = f"op_{seq}"
+    op_body = {
+        "sequence": seq,
+        "document": WORKING,
+        "op": "feature.create",
+        "params": params,
+        "source": node_id,
+        "depends_on": deps,
+        "postconditions": ["feature_exists", "feature_status_ok", "rebuild_ok"],
+    }
+    return op_body, op_id
+
+
 def lower_graph(
     graph: PartGraph,
     analysis: GraphAnalysis,
@@ -311,8 +340,12 @@ def lower_graph(
             op_body, vp_id = _lower_solid(graph, node_id, node, seq, dep_op_ids)
             operations[op_id] = op_body
             verification_points.append(vp_id)
-        else:
+        elif isinstance(node, LinearPattern):
             op_body, vp_id = _lower_linear_pattern(graph, node_id, node, seq, dep_op_ids)
+            operations[op_id] = op_body
+            verification_points.append(vp_id)
+        else:
+            op_body, vp_id = _lower_circular_pattern(graph, node_id, node, seq, dep_op_ids)
             operations[op_id] = op_body
             verification_points.append(vp_id)
 

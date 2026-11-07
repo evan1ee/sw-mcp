@@ -649,3 +649,81 @@ def test_linear_pattern_lowers_to_feature_create() -> None:
         "spacing": 20.0,
         "count": 4,
     }
+
+
+def test_circular_pattern_lowers_to_feature_create() -> None:
+    raw = {
+        "module": "part",
+        "id": "circ_pattern_part",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "c1": {
+                        "type": "circle",
+                        "center": [0.0, 0.0],
+                        "diameter": 100.0,
+                    }
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+            "sketch_hole": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "c2": {
+                        "type": "circle",
+                        "center": [35.0, 0.0],
+                        "diameter": 8.0,
+                    }
+                },
+            },
+            "cut_hole": {
+                "type": "cut_extrude",
+                "dependencies": ["sketch_hole", "extrude_base"],
+                "profile": "sketch_hole",
+                "end_condition": {"type": "through_all_both"},
+            },
+            "pattern_holes": {
+                "type": "circular_pattern",
+                "dependencies": ["cut_hole", "extrude_base"],
+                "seeds": ["cut_hole"],
+                "axis": "plane:front",
+                "count": 6,
+                "spacing": 360.0,
+                "equal_spacing": True,
+            },
+        },
+    }
+    ref_str = "part:circ_pattern_part@1"
+    manifest = BundleManifest("1.0", (parse_document_ref(ref_str),))
+    source = CompileInput(manifest=manifest, documents={ref_str: cast(dict[str, JsonValue], raw)})
+    ctx = CompileContext("0.1.0", CapabilityProfile.from_session(_make_session()), {})
+    result = compile_bundle(source, ctx)
+    assert result.plan is not None
+    plan = cast(dict[str, Any], result.plan)
+    operations = cast(dict[str, dict[str, Any]], plan["operations"])
+    pat_ops = [
+        op
+        for op in operations.values()
+        if op["op"] == "feature.create" and op["params"].get("type") == "circular_pattern"
+    ]
+    assert len(pat_ops) == 1
+    pat_op = pat_ops[0]
+    assert pat_op["source"] == "pattern_holes"
+    assert pat_op["params"]["seeds"] == ["cut_hole"]
+    assert pat_op["params"]["axis"] == "plane:front"
+    expected_count = 6
+    expected_spacing = 360.0
+    assert pat_op["params"]["count"] == expected_count
+    assert pat_op["params"]["spacing"] == expected_spacing
+    assert pat_op["params"]["equal_spacing"] is True

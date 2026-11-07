@@ -11,6 +11,7 @@ from cad_ir.part_feature_graph.model import (
     Arc,
     CenterRectangle,
     Circle,
+    CircularPattern,
     CornerRectangle,
     Line,
     LinearPattern,
@@ -29,6 +30,7 @@ DIM_3D = 3
 MM_PER_M = 1000.0
 MM2_PER_M2 = 1e6
 MM3_PER_M3 = 1e9
+MIN_PATTERN_COUNT = 2
 
 type CheckStatus = Literal["passed", "failed", "warning", "not_applicable", "not_evaluated"]
 type NotEvaluatedReason = Literal["not_executed", "unsupported", "missing_data", "malformed_data"]
@@ -353,12 +355,20 @@ def _collect_features(
                         native_type="",
                     )
                 )
-        else:
+        elif isinstance(node, LinearPattern):
             features.append(
                 ExpectedFeature(
                     node_id=nid,
                     feature_type="linear_pattern",
                     native_type="LPattern",
+                )
+            )
+        else:
+            features.append(
+                ExpectedFeature(
+                    node_id=nid,
+                    feature_type="circular_pattern",
+                    native_type="CirPattern",
                 )
             )
     return features, solid_nodes
@@ -716,6 +726,71 @@ def _apply_pattern_instances(
                     )
 
 
+def _apply_circular_pattern_instances(
+    pat: CircularPattern,
+    graph: PartGraph,
+    base_plane: PlaneAxes,
+    base_depth: float,
+    acc: _GeometryAccumulator,
+) -> None:
+    for seed_id in pat.seeds:
+        seed_node = graph.nodes.get(seed_id)
+        if not isinstance(seed_node, SolidNode) or seed_node.type != "cut_extrude":
+            continue
+        cut_sketch_raw = graph.nodes.get(seed_node.profile)
+        if not isinstance(cut_sketch_raw, SketchNode):
+            continue
+
+        count = pat.count
+        if count < MIN_PATTERN_COUNT:
+            continue
+
+        step_angle = (
+            math.radians(pat.spacing) / count if pat.equal_spacing else math.radians(pat.spacing)
+        )
+        if pat.reverse:
+            step_angle = -step_angle
+
+        is_through = seed_node.end_condition.type in ("through_all", "through_all_both")
+        cut_depth = base_depth if is_through else float(seed_node.end_condition.depth or 0.0)
+        projector, depth_center, circle_depth, cyl_dir = _cut_frame_and_depths(
+            cut_sketch_raw.plane, base_plane, base_depth, cut_depth
+        )
+
+        regions = list(_cut_regions(cut_sketch_raw))
+        seed_cylinders = _collect_cut_entity_cylinders(
+            cut_sketch_raw, projector, circle_depth, cyl_dir
+        )
+
+        for k in range(1, count):
+            theta = k * step_angle
+            cos_th = math.cos(theta)
+            sin_th = math.sin(theta)
+
+            for area, perimeter, center_x, center_y in regions:
+                region_vol = area * cut_depth
+                rx = center_x * cos_th - center_y * sin_th
+                ry = center_x * sin_th + center_y * cos_th
+                region_com = projector.to_model(rx, ry, depth_center)
+
+                acc.volume -= region_vol
+                acc.moment[0] -= region_vol * region_com[0]
+                acc.moment[1] -= region_vol * region_com[1]
+                acc.moment[2] -= region_vol * region_com[2]
+                acc.area += perimeter * cut_depth - (2.0 * area if is_through else 0.0)
+
+            for cyl in seed_cylinders:
+                cx = cyl.point.x * cos_th - cyl.point.y * sin_th
+                cy = cyl.point.x * sin_th + cyl.point.y * cos_th
+                acc.cylinders.append(
+                    ExpectedCylinder(
+                        point=Point3(cx, cy, cyl.point.z),
+                        direction=cyl.direction,
+                        radius=cyl.radius,
+                    )
+                )
+
+
 def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
     """Compute expected geometry from a PartGraph alone (spec 10.2, design 9)."""
     features, solid_nodes = _collect_features(graph)
@@ -779,6 +854,8 @@ def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
     )
     for pat in [n for n in graph.nodes.values() if isinstance(n, LinearPattern)]:
         _apply_pattern_instances(pat, graph, base_plane, base_depth, acc)
+    for pat in [n for n in graph.nodes.values() if isinstance(n, CircularPattern)]:
+        _apply_circular_pattern_instances(pat, graph, base_plane, base_depth, acc)
 
     total_volume = acc.volume
     total_area = acc.area

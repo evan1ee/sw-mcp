@@ -100,7 +100,7 @@ type CompletenessState = Literal['present', 'empty', 'unavailable', 'unsupported
 
 type FeatureCreateEndConditionType = Literal['blind', 'through_all_both']
 
-type FeatureCreateParamsType = Literal['extrude', 'cut_extrude', 'linear_pattern']
+type FeatureCreateParamsType = Literal['extrude', 'cut_extrude', 'linear_pattern', 'circular_pattern']
 
 type FeatureCreateParamsHost = Literal['plane', 'face']
 
@@ -1877,6 +1877,11 @@ class FeatureCreateParams:
     seeds: tuple[str, ...] | None = None
     direction_1: FeatureCreateLinearPatternDirection | None = None
     direction_2: FeatureCreateLinearPatternDirection | None = None
+    axis: str | None = None
+    count: int | None = None
+    spacing: float | None = None
+    equal_spacing: bool | None = None
+    reverse: bool | None = None
     meta: Meta | None = None
 
     @classmethod
@@ -1895,6 +1900,11 @@ class FeatureCreateParams:
             seeds=_opt(obj, "seeds", where, _list_of(_str)),
             direction_1=_opt(obj, "direction_1", where, FeatureCreateLinearPatternDirection._at),
             direction_2=_opt(obj, "direction_2", where, FeatureCreateLinearPatternDirection._at),
+            axis=_opt(obj, "axis", where, _str),
+            count=_opt(obj, "count", where, _int),
+            spacing=_opt(obj, "spacing", where, _num),
+            equal_spacing=_opt(obj, "equal_spacing", where, _bool),
+            reverse=_opt(obj, "reverse", where, _bool),
             meta=_opt(obj, "_meta", where, Meta._at),
         )
 
@@ -1914,6 +1924,16 @@ class FeatureCreateParams:
             out["direction_1"] = _dump(self.direction_1)
         if self.direction_2 is not None:
             out["direction_2"] = _dump(self.direction_2)
+        if self.axis is not None:
+            out["axis"] = _dump(self.axis)
+        if self.count is not None:
+            out["count"] = _dump(self.count)
+        if self.spacing is not None:
+            out["spacing"] = _dump(self.spacing)
+        if self.equal_spacing is not None:
+            out["equal_spacing"] = _dump(self.equal_spacing)
+        if self.reverse is not None:
+            out["reverse"] = _dump(self.reverse)
         if self.meta is not None:
             out["_meta"] = _dump(self.meta)
         return out

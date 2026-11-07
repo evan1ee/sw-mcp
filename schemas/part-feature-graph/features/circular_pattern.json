@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/part-feature-graph/features/circular_pattern.json",
+  "title": "Circular Pattern Feature Node (spec 5.7, 22.5.2)",
+  "type": "object",
+  "required": [
+    "type",
+    "dependencies",
+    "seeds",
+    "axis",
+    "count",
+    "spacing"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "const": "circular_pattern"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    },
+    "seeds": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "axis": {
+      "$ref": "../../common/v0.json#/$defs/GeometryRef"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 2
+    },
+    "spacing": {
+      "$ref": "../../common/v0.json#/$defs/Angle",
+      "exclusiveMinimum": 0,
+      "maximum": 360
+    },
+    "equal_spacing": {
+      "type": "boolean",
+      "default": true
+    },
+    "reverse": {
+      "type": "boolean",
+      "default": false
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "realizes": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    }
+  },
+  "examples": [
+    {
+      "type": "circular_pattern",
+      "dependencies": [
+        "cut_hole",
+        "extrude_base"
+      ],
+      "seeds": [
+        "cut_hole"
+      ],
+      "axis": "plane:front",
+      "count": 6,
+      "spacing": 360.0,
+      "equal_spacing": true
+    }
+  ]
+}

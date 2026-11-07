@@ -10,6 +10,7 @@ from cad_ir.part_feature_graph.model import (
     Arc,
     CenterRectangle,
     Circle,
+    CircularPattern,
     CornerRectangle,
     EndCondition,
     Line,
@@ -112,6 +113,32 @@ def _parse_linear_pattern(
     )
 
 
+def _parse_circular_pattern(
+    node_data: dict[str, JsonValue],
+    dependencies: tuple[str, ...],
+    display_name: str | None,
+    realizes: tuple[str, ...],
+) -> CircularPattern:
+    raw_seeds = cast(list[JsonValue], node_data["seeds"])
+    seeds = tuple(str(s) for s in raw_seeds)
+    axis = str(node_data.get("axis") or node_data.get("direction"))
+    count = int(cast(int, node_data["count"]))
+    spacing = float(cast(float | int, node_data["spacing"]))
+    equal_spacing = bool(node_data.get("equal_spacing", True))
+    reverse = bool(node_data.get("reverse", False))
+    return CircularPattern(
+        seeds=seeds,
+        axis=axis,
+        count=count,
+        spacing=spacing,
+        equal_spacing=equal_spacing,
+        reverse=reverse,
+        dependencies=dependencies,
+        display_name=display_name,
+        realizes=realizes,
+    )
+
+
 def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
     """Validate and parse a Part Feature Graph IR document.
 
@@ -159,6 +186,10 @@ def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
             )
         elif node_type == "linear_pattern":
             nodes[node_id] = _parse_linear_pattern(node_data, dependencies, display_name, realizes)
+        elif node_type == "circular_pattern":
+            nodes[node_id] = _parse_circular_pattern(
+                node_data, dependencies, display_name, realizes
+            )
 
     return PartGraph(
         id=str(doc_dict["id"]),

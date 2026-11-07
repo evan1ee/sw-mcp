@@ -229,7 +229,42 @@ class LinearPattern:
         return res
 
 
-PartNode = SketchNode | SolidNode | LinearPattern
+@dataclass(frozen=True, slots=True)
+class CircularPattern:
+    """Circular pattern feature node (spec 5.7.3, ADR-075)."""
+
+    seeds: tuple[str, ...]
+    axis: str
+    count: int
+    spacing: float
+    equal_spacing: bool = True
+    reverse: bool = False
+    dependencies: tuple[str, ...] = ()
+    display_name: str | None = None
+    realizes: tuple[str, ...] = ()
+    type: str = "circular_pattern"
+
+    def to_dict(self) -> dict[str, Any]:
+        res: dict[str, Any] = {
+            "type": self.type,
+            "seeds": list(self.seeds),
+            "axis": self.axis,
+            "count": self.count,
+            "spacing": self.spacing,
+            "equal_spacing": self.equal_spacing,
+        }
+        if self.reverse:
+            res["reverse"] = True
+        if self.dependencies:
+            res["dependencies"] = list(self.dependencies)
+        if self.display_name is not None:
+            res["display_name"] = self.display_name
+        if self.realizes:
+            res["realizes"] = list(self.realizes)
+        return res
+
+
+PartNode = SketchNode | SolidNode | LinearPattern | CircularPattern
 
 
 @dataclass(frozen=True, slots=True)
