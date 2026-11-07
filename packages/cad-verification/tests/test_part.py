@@ -6,7 +6,9 @@ from typing import Any
 import pytest
 from cad_ir.part_feature_graph.model import (
     Arc,
+    CenterRectangle,
     Circle,
+    CornerRectangle,
     EndCondition,
     Line,
     PartGraph,
@@ -875,3 +877,104 @@ def test_expected_geometry_with_arcs() -> None:
     assert len(geom.cylinders) == expected_cylinders_count
     radii = sorted([c.radius for c in geom.cylinders])
     assert radii == pytest.approx([10.0, 10.0])
+
+
+def test_expected_geometry_with_corner_rectangle() -> None:
+    graph = PartGraph(
+        id="corner_rect_plate",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sk1": SketchNode(
+                plane="plane:front",
+                entities={
+                    "rect": CornerRectangle(corner1=(0.0, 0.0), corner2=(40.0, 30.0)),
+                },
+            ),
+            "ext1": SolidNode(
+                type="extrude",
+                profile="sk1",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sk1",),
+            ),
+        },
+    )
+    geom = expected_geometry(graph)
+    assert geom.volume_mm3 == pytest.approx(12000.0)
+    assert geom.bbox_mm.min == pytest.approx((0.0, 0.0, 0.0))
+    assert geom.bbox_mm.max == pytest.approx((40.0, 30.0, 10.0))
+    assert geom.center_of_mass_mm == pytest.approx((20.0, 15.0, 5.0))
+    assert geom.surface_area_mm2 == pytest.approx(3800.0)
+    assert len(geom.cylinders) == 0
+
+
+def test_expected_geometry_with_center_rectangle() -> None:
+    graph = PartGraph(
+        id="center_rect_plate",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sk1": SketchNode(
+                plane="plane:front",
+                entities={
+                    "rect": CenterRectangle(center=(0.0, 0.0), width=50.0, height=20.0),
+                },
+            ),
+            "ext1": SolidNode(
+                type="extrude",
+                profile="sk1",
+                end_condition=EndCondition(type="blind", depth=5.0),
+                dependencies=("sk1",),
+            ),
+        },
+    )
+    geom = expected_geometry(graph)
+    assert geom.volume_mm3 == pytest.approx(5000.0)
+    assert geom.bbox_mm.min == pytest.approx((-25.0, -10.0, 0.0))
+    assert geom.bbox_mm.max == pytest.approx((25.0, 10.0, 5.0))
+    assert geom.center_of_mass_mm == pytest.approx((0.0, 0.0, 2.5))
+    assert geom.surface_area_mm2 == pytest.approx(2700.0)
+    assert len(geom.cylinders) == 0
+
+
+def test_expected_geometry_with_rectangle_cut() -> None:
+    graph = PartGraph(
+        id="rect_cut_plate",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sk1": SketchNode(
+                plane="plane:front",
+                entities={
+                    "base_rect": CenterRectangle(center=(0.0, 0.0), width=100.0, height=60.0),
+                },
+            ),
+            "ext1": SolidNode(
+                type="extrude",
+                profile="sk1",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sk1",),
+            ),
+            "sk2": SketchNode(
+                plane="plane:front",
+                entities={
+                    "cut_rect": CenterRectangle(center=(0.0, 0.0), width=40.0, height=20.0),
+                },
+            ),
+            "cut1": SolidNode(
+                type="cut_extrude",
+                profile="sk2",
+                end_condition=EndCondition(type="through_all"),
+                dependencies=("ext1", "sk2"),
+            ),
+        },
+    )
+    geom = expected_geometry(graph)
+    assert geom.volume_mm3 == pytest.approx(52000.0)
+    assert geom.bbox_mm.min == pytest.approx((-50.0, -30.0, 0.0))
+    assert geom.bbox_mm.max == pytest.approx((50.0, 30.0, 10.0))
+    assert geom.center_of_mass_mm == pytest.approx((0.0, 0.0, 5.0))
+    assert geom.surface_area_mm2 == pytest.approx(14800.0)

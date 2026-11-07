@@ -9,7 +9,9 @@ from cad_ir.core.json_types import JsonValue
 from cad_ir.part_feature_graph.faces import FaceFrame, face_frame, parse_face_plane
 from cad_ir.part_feature_graph.model import (
     Arc,
+    CenterRectangle,
     Circle,
+    CornerRectangle,
     Line,
     PartGraph,
     SketchNode,
@@ -351,12 +353,41 @@ def _collect_features(
     return features, solid_nodes
 
 
+def _rect_to_bounds_and_metrics(
+    r: CornerRectangle | CenterRectangle,
+) -> tuple[float, float, float, float, tuple[float, float], tuple[float, float]]:
+    """Compute (area, perimeter, cx, cy, (min_x, max_x), (min_y, max_y)) for a rectangle."""
+    if isinstance(r, CornerRectangle):
+        x_min = min(r.corner1[0], r.corner2[0])
+        x_max = max(r.corner1[0], r.corner2[0])
+        y_min = min(r.corner1[1], r.corner2[1])
+        y_max = max(r.corner1[1], r.corner2[1])
+        w = x_max - x_min
+        h = y_max - y_min
+        cx = (x_min + x_max) * 0.5
+        cy = (y_min + y_max) * 0.5
+    else:
+        w = r.width
+        h = r.height
+        cx, cy = r.center
+        x_min = cx - w * 0.5
+        x_max = cx + w * 0.5
+        y_min = cy - h * 0.5
+        y_max = cy + h * 0.5
+    area = w * h
+    perimeter = 2.0 * (w + h)
+    return area, perimeter, cx, cy, (x_min, x_max), (y_min, y_max)
+
+
 def _compute_base_profile(
     sketch: SketchNode,
 ) -> tuple[float, float, float, float, tuple[float, float], tuple[float, float]]:
     """Compute base 2D profile area, perimeter, centroid (cx, cy) and bounds (xs, ys)."""
     curves = [e for e in sketch.entities.values() if isinstance(e, (Line, Arc))]
     circles = [e for e in sketch.entities.values() if isinstance(e, Circle)]
+    rectangles = [
+        e for e in sketch.entities.values() if isinstance(e, (CornerRectangle, CenterRectangle))
+    ]
 
     if curves:
         return _compute_curves_profile(curves)
@@ -369,7 +400,10 @@ def _compute_base_profile(
         cx, cy = c.center
         return area, perimeter, cx, cy, (cx - r, cx + r), (cy - r, cy + r)
 
-    raise ValueError("Base sketch has no Line, Arc or Circle entities")
+    if rectangles:
+        return _rect_to_bounds_and_metrics(rectangles[0])
+
+    raise ValueError("Base sketch has no Line, Arc, Circle or Rectangle entities")
 
 
 def _cut_regions(sketch: SketchNode) -> list[tuple[float, float, float, float]]:
@@ -384,6 +418,14 @@ def _cut_regions(sketch: SketchNode) -> list[tuple[float, float, float, float]]:
                 c.center[1],
             )
             for c in circles
+        ]
+    rectangles = [
+        e for e in sketch.entities.values() if isinstance(e, (CornerRectangle, CenterRectangle))
+    ]
+    if rectangles:
+        return [
+            (metrics[0], metrics[1], metrics[2], metrics[3])
+            for metrics in (_rect_to_bounds_and_metrics(r) for r in rectangles)
         ]
     area, perimeter, center_x, center_y, _, _ = _compute_base_profile(sketch)
     return [(area, perimeter, center_x, center_y)]
