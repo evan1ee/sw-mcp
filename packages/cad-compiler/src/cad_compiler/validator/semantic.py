@@ -1,12 +1,13 @@
 """Semantic validator for Part Feature Graph IR (spec 5.7, 6.7.2)."""
 
 import math
+from collections.abc import Sequence
 from typing import Final
 
 from cad_ir.core.issues import ValidationIssue, issue_sort_key
 from cad_ir.generated import ErrorCode
 from cad_ir.part_feature_graph.faces import SUPPORTED_ROLES, in_base_frame, parse_face_plane
-from cad_ir.part_feature_graph.model import Circle, Line, PartGraph, SketchNode, SolidNode
+from cad_ir.part_feature_graph.model import Arc, Circle, Line, PartGraph, SketchNode, SolidNode
 
 from cad_compiler.graph.analyze import analyze_graph, resolve_dependencies
 
@@ -88,10 +89,10 @@ def _is_connected(edges: list[tuple[int, int]]) -> bool:
     return len(seen) == len(adjacency)
 
 
-def _validate_lines_loop(lines: list[Line], pointer: str) -> list[ValidationIssue]:
-    """Validate that lines form a single non-self-intersecting closed loop."""
+def _validate_curves_loop(curves: Sequence[Line | Arc], pointer: str) -> list[ValidationIssue]:
+    """Validate that lines and arcs form a single non-self-intersecting closed loop."""
     issues: list[ValidationIssue] = []
-    if not lines:
+    if not curves:
         return issues
 
     pts: list[tuple[float, float]] = []
@@ -104,9 +105,9 @@ def _validate_lines_loop(lines: list[Line], pointer: str) -> list[ValidationIssu
         return len(pts) - 1
 
     edges: list[tuple[int, int]] = []
-    for line in lines:
-        u = get_vertex(line.start)
-        v = get_vertex(line.end)
+    for curve in curves:
+        u = get_vertex(curve.start)
+        v = get_vertex(curve.end)
         edges.append((u, v))
 
     deg: dict[int, int] = {}
@@ -124,18 +125,20 @@ def _validate_lines_loop(lines: list[Line], pointer: str) -> list[ValidationIssu
                 code=ErrorCode.IR_RULE_VIOLATED,
                 pointer=pointer,
                 message=(
-                    "Sketch lines must form a single closed loop within 3.4.3 quantum: each end"
-                    " point must meet exactly one other line and all lines must be connected"
+                    "Sketch lines and arcs must form a single closed loop within 3.4.3"
+                    " quantum: each end point must meet exactly one other entity and all"
+                    " entities must be connected"
                 ),
             )
         )
         return issues
 
+    lines = [c for c in curves if isinstance(c, Line)]
     n = len(lines)
     for i in range(n):
         for j in range(i + 1, n):
-            u1, v1 = edges[i]
-            u2, v2 = edges[j]
+            u1, v1 = get_vertex(lines[i].start), get_vertex(lines[i].end)
+            u2, v2 = get_vertex(lines[j].start), get_vertex(lines[j].end)
             if len({u1, v1, u2, v2}) < _FOUR_VERTICES:
                 continue
             if _segments_intersect(lines[i].start, lines[i].end, lines[j].start, lines[j].end):
@@ -149,6 +152,10 @@ def _validate_lines_loop(lines: list[Line], pointer: str) -> list[ValidationIssu
                 return issues
 
     return issues
+
+
+def _validate_lines_loop(lines: list[Line], pointer: str) -> list[ValidationIssue]:  # pyright: ignore[reportUnusedFunction]
+    return _validate_curves_loop(lines, pointer)
 
 
 def _check_headers(graph: PartGraph, issues: list[ValidationIssue]) -> None:
@@ -314,9 +321,9 @@ def _check_sketches(graph: PartGraph, issues: list[ValidationIssue]) -> None:
     for s_id, node in graph.nodes.items():
         if not isinstance(node, SketchNode):
             continue
-        lines = [e for e in node.entities.values() if isinstance(e, Line)]
-        if lines:
-            issues.extend(_validate_lines_loop(lines, f"/nodes/{s_id}/entities"))
+        curves = [e for e in node.entities.values() if isinstance(e, (Line, Arc))]
+        if curves:
+            issues.extend(_validate_curves_loop(curves, f"/nodes/{s_id}/entities"))
         for ent_id, ent in node.entities.items():
             if isinstance(ent, Line):
                 dx = ent.end[0] - ent.start[0]
@@ -329,14 +336,48 @@ def _check_sketches(graph: PartGraph, issues: list[ValidationIssue]) -> None:
                             message=f"Line '{ent_id}' cannot have zero length",
                         )
                     )
-            elif ent.diameter < _MIN_CIRCLE_DIA - _TOL:
-                issues.append(
-                    ValidationIssue(
-                        code=ErrorCode.IR_RULE_VIOLATED,
-                        pointer=f"/nodes/{s_id}/entities/{ent_id}/diameter",
-                        message=f"Circle '{ent_id}' diameter must be at least 0.01 mm",
+            elif isinstance(ent, Circle):
+                if ent.diameter < _MIN_CIRCLE_DIA - _TOL:
+                    issues.append(
+                        ValidationIssue(
+                            code=ErrorCode.IR_RULE_VIOLATED,
+                            pointer=f"/nodes/{s_id}/entities/{ent_id}/diameter",
+                            message=f"Circle '{ent_id}' diameter must be at least 0.01 mm",
+                        )
                     )
-                )
+            else:
+                r_start = math.hypot(ent.start[0] - ent.center[0], ent.start[1] - ent.center[1])
+                r_end = math.hypot(ent.end[0] - ent.center[0], ent.end[1] - ent.center[1])
+                if abs(r_start - r_end) > _QUANTUM:
+                    issues.append(
+                        ValidationIssue(
+                            code=ErrorCode.IR_RULE_VIOLATED,
+                            pointer=f"/nodes/{s_id}/entities/{ent_id}",
+                            message=(
+                                f"Arc '{ent_id}' start and end points must have equal radius"
+                                " from center"
+                            ),
+                        )
+                    )
+                if r_start < _MIN_CIRCLE_DIA - _TOL:
+                    issues.append(
+                        ValidationIssue(
+                            code=ErrorCode.IR_RULE_VIOLATED,
+                            pointer=f"/nodes/{s_id}/entities/{ent_id}",
+                            message=f"Arc '{ent_id}' radius must be at least 0.01 mm",
+                        )
+                    )
+                if math.hypot(ent.end[0] - ent.start[0], ent.end[1] - ent.start[1]) < _QUANTUM:
+                    issues.append(
+                        ValidationIssue(
+                            code=ErrorCode.IR_RULE_VIOLATED,
+                            pointer=f"/nodes/{s_id}/entities/{ent_id}",
+                            message=(
+                                f"Arc '{ent_id}' start and end points cannot be coincident:"
+                                " use a circle instead"
+                            ),
+                        )
+                    )
 
 
 def _check_extrude_profile(
@@ -344,14 +385,14 @@ def _check_extrude_profile(
     extrude_sketch: SketchNode,
     issues: list[ValidationIssue],
 ) -> None:
-    ext_lines = [e for e in extrude_sketch.entities.values() if isinstance(e, Line)]
+    ext_curves = [e for e in extrude_sketch.entities.values() if isinstance(e, (Line, Arc))]
     ext_circles = [e for e in extrude_sketch.entities.values() if isinstance(e, Circle)]
-    if ext_circles and ext_lines:
+    if ext_circles and ext_curves:
         issues.append(
             ValidationIssue(
                 code=ErrorCode.IR_RULE_VIOLATED,
                 pointer=f"/nodes/{extrude_node_id}/profile",
-                message="Extrude profile cannot mix lines and circles",
+                message="Extrude profile cannot mix circles with lines or arcs",
             )
         )
     elif len(ext_circles) > 1:

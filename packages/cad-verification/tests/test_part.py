@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 from cad_ir.part_feature_graph.model import (
+    Arc,
     Circle,
     EndCondition,
     Line,
@@ -829,3 +830,48 @@ def test_expected_geometry_all_six_datum_and_cap_combinations(
     assert (cyl.point.x, cyl.point.y, cyl.point.z) == pytest.approx(exp_cyl_pt)
     assert (cyl.direction.x, cyl.direction.y, cyl.direction.z) == pytest.approx(exp_cyl_dir)
     assert cyl.radius == pytest.approx(2.5)
+
+
+def test_expected_geometry_with_arcs() -> None:
+    slot_graph = PartGraph(
+        id="slot_plate",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(
+                plane="plane:front",
+                entities={
+                    "l1": Line(start=(-10.0, -10.0), end=(10.0, -10.0)),
+                    "a1": Arc(
+                        center=(10.0, 0.0),
+                        start=(10.0, -10.0),
+                        end=(10.0, 10.0),
+                        direction="ccw",
+                    ),
+                    "l2": Line(start=(10.0, 10.0), end=(-10.0, 10.0)),
+                    "a2": Arc(
+                        center=(-10.0, 0.0),
+                        start=(-10.0, 10.0),
+                        end=(-10.0, -10.0),
+                        direction="ccw",
+                    ),
+                },
+            ),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+        },
+    )
+    geom = expected_geometry(slot_graph)
+    expected_vol = 10.0 * (400.0 + math.pi * 100.0)
+    assert geom.volume_mm3 == pytest.approx(expected_vol, rel=1e-4)
+    assert geom.bbox_mm.min == pytest.approx((-20.0, -10.0, 0.0))
+    assert geom.bbox_mm.max == pytest.approx((20.0, 10.0, 10.0))
+    expected_cylinders_count = 2
+    assert len(geom.cylinders) == expected_cylinders_count
+    radii = sorted([c.radius for c in geom.cylinders])
+    assert radii == pytest.approx([10.0, 10.0])

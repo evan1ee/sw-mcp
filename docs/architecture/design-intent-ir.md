@@ -1,6 +1,6 @@
 # 4. Design Intent IR
 
-> Specification v1.39, section 4. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.40, section 4. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 4.1 Purpose
 

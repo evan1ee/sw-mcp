@@ -150,13 +150,61 @@
         }
       }
     },
+    "Arc": {
+      "type": "object",
+      "required": [
+        "type",
+        "center",
+        "start",
+        "end",
+        "direction"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "arc"
+        },
+        "center": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/v0.json#/$defs/Length"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "start": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/v0.json#/$defs/Length"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "end": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/v0.json#/$defs/Length"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "ccw",
+            "cw"
+          ]
+        }
+      }
+    },
     "SketchEntity": {
       "type": "object",
       "properties": {
         "type": {
           "enum": [
             "line",
-            "circle"
+            "circle",
+            "arc"
           ]
         }
       },
@@ -186,6 +234,18 @@
           },
           "then": {
             "$ref": "#/$defs/Circle"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "arc"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/Arc"
           }
         }
       ]

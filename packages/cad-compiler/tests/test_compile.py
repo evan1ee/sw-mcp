@@ -23,6 +23,7 @@ from cad_compiler.api import (
 )
 from cad_compiler.profile import CapabilityProfile
 from cad_ir.bundle.manifest import BundleManifest
+from cad_ir.core.json_types import JsonValue
 from cad_ir.core.refs import parse_document_ref
 from cad_ir.core.schema_validation import validate_against_schema
 from cad_ir.generated import ErrorCode
@@ -36,6 +37,7 @@ PLAN_SCHEMA_ID = "https://sw-mcp.invalid/schemas/execution-plan/v0.json"
 SKETCH_CREATE_ID = "https://sw-mcp.invalid/schemas/ipc/ops/sketch.create.json"
 FEATURE_CREATE_ID = "https://sw-mcp.invalid/schemas/ipc/ops/feature.create.json"
 DIM_2D: Final[int] = 2
+EXPECTED_ARC_COUNT: Final[int] = 2
 
 
 def _make_session(
@@ -177,6 +179,7 @@ from pathlib import Path
 from cad_compiler.api import CompileInput, CompileContext, compile_bundle
 from cad_compiler.profile import CapabilityProfile
 from cad_ir.bundle.manifest import BundleManifest
+from cad_ir.core.json_types import JsonValue
 from cad_ir.core.refs import parse_document_ref
 from cad_ir.generated.ipc import HelloResult, OperationInfo, SolidWorksInfo
 
@@ -219,7 +222,7 @@ def test_unsupported_plane() -> None:
     raw["nodes"]["sketch_holes"]["plane"] = "datum:A"
     ref_str = "part:plate_4h@1"
     manifest = BundleManifest("1.0", (parse_document_ref(ref_str),))
-    source = CompileInput(manifest=manifest, documents={ref_str: raw})
+    source = CompileInput(manifest=manifest, documents={ref_str: cast(dict[str, JsonValue], raw)})
     profile = CapabilityProfile.from_session(_make_session())
     ctx = CompileContext("0.1.0", profile, {})
     result = compile_bundle(source, ctx)
@@ -348,7 +351,7 @@ def test_blind_cut_carries_no_direction() -> None:
     raw["nodes"]["cut_holes"]["end_condition"] = {"type": "blind", "depth": 5.0}
     ref_str = "part:plate_4h@1"
     manifest = BundleManifest("1.0", (parse_document_ref(ref_str),))
-    source = CompileInput(manifest=manifest, documents={ref_str: raw})
+    source = CompileInput(manifest=manifest, documents={ref_str: cast(dict[str, JsonValue], raw)})
     ctx = CompileContext("0.1.0", CapabilityProfile.from_session(_make_session()), {})
     result = compile_bundle(source, ctx)
     assert result.plan is not None
@@ -361,3 +364,70 @@ def test_blind_cut_carries_no_direction() -> None:
     ]
     assert cuts
     assert all("dir" not in op["params"] for op in cuts)
+
+
+def test_sketch_with_arc_lowers_correctly() -> None:
+    raw = {
+        "module": "part",
+        "id": "plate_slot",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "l1": {"type": "line", "start": [-20, -10], "end": [20, -10]},
+                    "a1": {
+                        "type": "arc",
+                        "center": [20, 0],
+                        "start": [20, -10],
+                        "end": [20, 10],
+                        "direction": "ccw",
+                    },
+                    "l2": {"type": "line", "start": [20, 10], "end": [-20, 10]},
+                    "a2": {
+                        "type": "arc",
+                        "center": [-20, 0],
+                        "start": [-20, 10],
+                        "end": [-20, -10],
+                        "direction": "ccw",
+                    },
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+        },
+    }
+    ref_str = "part:plate_slot@1"
+    manifest = BundleManifest("1.0", (parse_document_ref(ref_str),))
+    source = CompileInput(manifest=manifest, documents={ref_str: cast(dict[str, JsonValue], raw)})
+    ctx = CompileContext("0.1.0", CapabilityProfile.from_session(_make_session()), {})
+    result = compile_bundle(source, ctx)
+    assert result.plan is not None
+    plan = cast(dict[str, Any], result.plan)
+    operations = cast(dict[str, dict[str, Any]], plan["operations"])
+    sketch_ops = [op for op in operations.values() if op["op"] == "sketch.create"]
+    assert len(sketch_ops) == 1
+    entities = sketch_ops[0]["params"]["entities"]
+    arc_ops = [e for e in entities if e["type"] == "arc"]
+    assert len(arc_ops) == EXPECTED_ARC_COUNT
+    assert arc_ops[0] == {
+        "type": "arc",
+        "center": [20.0, 0.0],
+        "start": [20.0, -10.0],
+        "end": [20.0, 10.0],
+        "direction": "ccw",
+    }
+    assert arc_ops[1] == {
+        "type": "arc",
+        "center": [-20.0, 0.0],
+        "start": [-20.0, 10.0],
+        "end": [-20.0, -10.0],
+        "direction": "ccw",
+    }

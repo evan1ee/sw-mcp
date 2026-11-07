@@ -6,7 +6,7 @@ from typing import Any, Final
 
 from cad_ir.core.issues import ValidationIssue
 from cad_ir.generated import ErrorCode
-from cad_ir.part_feature_graph.model import Line, PartGraph, SketchNode, SolidNode
+from cad_ir.part_feature_graph.model import Circle, Line, PartGraph, SketchNode, SolidNode
 from cad_references.semantic import parse_face_plane, resolve_cap_face_signature
 
 from cad_compiler.graph.analyze import GraphAnalysis
@@ -94,12 +94,22 @@ def _lower_sketch(
                     "end": [float(ent.end[0]), float(ent.end[1])],
                 }
             )
-        else:
+        elif isinstance(ent, Circle):
             entities_list.append(
                 {
                     "type": "circle",
                     "center": [float(ent.center[0]), float(ent.center[1])],
                     "diameter": float(ent.diameter),
+                }
+            )
+        else:
+            entities_list.append(
+                {
+                    "type": "arc",
+                    "center": [float(ent.center[0]), float(ent.center[1])],
+                    "start": [float(ent.start[0]), float(ent.start[1])],
+                    "end": [float(ent.end[0]), float(ent.end[1])],
+                    "direction": ent.direction,
                 }
             )
     return {

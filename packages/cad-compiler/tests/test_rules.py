@@ -12,6 +12,7 @@ from cad_compiler.validator.semantic import (
 )
 from cad_ir.generated import ErrorCode
 from cad_ir.part_feature_graph.model import (
+    Arc,
     Circle,
     EndCondition,
     Line,
@@ -660,3 +661,81 @@ def test_separate_line_loops_rejected() -> None:
 
 def test_single_line_loop_accepted() -> None:
     assert _validate_lines_loop(_square(0, 0, 10), "/nodes/s") == []
+
+
+def test_valid_arc_in_sketch_loop() -> None:
+    entities = {
+        "l1": Line(start=(-20.0, -10.0), end=(20.0, -10.0)),
+        "a1": Arc(center=(20.0, 0.0), start=(20.0, -10.0), end=(20.0, 10.0), direction="ccw"),
+        "l2": Line(start=(20.0, 10.0), end=(-20.0, 10.0)),
+        "a2": Arc(center=(-20.0, 0.0), start=(-20.0, 10.0), end=(-20.0, -10.0), direction="ccw"),
+    }
+    graph = PartGraph(
+        id="slot_plate",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(plane="plane:front", entities=entities),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+        },
+    )
+    issues = validate_graph(graph)
+    assert not issues
+
+
+def test_arc_unequal_radius_rejected() -> None:
+    entities = {
+        "a1": Arc(center=(0.0, 0.0), start=(10.0, 0.0), end=(0.0, 12.0), direction="ccw"),
+    }
+    graph = PartGraph(
+        id="bad_arc",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(plane="plane:front", entities=entities),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+        },
+    )
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "radius" in i.message.lower() for i in issues
+    )
+
+
+def test_arc_coincident_start_end_rejected() -> None:
+    entities = {
+        "a1": Arc(center=(0.0, 0.0), start=(10.0, 0.0), end=(10.0, 0.0), direction="ccw"),
+    }
+    graph = PartGraph(
+        id="coincident_arc",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(plane="plane:front", entities=entities),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+        },
+    )
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED
+        and ("coincident" in i.message.lower() or "circle" in i.message.lower())
+        for i in issues
+    )

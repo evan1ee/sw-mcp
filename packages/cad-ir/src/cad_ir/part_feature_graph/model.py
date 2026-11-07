@@ -40,11 +40,31 @@ class Circle:
 
 
 @dataclass(frozen=True, slots=True)
+class Arc:
+    """2D circular arc in sketch coordinates (spec 5.7.4, 22.4.1, ADR-071)."""
+
+    center: tuple[float, float]
+    start: tuple[float, float]
+    end: tuple[float, float]
+    direction: str  # "ccw" | "cw"
+    type: str = "arc"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": self.type,
+            "center": list(self.center),
+            "start": list(self.start),
+            "end": list(self.end),
+            "direction": self.direction,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class SketchNode:
     """Sketch feature node (spec 5.7.4)."""
 
     plane: str
-    entities: Mapping[str, Line | Circle]
+    entities: Mapping[str, Line | Circle | Arc]
     dependencies: tuple[str, ...] = ()
     display_name: str | None = None
     realizes: tuple[str, ...] = ()

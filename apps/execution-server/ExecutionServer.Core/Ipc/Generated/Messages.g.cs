@@ -132,7 +132,18 @@ public enum SketchCreateEntityType
     [EnumMember(Value = "line")]
     Line,
     [EnumMember(Value = "circle")]
-    Circle
+    Circle,
+    [EnumMember(Value = "arc")]
+    Arc
+}
+
+[JsonConverter(typeof(StringEnumConverter))]
+public enum SketchCreateEntityDirection
+{
+    [EnumMember(Value = "ccw")]
+    Ccw,
+    [EnumMember(Value = "cw")]
+    Cw
 }
 
 [JsonConverter(typeof(StringEnumConverter))]
@@ -1103,6 +1114,9 @@ public sealed class SketchCreateEntity
 
     [JsonProperty("diameter", NullValueHandling = NullValueHandling.Ignore)]
     public double? Diameter { get; set; }
+
+    [JsonProperty("direction", NullValueHandling = NullValueHandling.Ignore)]
+    public SketchCreateEntityDirection? Direction { get; set; }
 }
 
 public sealed class SketchCreateFace

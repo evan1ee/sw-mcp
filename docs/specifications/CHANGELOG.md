@@ -2,6 +2,16 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.40
+
+Adds sketch arc primitives (`SK-ENT-013`, `SK-ENT-016`) defined by center, start, end, and direction (`ccw`/`cw`), supporting closed loops mixing lines and arcs for extrusions and cuts. Decided in [ADR-071](../adr/ADR-071-sketch-arc-primitives.md).
+
+- **IR and Schemas (5.7.4, 22.4.1):** adds `Arc` entity (`type: "arc"`, `center`, `start`, `end`, `direction`) to `schemas/part-feature-graph/v0.json` and updates `schemas/ipc/ops/sketch.create.json`.
+- **Compiler and lowering:** validates arc radius consistency within $10^{-6}$ mm, minimum radius $\ge 0.01$ mm, distinct endpoints; allows profiles composed of closed loops of lines and arcs; lowers arcs to `sketch.create` entity payload.
+- **Verification:** computes exact 3D bounding boxes spanning arc extrema, cross-sectional area with circular segments for exact expected volume, and cylinder face expectations for extruded arcs.
+- **Add-in:** `SketchAdapter.cs` maps `arc` to `ISketchManager.CreateArc` with COM cleanup.
+- **Benchmark:** adds `plate_slot` to authoring evaluation benchmark cases.
+
 ## What changed in 1.39
 
 Documentation only: no contract, schema or behaviour changes. Implementation status now has one home.

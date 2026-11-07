@@ -8,6 +8,7 @@ from typing import Final, Literal, NamedTuple, cast
 from cad_ir.core.json_types import JsonValue
 from cad_ir.part_feature_graph.faces import FaceFrame, face_frame, parse_face_plane
 from cad_ir.part_feature_graph.model import (
+    Arc,
     Circle,
     Line,
     PartGraph,
@@ -159,44 +160,150 @@ class CheckResult:
         return self.status == "passed"
 
 
-def _order_polygon_vertices(lines: list[Line]) -> tuple[list[tuple[float, float]], float]:
-    """Order line segments into a closed polygon loop, returning vertices and perimeter."""
-    if not lines:
-        return [], 0.0
-
-    perimeter = 0.0
-    for line in lines:
-        dx = line.end[0] - line.start[0]
-        dy = line.end[1] - line.start[1]
-        perimeter += math.hypot(dx, dy)
-
-    remaining = list(lines)
+def _order_curve_segments(curves: list[Line | Arc]) -> list[tuple[Line | Arc, bool]]:
+    if not curves:
+        return []
+    remaining = list(curves)
     first = remaining.pop(0)
-    vertices = [first.start]
+    ordered: list[tuple[Line | Arc, bool]] = [(first, True)]
     current = first.end
 
     tol = 1e-5
     while remaining:
         found_idx = -1
-        reverse = False
+        forward = True
         for idx, seg in enumerate(remaining):
             if math.hypot(seg.start[0] - current[0], seg.start[1] - current[1]) <= tol:
                 found_idx = idx
-                reverse = False
+                forward = True
                 break
             if math.hypot(seg.end[0] - current[0], seg.end[1] - current[1]) <= tol:
                 found_idx = idx
-                reverse = True
+                forward = False
                 break
 
         if found_idx == -1:
-            return [line.start for line in lines], perimeter
+            for seg in remaining:
+                ordered.append((seg, True))
+            break
 
         seg = remaining.pop(found_idx)
-        vertices.append(current)
-        current = seg.start if reverse else seg.end
+        ordered.append((seg, forward))
+        current = seg.end if forward else seg.start
 
+    return ordered
+
+
+def _order_polygon_vertices(lines: list[Line]) -> tuple[list[tuple[float, float]], float]:  # pyright: ignore[reportUnusedFunction]
+    """Order line segments into a closed polygon loop, returning vertices and perimeter."""
+    curves: list[Line | Arc] = list(lines)
+    ordered = _order_curve_segments(curves)
+    vertices: list[tuple[float, float]] = []
+    perimeter = 0.0
+    for seg, forward in ordered:
+        start_pt = seg.start if forward else seg.end
+        end_pt = seg.end if forward else seg.start
+        vertices.append(start_pt)
+        perimeter += math.hypot(end_pt[0] - start_pt[0], end_pt[1] - start_pt[1])
     return vertices, perimeter
+
+
+_ARC_SWEEP_TOL = 1e-12
+_ARC_EXTREMA_TOL = 1e-6
+
+
+def _arc_signed_sweep(th1: float, th2: float, is_ccw: bool) -> tuple[float, float]:
+    sweep = (th2 - th1 if is_ccw else th1 - th2) % (2.0 * math.pi)
+    if sweep <= _ARC_SWEEP_TOL:
+        sweep += 2.0 * math.pi
+    signed_sweep = sweep if is_ccw else -sweep
+    return sweep, signed_sweep
+
+
+def _arc_extrema_and_samples(
+    center: tuple[float, float],
+    r: float,
+    th1: float,
+    sweep: float,
+    is_ccw: bool,
+) -> tuple[list[float], list[float], list[tuple[float, float]]]:
+    cx, cy = center
+    signed_sweep = sweep if is_ccw else -sweep
+    xs: list[float] = []
+    ys: list[float] = []
+    for k in range(4):
+        cand_th = k * 0.5 * math.pi
+        delta = (cand_th - th1 if is_ccw else th1 - cand_th) % (2.0 * math.pi)
+        if _ARC_EXTREMA_TOL < delta < sweep - _ARC_EXTREMA_TOL:
+            xs.append(cx + r * math.cos(cand_th))
+            ys.append(cy + r * math.sin(cand_th))
+    poly_samples = [
+        (
+            cx + r * math.cos(th1 + (s / 16.0) * signed_sweep),
+            cy + r * math.sin(th1 + (s / 16.0) * signed_sweep),
+        )
+        for s in range(1, 16)
+    ]
+    return xs, ys, poly_samples
+
+
+def _compute_curves_profile(
+    curves: list[Line | Arc],
+) -> tuple[float, float, float, float, tuple[float, float], tuple[float, float]]:
+    ordered = _order_curve_segments(curves)
+    perimeter = 0.0
+    signed_area = 0.0
+    all_x: list[float] = []
+    all_y: list[float] = []
+    poly_vertices: list[tuple[float, float]] = []
+
+    for seg, forward in ordered:
+        p1 = seg.start if forward else seg.end
+        p2 = seg.end if forward else seg.start
+        all_x.extend([p1[0], p2[0]])
+        all_y.extend([p1[1], p2[1]])
+        poly_vertices.append(p1)
+
+        if isinstance(seg, Line):
+            dx = p2[0] - p1[0]
+            dy = p2[1] - p1[1]
+            perimeter += math.hypot(dx, dy)
+            signed_area += 0.5 * (p1[0] * p2[1] - p2[0] * p1[1])
+        else:
+            cx, cy = seg.center
+            r = math.hypot(seg.start[0] - cx, seg.start[1] - cy)
+            th1 = math.atan2(p1[1] - cy, p1[0] - cx)
+            th2 = math.atan2(p2[1] - cy, p2[0] - cx)
+            is_ccw = (seg.direction == "ccw") if forward else (seg.direction != "ccw")
+            sweep, signed_sweep = _arc_signed_sweep(th1, th2, is_ccw)
+
+            perimeter += r * sweep
+            signed_area += 0.5 * (
+                r * r * signed_sweep + cx * (p2[1] - p1[1]) - cy * (p2[0] - p1[0])
+            )
+            arc_xs, arc_ys, samples = _arc_extrema_and_samples(seg.center, r, th1, sweep, is_ccw)
+            all_x.extend(arc_xs)
+            all_y.extend(arc_ys)
+            poly_vertices.extend(samples)
+
+    area = abs(signed_area)
+
+    m = len(poly_vertices)
+    poly_signed_area = 0.0
+    cx_num = 0.0
+    cy_num = 0.0
+    for i in range(m):
+        x_i, y_i = poly_vertices[i]
+        x_next, y_next = poly_vertices[(i + 1) % m]
+        cross = x_i * y_next - x_next * y_i
+        poly_signed_area += cross
+        cx_num += (x_i + x_next) * cross
+        cy_num += (y_i + y_next) * cross
+    poly_signed_area *= 0.5
+    cx = cx_num / (6.0 * poly_signed_area) if poly_signed_area != 0.0 else 0.0
+    cy = cy_num / (6.0 * poly_signed_area) if poly_signed_area != 0.0 else 0.0
+
+    return area, perimeter, cx, cy, (min(all_x), max(all_x)), (min(all_y), max(all_y))
 
 
 def _collect_features(
@@ -248,31 +355,11 @@ def _compute_base_profile(
     sketch: SketchNode,
 ) -> tuple[float, float, float, float, tuple[float, float], tuple[float, float]]:
     """Compute base 2D profile area, perimeter, centroid (cx, cy) and bounds (xs, ys)."""
-    lines = [e for e in sketch.entities.values() if isinstance(e, Line)]
+    curves = [e for e in sketch.entities.values() if isinstance(e, (Line, Arc))]
     circles = [e for e in sketch.entities.values() if isinstance(e, Circle)]
 
-    if lines:
-        vertices, perimeter = _order_polygon_vertices(lines)
-        n = len(vertices)
-        signed_area = 0.0
-        cx_num = 0.0
-        cy_num = 0.0
-        for i in range(n):
-            x_i, y_i = vertices[i]
-            x_next, y_next = vertices[(i + 1) % n]
-            cross = x_i * y_next - x_next * y_i
-            signed_area += cross
-            cx_num += (x_i + x_next) * cross
-            cy_num += (y_i + y_next) * cross
-
-        signed_area *= 0.5
-        area = abs(signed_area)
-        cx = cx_num / (6.0 * signed_area) if signed_area != 0.0 else 0.0
-        cy = cy_num / (6.0 * signed_area) if signed_area != 0.0 else 0.0
-
-        xs = [v[0] for v in vertices]
-        ys = [v[1] for v in vertices]
-        return area, perimeter, cx, cy, (min(xs), max(xs)), (min(ys), max(ys))
+    if curves:
+        return _compute_curves_profile(curves)
 
     if circles:
         c = circles[0]
@@ -282,7 +369,7 @@ def _compute_base_profile(
         cx, cy = c.center
         return area, perimeter, cx, cy, (cx - r, cx + r), (cy - r, cy + r)
 
-    raise ValueError("Base sketch has no Line or Circle entities")
+    raise ValueError("Base sketch has no Line, Arc or Circle entities")
 
 
 def _cut_regions(sketch: SketchNode) -> list[tuple[float, float, float, float]]:
@@ -385,6 +472,15 @@ def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
                 radius=base_circles[0].diameter * 0.5,
             )
         )
+    for arc in [e for e in base_sketch_raw.entities.values() if isinstance(e, Arc)]:
+        r = math.hypot(arc.start[0] - arc.center[0], arc.start[1] - arc.center[1])
+        cylinders.append(
+            ExpectedCylinder(
+                point=base_plane.to_model(arc.center[0], arc.center[1], 0.0),
+                direction=base_plane.normal,
+                radius=r,
+            )
+        )
 
     cut_entries = [e for e in solid_nodes if e[1].type == "cut_extrude"]
     for _, cut_node in cut_entries:
@@ -417,6 +513,18 @@ def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
                         point=projector.to_model(entity.center[0], entity.center[1], circle_depth),
                         direction=cyl_dir,
                         radius=entity.diameter * 0.5,
+                    )
+                )
+            elif isinstance(entity, Arc):
+                r = math.hypot(
+                    entity.start[0] - entity.center[0],
+                    entity.start[1] - entity.center[1],
+                )
+                cylinders.append(
+                    ExpectedCylinder(
+                        point=projector.to_model(entity.center[0], entity.center[1], circle_depth),
+                        direction=cyl_dir,
+                        radius=r,
                     )
                 )
 

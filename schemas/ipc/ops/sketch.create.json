@@ -23,7 +23,8 @@
         "type": {
           "enum": [
             "line",
-            "circle"
+            "circle",
+            "arc"
           ]
         },
         "start": {
@@ -53,6 +54,12 @@
         "diameter": {
           "type": "number",
           "minimum": 0
+        },
+        "direction": {
+          "enum": [
+            "ccw",
+            "cw"
+          ]
         }
       }
     },

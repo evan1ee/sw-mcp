@@ -1,6 +1,6 @@
 # 22. CAD IR Specification
 
-> Specification v1.39, section 22. Index and section map: [README.md](README.md).
+> Specification v1.40, section 22. Index and section map: [README.md](README.md).
 
 **Status: Proposed, awaiting the owner.** This section gathers the IR into one reference and specifies what the topic sections leave open. It changes no schema and no code. Companion sections: [§23 Compiler Architecture](compiler-architecture-specification.md) and [§8.9 SOLIDWORKS Adapter Interface](solidworks-adapter.md). Contract ownership across all three is in [23.13](compiler-architecture-specification.md#2313-cross-specification-contracts).
 
@@ -142,7 +142,7 @@ Field shapes are [5.7.4](../architecture/feature-schema-guide.md#574-sketches) (
 | `point` | `position` | 2 | N, not in schema |
 | `line` | `start`, `end` | 4 | B |
 | `circle` | `center`, `diameter` | 3 | B |
-| `arc` | `center`, `start`, `end`, `direction` | 5 | N, A4 |
+| `arc` | `center`, `start`, `end`, `direction` | 5 | B (ADR-071) |
 | `rectangle`, `slot` | Stored as lines and arcs plus an entity group | Sum of parts | N, A4 or later |
 | `spline`, `ellipse` | Read only in Tier 1 | | N |
 
