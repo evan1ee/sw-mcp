@@ -50,8 +50,8 @@ Do not edit this block. Refresh it with `uv run python scripts/check_implementat
 | Category | Capabilities | Items | Not Started | Specified | Partially Implemented | Implemented | Tested | Verified | Deferred | Under Evaluation | Not Applicable |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Sketch | 7 | 136 | 0 | 57 | 0 | 5 | 9 | 20 | 1 | 41 | 3 |
-| Part Features | 64 | 451 | 0 | 167 | 9 | 4 | 14 | 30 | 32 | 182 | 13 |
-| **Total** | **71** | **587** | **0** | **224** | **9** | **9** | **23** | **50** | **33** | **223** | **16** |
+| Part Features | 64 | 451 | 0 | 163 | 9 | 4 | 14 | 34 | 32 | 182 | 13 |
+| **Total** | **71** | **587** | **0** | **220** | **9** | **9** | **23** | **54** | **33** | **223** | **16** |
 
 | Scope | In Scope | Out of Scope | Under Evaluation |
 |---|---:|---:|---:|
@@ -69,7 +69,7 @@ Do not edit this block. Refresh it with `uv run python scripts/check_implementat
 | [part-features/cut-features.md](part-features/cut-features.md) | 6 | 56 | 9 | 6 | 2 |
 | [part-features/hole-thread-features.md](part-features/hole-thread-features.md) | 3 | 31 | 0 | 0 | 0 |
 | [part-features/multi-body-features.md](part-features/multi-body-features.md) | 6 | 18 | 0 | 0 | 0 |
-| [part-features/patterns-mirrors.md](part-features/patterns-mirrors.md) | 7 | 33 | 0 | 0 | 0 |
+| [part-features/patterns-mirrors.md](part-features/patterns-mirrors.md) | 7 | 33 | 4 | 0 | 0 |
 | [part-features/reference-geometry.md](part-features/reference-geometry.md) | 5 | 34 | 0 | 0 | 0 |
 | [part-features/shape-modification.md](part-features/shape-modification.md) | 12 | 70 | 0 | 0 | 0 |
 | [part-features/sheet-metal-features.md](part-features/sheet-metal-features.md) | 7 | 43 | 0 | 0 | 0 |

@@ -39,3 +39,18 @@ def test_an_unknown_node_is_left_alone() -> None:
 def test_other_operations_pass_through() -> None:
     params: dict[str, JsonValue] = {"profile": "sketch_base"}
     assert resolve_node_refs("part.measure", params, IDS) == params
+
+
+def test_linear_pattern_seeds_and_directions_resolved() -> None:
+    ids = {"cut1": "f20", "cut2": "f21", "ref_feat": "f5"}
+    params: dict[str, JsonValue] = {
+        "node_id": "pat1",
+        "type": "linear_pattern",
+        "seeds": ["cut1", "cut2", "cut_unknown"],
+        "direction_1": {"direction": "ref_feat", "spacing": 10.0, "count": 3},
+        "direction_2": {"direction": "plane:right", "spacing": 5.0, "count": 2},
+    }
+    resolved = resolve_node_refs("feature.create", params, ids)
+    assert resolved["seeds"] == ["f20", "f21", "cut_unknown"]
+    assert resolved["direction_1"] == {"direction": "f5", "spacing": 10.0, "count": 3}
+    assert resolved["direction_2"] == {"direction": "plane:right", "spacing": 5.0, "count": 2}

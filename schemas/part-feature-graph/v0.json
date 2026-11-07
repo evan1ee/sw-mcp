@@ -45,7 +45,8 @@
             "enum": [
               "sketch",
               "extrude",
-              "cut_extrude"
+              "cut_extrude",
+              "linear_pattern"
             ]
           }
         },
@@ -87,6 +88,18 @@
             },
             "then": {
               "$ref": "features/cut_extrude.json"
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "linear_pattern"
+                }
+              }
+            },
+            "then": {
+              "$ref": "features/linear_pattern.json"
             }
           }
         ]

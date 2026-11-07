@@ -2,6 +2,17 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.43
+
+Adds linear pattern solid feature (`PAT-LIN-001` through `PAT-LIN-004`) to the Part Feature Graph IR and execution pipeline. Decided in [ADR-074](../adr/ADR-074-linear-pattern-feature.md).
+
+- **IR and Schemas (5.7.3, 22.5.2):** creates `schemas/part-feature-graph/features/linear_pattern.json`, adds `linear_pattern` to `schemas/part-feature-graph/v0.json` node union, and updates `schemas/ipc/ops/feature.create.json` with `linear_pattern` type and direction parameters.
+- **Compiler and lowering:** validates `linear_pattern` node constraints (seeds exist and reference cut features, count >= 2, spacing >= 0.01 mm); lowers `linear_pattern` to `feature.create` operation.
+- **Verification:** computes closed-form volume deduction ($N \times V_{\text{seed}}$) and cylinder replication ($N \times \text{seed cylinders}$) for linear patterns in `cad-verification`.
+- **Execution & Adapter:** handles `linear_pattern` in C# `FeatureAdapter.cs` via `FeatureManager.CreateDefinition(swFmLPattern)` and `ILinearPatternFeatureData` with COM cleanup (`Marshal.ReleaseComObject`).
+- **Authoring & Benchmark:** documents `linear_pattern` in authoring guide rules and examples, and adds linear patterned holes case to benchmark.
+- **Checklists & Live:** adds live SOLIDWORKS integration tests promoting `PAT-LIN-001` - `PAT-LIN-004` to Verified.
+
 ## What changed in 1.42
 
 Adds sketch straight slot primitive (`SK-ENT-021` Straight Slot) to the Part Feature Graph IR and execution pipeline. Decided in [ADR-073](../adr/ADR-073-sketch-straight-slot-primitive.md).

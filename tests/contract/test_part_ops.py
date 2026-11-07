@@ -204,7 +204,8 @@ def test_feature_create_status_is_constrained() -> None:
 def test_feature_create_params_no_longer_carry_a_direction() -> None:
     feature_create = SCHEMAS[FEATURE_CREATE_ID]
     assert isinstance(feature_create, dict)
-    assert "dir" not in str(feature_create)
+    params = feature_create["$defs"]["Params"]
+    assert "dir" not in params["properties"]
 
 
 def test_document_rebuild_separates_the_native_return_from_observed_state() -> None:

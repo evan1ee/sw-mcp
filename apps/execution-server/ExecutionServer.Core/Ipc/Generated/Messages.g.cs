@@ -92,7 +92,9 @@ public enum FeatureCreateParamsType
     [EnumMember(Value = "extrude")]
     Extrude,
     [EnumMember(Value = "cut_extrude")]
-    CutExtrude
+    CutExtrude,
+    [EnumMember(Value = "linear_pattern")]
+    LinearPattern
 }
 
 [JsonConverter(typeof(StringEnumConverter))]
@@ -975,6 +977,21 @@ public sealed class FeatureCreateEndCondition
     public double? Depth { get; set; }
 }
 
+public sealed class FeatureCreateLinearPatternDirection
+{
+    [JsonProperty("direction", Required = Required.Always)]
+    public string Direction { get; set; } = string.Empty;
+
+    [JsonProperty("spacing", Required = Required.Always)]
+    public double Spacing { get; set; }
+
+    [JsonProperty("count", Required = Required.Always)]
+    public long Count { get; set; }
+
+    [JsonProperty("reverse", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Reverse { get; set; }
+}
+
 public sealed class FeatureCreateParams
 {
     [JsonProperty("node_id", Required = Required.Always)]
@@ -983,14 +1000,23 @@ public sealed class FeatureCreateParams
     [JsonProperty("type", Required = Required.Always)]
     public FeatureCreateParamsType Type { get; set; }
 
-    [JsonProperty("profile", Required = Required.Always)]
-    public string Profile { get; set; } = string.Empty;
+    [JsonProperty("profile", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Profile { get; set; }
 
-    [JsonProperty("end_condition", Required = Required.Always)]
-    public FeatureCreateEndCondition EndCondition { get; set; } = null!;
+    [JsonProperty("end_condition", NullValueHandling = NullValueHandling.Ignore)]
+    public FeatureCreateEndCondition? EndCondition { get; set; }
 
     [JsonProperty("host", NullValueHandling = NullValueHandling.Ignore)]
     public FeatureCreateParamsHost? Host { get; set; }
+
+    [JsonProperty("seeds", NullValueHandling = NullValueHandling.Ignore)]
+    public List<string>? Seeds { get; set; }
+
+    [JsonProperty("direction_1", NullValueHandling = NullValueHandling.Ignore)]
+    public FeatureCreateLinearPatternDirection? Direction1 { get; set; }
+
+    [JsonProperty("direction_2", NullValueHandling = NullValueHandling.Ignore)]
+    public FeatureCreateLinearPatternDirection? Direction2 { get; set; }
 
     [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
     public Meta? Meta { get; set; }

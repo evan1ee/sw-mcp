@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/part-feature-graph/features/linear_pattern.json",
+  "title": "Linear Pattern Feature Node (spec 5.7, 22.5.2)",
+  "type": "object",
+  "required": [
+    "type",
+    "dependencies",
+    "seeds",
+    "direction_1"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "const": "linear_pattern"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    },
+    "seeds": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "direction_1": {
+      "type": "object",
+      "required": [
+        "direction",
+        "spacing",
+        "count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "$ref": "../../common/v0.json#/$defs/GeometryRef"
+        },
+        "spacing": {
+          "$ref": "../../common/v0.json#/$defs/Length",
+          "exclusiveMinimum": 0
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "reverse": {
+          "type": "boolean"
+        }
+      }
+    },
+    "direction_2": {
+      "type": "object",
+      "required": [
+        "direction",
+        "spacing",
+        "count"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "$ref": "../../common/v0.json#/$defs/GeometryRef"
+        },
+        "spacing": {
+          "$ref": "../../common/v0.json#/$defs/Length",
+          "exclusiveMinimum": 0
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "reverse": {
+          "type": "boolean"
+        }
+      }
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "realizes": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    }
+  },
+  "examples": [
+    {
+      "type": "linear_pattern",
+      "dependencies": [
+        "cut_hole",
+        "extrude_base"
+      ],
+      "seeds": [
+        "cut_hole"
+      ],
+      "direction_1": {
+        "direction": "plane:right",
+        "spacing": 20,
+        "count": 4
+      }
+    }
+  ]
+}

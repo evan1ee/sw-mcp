@@ -91,6 +91,12 @@ CASES: tuple[Case, ...] = (
         "Make an 80 x 50 x 10 mm plate with a centered 30 x 20 mm rectangular cutout through all.",
         Facts((10, 50, 80), (80 * 50 - 30 * 20) * 10, ()),
     ),
+    Case(
+        "plate_pattern_holes",
+        "Make a 100 x 60 x 10 mm plate with a 10 mm hole patterned linearly 4 times with"
+        " 20 mm spacing.",
+        Facts((10, 60, 100), 100 * 60 * 10 - 4 * _disc(10, 10), (10, 10, 10, 10)),
+    ),
     Case("refuse_fillet", "Make a 40 x 30 x 10 block and fillet all edges with 3 mm.", None),
     Case(
         "refuse_hole_in_side_face",

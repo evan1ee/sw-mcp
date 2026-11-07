@@ -76,3 +76,7 @@ New decisions: copy [template.md](template.md), take the next free number, and a
 | [ADR-068](ADR-068-native-feature-call-routes.md) | Feature-data calls where the positional call is marked obsolete, with explicit properties and read-back; spike each route | Avoids obsolete members, and avoids relying on defaults that can change | Proposed |
 | [ADR-069](ADR-069-stable-operation-ids.md) | Plan-local operation IDs come from the node, not the sequence | Stable diffs, and a precondition for incremental plans | Proposed |
 | [ADR-070](ADR-070-sketch-on-extrude-cap-face.md) | A sketch may sit on an extrude's `start_face` or `end_face`, found by normal and offset at use time; nothing persisted; the sketch frame is checked | The MVP could not say "a hole in the top face"; the spike showed caps are unique planar faces | Accepted |
+| [ADR-071](ADR-071-sketch-arc-primitives.md) | Center-point arc sketch primitive with CCW/CW direction | Enables circular arcs and curved profiles | Accepted |
+| [ADR-072](ADR-072-sketch-rectangle-primitives.md) | Corner and center rectangle sketch primitives lowered to lines | Clean authoring for rectangular profiles | Accepted |
+| [ADR-073](ADR-073-sketch-straight-slot-primitive.md) | Straight slot sketch primitive lowered to lines and arcs | Standard slot geometry in Part Feature Graph IR | Accepted |
+| [ADR-074](ADR-074-linear-pattern-feature.md) | Linear pattern solid feature on seed cut features | Enables linear repeated feature patterns in 3D parts | Accepted |

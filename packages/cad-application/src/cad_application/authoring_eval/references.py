@@ -148,6 +148,63 @@ def _rectangles_plate() -> dict[str, Any]:
     }
 
 
+def _pattern_holes_plate() -> dict[str, Any]:
+    return {
+        "module": "part",
+        "id": "plate_pattern",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "r1": {
+                        "type": "center_rectangle",
+                        "center": [0.0, 0.0],
+                        "width": 100.0,
+                        "height": 60.0,
+                    }
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+            "sketch_hole": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "c1": {
+                        "type": "circle",
+                        "center": [-30.0, 0.0],
+                        "diameter": 10.0,
+                    }
+                },
+            },
+            "cut_hole": {
+                "type": "cut_extrude",
+                "dependencies": ["sketch_hole", "extrude_base"],
+                "profile": "sketch_hole",
+                "end_condition": {"type": "through_all_both"},
+            },
+            "pattern_holes": {
+                "type": "linear_pattern",
+                "dependencies": ["cut_hole", "extrude_base"],
+                "seeds": ["cut_hole"],
+                "direction_1": {
+                    "direction": "plane:right",
+                    "spacing": 20.0,
+                    "count": 4,
+                },
+            },
+        },
+    }
+
+
 # A None answer is a refusal.
 REFERENCE_ANSWERS: dict[str, dict[str, Any] | None] = {
     "block": part("block", _lines(_rect(40, 30)), 10),
@@ -167,6 +224,7 @@ REFERENCE_ANSWERS: dict[str, dict[str, Any] | None] = {
     "blind_hole_start_face": _start_face_hole(),
     "plate_slot": part("plate_slot", _slot(60, 20), 10),
     "plate_rectangles": _rectangles_plate(),
+    "plate_pattern_holes": _pattern_holes_plate(),
     "refuse_fillet": None,
     "refuse_hole_in_side_face": None,
     "refuse_assembly": None,

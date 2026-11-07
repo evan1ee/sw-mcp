@@ -32,13 +32,35 @@
         }
       }
     },
+    "LinearPatternDirection": {
+      "type": "object",
+      "required": [
+        "direction",
+        "spacing",
+        "count"
+      ],
+      "properties": {
+        "direction": {
+          "type": "string"
+        },
+        "spacing": {
+          "type": "number",
+          "minimum": 0
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "reverse": {
+          "type": "boolean"
+        }
+      }
+    },
     "Params": {
       "type": "object",
       "required": [
         "node_id",
-        "type",
-        "profile",
-        "end_condition"
+        "type"
       ],
       "properties": {
         "node_id": {
@@ -47,7 +69,8 @@
         "type": {
           "enum": [
             "extrude",
-            "cut_extrude"
+            "cut_extrude",
+            "linear_pattern"
           ]
         },
         "profile": {
@@ -62,6 +85,18 @@
             "face"
           ],
           "description": "What the profile sketch sits on. A blind cut from a face goes into the body (Flip=false, Dir=false); from an origin plane it needs Dir=true. Absent means plane."
+        },
+        "seeds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "direction_1": {
+          "$ref": "#/$defs/LinearPatternDirection"
+        },
+        "direction_2": {
+          "$ref": "#/$defs/LinearPatternDirection"
         },
         "_meta": {
           "$ref": "../v0.json#/$defs/Meta"

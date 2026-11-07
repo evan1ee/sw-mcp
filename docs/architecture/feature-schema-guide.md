@@ -1,6 +1,6 @@
 # 5.7 Part Feature Graph Schema Guide
 
-> Specification v1.42, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.43, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
 
 Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3.2) read as one language and the compiler's defaults are explicit. Each type has one schema file, `schemas/part-feature-graph/features/<type>.json`, with one minimal example of at most 400 tokens (12.3).
 
@@ -22,7 +22,7 @@ Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3
 | Node field | Description |
 | --- | --- |
 | *(key)* | Item ID (3.4.1) |
-| `type` | Feature type from the registry, lower snake case (`extrude`, `cut_extrude`, `hole_wizard`, `sketch`). The tables in 5.3 use SOLIDWORKS-style display names; the registry name is their snake case (`HoleWizard` → `hole_wizard`). The registry says which types support Create and which Read (5.3) |
+| `type` | Feature type from the registry, lower snake case (`extrude`, `cut_extrude`, `hole_wizard`, `sketch`, `linear_pattern`). The tables in 5.3 use SOLIDWORKS-style display names; the registry name is their snake case (`HoleWizard` → `hole_wizard`). The registry says which types support Create and which Read (5.3) |
 | `dependencies` | Set of node IDs this node needs, beyond those implied by its references. The compiler adds implied ones and rejects cycles |
 | `parameters` | Only when the type has parameters that fit none of the shared objects below. Most parameters are named fields of the node |
 | `suppressed` | `true` to build suppressed. Default `false` |

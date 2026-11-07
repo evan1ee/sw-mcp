@@ -13,6 +13,8 @@ from cad_ir.part_feature_graph.model import (
     Circle,
     CornerRectangle,
     Line,
+    LinearPattern,
+    LinearPatternDirection,
     PartGraph,
     SketchNode,
     SolidNode,
@@ -325,7 +327,7 @@ def _collect_features(
                     native_type="ProfileFeature",
                 )
             )
-        else:
+        elif isinstance(node, SolidNode):
             solid_nodes.append((nid, node))
             if node.type == "extrude":
                 features.append(
@@ -351,6 +353,14 @@ def _collect_features(
                         native_type="",
                     )
                 )
+        else:
+            features.append(
+                ExpectedFeature(
+                    node_id=nid,
+                    feature_type="linear_pattern",
+                    native_type="LPattern",
+                )
+            )
     return features, solid_nodes
 
 
@@ -600,6 +610,112 @@ def _collect_cut_entity_cylinders(
     return cylinders
 
 
+@dataclass
+class _GeometryAccumulator:
+    volume: float
+    area: float
+    moment: list[float]
+    cylinders: list[ExpectedCylinder]
+
+
+def _direction_2d_offset(
+    sketch_plane: str, dir_spec: LinearPatternDirection
+) -> tuple[float, float] | None:
+    try:
+        sp_axes = plane_axes(sketch_plane)
+    except ValueError:
+        return None
+
+    try:
+        dp_axes = plane_axes(dir_spec.direction)
+        d3 = dp_axes.normal
+    except ValueError:
+        return None
+
+    du = d3[0] * sp_axes.x_axis[0] + d3[1] * sp_axes.x_axis[1] + d3[2] * sp_axes.x_axis[2]
+    dv = d3[0] * sp_axes.y_axis[0] + d3[1] * sp_axes.y_axis[1] + d3[2] * sp_axes.y_axis[2]
+    if dir_spec.reverse:
+        du = -du
+        dv = -dv
+    return du, dv
+
+
+def _apply_pattern_instances(
+    pat: LinearPattern,
+    graph: PartGraph,
+    base_plane: PlaneAxes,
+    base_depth: float,
+    acc: _GeometryAccumulator,
+) -> None:
+    for seed_id in pat.seeds:
+        seed_node = graph.nodes.get(seed_id)
+        if not isinstance(seed_node, SolidNode) or seed_node.type != "cut_extrude":
+            continue
+        cut_sketch_raw = graph.nodes.get(seed_node.profile)
+        if not isinstance(cut_sketch_raw, SketchNode):
+            continue
+
+        off1 = _direction_2d_offset(cut_sketch_raw.plane, pat.direction_1)
+        if off1 is None:
+            continue
+        u1, v1 = off1
+        count1 = pat.direction_1.count
+        spacing1 = pat.direction_1.spacing
+
+        count2 = pat.direction_2.count if pat.direction_2 is not None else 1
+        spacing2 = pat.direction_2.spacing if pat.direction_2 is not None else 0.0
+        off2 = (
+            _direction_2d_offset(cut_sketch_raw.plane, pat.direction_2)
+            if pat.direction_2 is not None
+            else None
+        )
+        u2, v2 = off2 if off2 is not None else (0.0, 0.0)
+
+        is_through = seed_node.end_condition.type in ("through_all", "through_all_both")
+        cut_depth = base_depth if is_through else float(seed_node.end_condition.depth or 0.0)
+        projector, depth_center, circle_depth, cyl_dir = _cut_frame_and_depths(
+            cut_sketch_raw.plane, base_plane, base_depth, cut_depth
+        )
+
+        regions = list(_cut_regions(cut_sketch_raw))
+        seed_cylinders = _collect_cut_entity_cylinders(
+            cut_sketch_raw, projector, circle_depth, cyl_dir
+        )
+        p0 = projector.to_model(0.0, 0.0, 0.0)
+
+        for k1 in range(count1):
+            for k2 in range(count2):
+                if k1 == 0 and k2 == 0:
+                    continue
+                du = k1 * spacing1 * u1 + k2 * spacing2 * u2
+                dv = k1 * spacing1 * v1 + k2 * spacing2 * v2
+
+                for area, perimeter, center_x, center_y in regions:
+                    region_vol = area * cut_depth
+                    region_com = projector.to_model(center_x + du, center_y + dv, depth_center)
+
+                    acc.volume -= region_vol
+                    acc.moment[0] -= region_vol * region_com[0]
+                    acc.moment[1] -= region_vol * region_com[1]
+                    acc.moment[2] -= region_vol * region_com[2]
+                    acc.area += perimeter * cut_depth - (2.0 * area if is_through else 0.0)
+
+                pk = projector.to_model(du, dv, 0.0)
+                delta_3d = (pk[0] - p0[0], pk[1] - p0[1], pk[2] - p0[2])
+                for cyl in seed_cylinders:
+                    acc.cylinders.append(
+                        ExpectedCylinder(
+                            point=Point3(
+                                cyl.point.x + delta_3d[0],
+                                cyl.point.y + delta_3d[1],
+                                cyl.point.z + delta_3d[2],
+                            ),
+                            direction=cyl.direction,
+                            radius=cyl.radius,
+                        )
+                    )
+
+
 def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
     """Compute expected geometry from a PartGraph alone (spec 10.2, design 9)."""
     features, solid_nodes = _collect_features(graph)
@@ -655,10 +771,22 @@ def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
             _collect_cut_entity_cylinders(cut_sketch_raw, projector, circle_depth, cyl_dir)
         )
 
+    acc = _GeometryAccumulator(
+        volume=total_volume,
+        area=total_area,
+        moment=total_moment,
+        cylinders=cylinders,
+    )
+    for pat in [n for n in graph.nodes.values() if isinstance(n, LinearPattern)]:
+        _apply_pattern_instances(pat, graph, base_plane, base_depth, acc)
+
+    total_volume = acc.volume
+    total_area = acc.area
+
     com_3d = Point3(
-        total_moment[0] / total_volume,
-        total_moment[1] / total_volume,
-        total_moment[2] / total_volume,
+        acc.moment[0] / total_volume,
+        acc.moment[1] / total_volume,
+        acc.moment[2] / total_volume,
     )
 
     return ExpectedGeometry(

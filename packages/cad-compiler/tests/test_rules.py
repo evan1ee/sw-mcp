@@ -18,6 +18,8 @@ from cad_ir.part_feature_graph.model import (
     CornerRectangle,
     EndCondition,
     Line,
+    LinearPattern,
+    LinearPatternDirection,
     PartGraph,
     SketchNode,
     SolidNode,
@@ -932,4 +934,102 @@ def test_straight_slot_mixed_profile_rejected() -> None:
     issues = validate_graph(graph)
     assert any(
         i.code == ErrorCode.IR_RULE_VIOLATED and "cannot mix" in i.message.lower() for i in issues
+    )
+
+
+def _pattern_base_graph(
+    *,
+    hole: tuple[float, float, float] = (-30.0, 0.0, 10.0),
+    spacing: float = 20.0,
+    count: int = 4,
+    seeds: tuple[str, ...] = ("cut_hole",),
+    pattern_deps: tuple[str, ...] = ("cut_hole", "extrude_base"),
+) -> PartGraph:
+    return PartGraph(
+        id="pattern_graph",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(
+                plane="plane:front",
+                entities={"r1": CenterRectangle(center=(0.0, 0.0), width=100.0, height=60.0)},
+            ),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+            "sketch_hole": SketchNode(
+                plane="plane:front",
+                entities={"c1": Circle(center=(hole[0], hole[1]), diameter=hole[2])},
+            ),
+            "cut_hole": SolidNode(
+                type="cut_extrude",
+                profile="sketch_hole",
+                end_condition=EndCondition(type="through_all_both"),
+                dependencies=("sketch_hole", "extrude_base"),
+            ),
+            "pattern_holes": LinearPattern(
+                seeds=seeds,
+                direction_1=LinearPatternDirection(
+                    direction="plane:right",
+                    spacing=spacing,
+                    count=count,
+                ),
+                dependencies=pattern_deps,
+            ),
+        },
+    )
+
+
+def test_linear_pattern_accepted() -> None:
+    graph = _pattern_base_graph()
+    assert validate_graph(graph) == ()
+
+
+def test_linear_pattern_unresolved_seed_rejected() -> None:
+    graph = _pattern_base_graph(
+        seeds=("missing_cut",), pattern_deps=("missing_cut", "extrude_base")
+    )
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_REFERENCE_UNRESOLVED and "missing_cut" in i.message for i in issues
+    )
+
+
+def test_linear_pattern_non_cut_seed_rejected() -> None:
+    graph = _pattern_base_graph(seeds=("extrude_base",), pattern_deps=("extrude_base",))
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "must be a cut feature" in i.message
+        for i in issues
+    )
+
+
+def test_linear_pattern_missing_dependency_rejected() -> None:
+    graph = _pattern_base_graph(pattern_deps=("extrude_base",))
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "must depend on seed" in i.message for i in issues
+    )
+
+
+def test_linear_pattern_instances_outside_base_rejected() -> None:
+    # Base width 100 (-50 to +50). Hole center 0.0, count 4, spacing 20 -> centers 0, 20, 40, 60.
+    # At center 60, radius 5, right edge is 65 > 50 -> outside base!
+    graph = _pattern_base_graph(hole=(0.0, 0.0, 10.0), count=4, spacing=20.0)
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "outside" in i.message.lower() for i in issues
+    )
+
+
+def test_linear_pattern_spacing_too_small_rejected() -> None:
+    # Hole diameter 10, spacing 8 -> instances overlap
+    graph = _pattern_base_graph(hole=(-30.0, 0.0, 10.0), spacing=8.0, count=2)
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "overlap" in i.message.lower() for i in issues
     )
