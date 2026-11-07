@@ -7,14 +7,21 @@ using SolidWorks.Interop.swconst;
 namespace PartChainSpike
 {
     /// <summary>
-    /// Mode "face": throwaway spike for sketches on a face (plan 2026-11-06-face-reference-sketches, phase 0).
-    /// Answers: F1 which faces an extrude reports; F2 the sketch frame on its end and start faces;
-    /// F3/F4 which way a blind cut goes from each face for each Flip/Dir; F5 a through-all cut; F6 whether the
-    /// end face is still one planar face after a hole is cut in it.
-    /// Builds a 40 x 30 x 10 mm block on the first RefPlane (front) in new documents only. Lengths in metres.
+    /// Mode "face": throwaway spike for sketches on a face (plan 2026-11-06-face-reference-sketches, phase 0, K29).
+    /// Answers: F1 which faces an extrude reports; F2 the sketch frame on its end and start faces across all three
+    /// standard planes; F3/F4 which way a blind cut goes from each face for each Flip/Dir; F5 a through-all cut;
+    /// F6 whether the end face is still one planar face after a hole is cut in it.
+    /// Builds a 40 x 30 x 10 mm block in new documents only. Lengths in metres.
     /// </summary>
     internal static partial class Program
     {
+        private static readonly (string Name, int Index, double[] Normal)[] StandardPlanes = new[]
+        {
+            ("plane:front", 0, new[] { 0.0, 0.0, 1.0 }),
+            ("plane:top", 1, new[] { 0.0, 1.0, 0.0 }),
+            ("plane:right", 2, new[] { 1.0, 0.0, 0.0 }),
+        };
+
         private static int FaceSpikeRun()
         {
             Stage = "face";
@@ -24,7 +31,7 @@ namespace PartChainSpike
             try
             {
                 Step("F1 faces of the extrude", FaceInventory);
-                Step("F2 sketch frame on the end face and the start face", FaceSketchFrames);
+                Step("F2 sketch frame on the end face and the start face across all 3 planes", FaceSketchFrames);
                 Step("F3 blind cut from the end face (top), each Flip/Dir", () => FaceBlindCuts("end"));
                 Step("F4 blind cut from the start face (bottom), each Flip/Dir", () => FaceBlindCuts("start"));
                 Step("F5 through-all cut from the end face", FaceThroughAll);
@@ -38,11 +45,11 @@ namespace PartChainSpike
             return 0;
         }
 
-        private static Feature BuildBlock(out ModelDoc2 doc)
+        private static Feature BuildBlock(out ModelDoc2 doc, int planeIndex = 0)
         {
             doc = NewPart(DefaultTemplate());
-            var front = RefPlanes(doc)[0];
-            var sk = MakeSketch(doc, front, sm => Rect(sm, -20 * Mm, -15 * Mm, 20 * Mm, 15 * Mm));
+            var plane = RefPlanes(doc)[planeIndex];
+            var sk = MakeSketch(doc, plane, sm => Rect(sm, -20 * Mm, -15 * Mm, 20 * Mm, 15 * Mm));
             var ext = Extrude(doc, sk, 10 * Mm);
             if (ext == null) throw new Exception("FeatureExtrusion3 returned null");
             return ext;
@@ -65,16 +72,20 @@ namespace PartChainSpike
             return $"planar={plane} outwardNormal={n} planeRoot={root} area_m2={f.GetArea():R} box={Fmt((double[])f.GetBox())}";
         }
 
-        /// <summary>The planar face whose outward normal is along +Z (end) or -Z (start).</summary>
-        private static Face2 PickFace(Feature ext, string which)
+        /// <summary>The planar face whose outward normal is along +baseNormal (end) or -baseNormal (start).</summary>
+        private static Face2 PickFace(Feature ext, string which, double[]? baseNormal = null)
         {
-            double wantZ = which == "end" ? 1.0 : -1.0;
+            var bn = baseNormal ?? new[] { 0.0, 0.0, 1.0 };
+            double sign = which == "end" ? 1.0 : -1.0;
+            double wantX = sign * bn[0], wantY = sign * bn[1], wantZ = sign * bn[2];
             var found = ExtrudeFaces(ext).Where(f =>
             {
                 var s = (Surface)f.GetSurface();
                 if (s == null || !s.IsPlane()) return false;
                 var n = (double[])f.Normal;
-                return Math.Abs(n[2] - wantZ) < 1e-9;
+                return Math.Abs(n[0] - wantX) < 1e-9
+                    && Math.Abs(n[1] - wantY) < 1e-9
+                    && Math.Abs(n[2] - wantZ) < 1e-9;
             }).ToList();
             P($"    PickFace({which}): {found.Count} candidate(s)");
             if (found.Count != 1) throw new Exception("expected exactly one " + which + " face, got " + found.Count);
@@ -134,17 +145,18 @@ namespace PartChainSpike
 
         private static void FaceSketchFrames()
         {
+            foreach (var (planeName, planeIdx, baseNormal) in StandardPlanes)
             foreach (var which in new[] { "end", "start" })
             {
                 ModelDoc2 d;
-                var ext = BuildBlock(out d);
+                var ext = BuildBlock(out d, planeIdx);
                 try
                 {
-                    var face = PickFace(ext, which);
-                    SketchOnFace(d, face, which + "_face", sm => sm.CreateCircleByRadius(10 * Mm, 5 * Mm, 0, 2.5 * Mm));
+                    var face = PickFace(ext, which, baseNormal);
+                    SketchOnFace(d, face, $"{planeName}/{which}_face", sm => sm.CreateCircleByRadius(10 * Mm, 5 * Mm, 0, 2.5 * Mm));
                     var cut = Cut(d, (Feature)d.FeatureByPositionReverse(0), 0, true);
                     var m = Measure(d);
-                    P($"    [{which}_face] circle at sketch (10, 5) mm cut through all; cylinders (model, m):");
+                    P($"    [{planeName}/{which}_face] circle at sketch (10, 5) mm cut through all; cylinders (model, m):");
                     foreach (var c in m.Cyl) P("      point=" + Fmt(c.Take(3).ToArray()) + " dir=" + Fmt(c.Skip(3).Take(3).ToArray()) + " r=" + c[6].ToString("R"));
                 }
                 finally { Close(d.GetTitle()); }

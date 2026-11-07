@@ -1,8 +1,8 @@
 """Sketches on an extrude's cap faces (ADR-070, spec 5.7.4).
 
 A sketch ``plane`` of the form ``<extrude_id>.<role>`` names a face of that extrude. Only the two
-cap faces are supported. The frame rule below was measured on ``plane:front`` (spike 2026-11-06);
-the add-in checks the real sketch frame against it (K29).
+cap faces are supported across all three standard base planes (``plane:front``, ``plane:top``,
+``plane:right``). The add-in checks the opened sketch's real frame against the stated axes.
 """
 
 import re
@@ -47,6 +47,20 @@ class FaceFrame:
         if self.role == "end_face":
             return (depth - cut, depth)
         return (0.0, cut)
+
+    def to_model(
+        self,
+        x: float,
+        y: float,
+        depth_from_base: float | None = None,
+    ) -> tuple[float, float, float]:
+        """Map 2D face sketch coordinates (x, y) to 3D model coordinates (X, Y, Z)."""
+        d = self.offset_mm if depth_from_base is None else depth_from_base
+        return (
+            x * self.x_axis[0] + y * self.y_axis[0] + d * self.base_normal[0],
+            x * self.x_axis[1] + y * self.y_axis[1] + d * self.base_normal[1],
+            x * self.x_axis[2] + y * self.y_axis[2] + d * self.base_normal[2],
+        )
 
 
 def parse_face_plane(plane: str) -> FaceRef | None:

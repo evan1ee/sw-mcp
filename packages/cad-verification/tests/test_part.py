@@ -712,7 +712,12 @@ HOLE_DIA = 5.0
 HOLE_AREA = math.pi * (HOLE_DIA / 2) ** 2
 
 
-def _block_with_face_hole(plane: str, center: tuple[float, float], blind: bool = True) -> PartGraph:
+def _block_with_face_hole(
+    plane: str,
+    center: tuple[float, float],
+    blind: bool = True,
+    base_plane: str = "plane:front",
+) -> PartGraph:
     box = [(-20, -15), (20, -15), (20, 15), (-20, 15)]
     lines = {
         f"l{i + 1}": {
@@ -730,7 +735,7 @@ def _block_with_face_hole(plane: str, center: tuple[float, float], blind: bool =
         "units": "mm",
         "origin": "built",
         "nodes": {
-            "sketch_base": {"type": "sketch", "plane": "plane:front", "entities": lines},
+            "sketch_base": {"type": "sketch", "plane": base_plane, "entities": lines},
             "extrude_base": {
                 "type": "extrude",
                 "dependencies": ["sketch_base"],
@@ -791,3 +796,36 @@ def test_through_hole_from_a_face_removes_the_full_depth() -> None:
         _block_with_face_hole("extrude_base.end_face", (0, 0), blind=False)
     )
     assert geometry.volume_mm3 == pytest.approx(BLOCK_VOLUME - HOLE_AREA * 10)
+
+
+@pytest.mark.parametrize(
+    ("base_plane", "role", "exp_cyl_pt", "exp_cyl_dir"),
+    [
+        ("plane:front", "end_face", (10.0, 5.0, 10.0), (0.0, 0.0, 1.0)),
+        ("plane:front", "start_face", (-10.0, 5.0, 0.0), (0.0, 0.0, 1.0)),
+        ("plane:top", "end_face", (10.0, 10.0, -5.0), (0.0, 1.0, 0.0)),
+        ("plane:top", "start_face", (-10.0, 0.0, -5.0), (0.0, 1.0, 0.0)),
+        ("plane:right", "end_face", (10.0, 5.0, -10.0), (1.0, 0.0, 0.0)),
+        ("plane:right", "start_face", (0.0, 5.0, 10.0), (1.0, 0.0, 0.0)),
+    ],
+)
+def test_expected_geometry_all_six_datum_and_cap_combinations(
+    base_plane: str,
+    role: str,
+    exp_cyl_pt: tuple[float, float, float],
+    exp_cyl_dir: tuple[float, float, float],
+) -> None:
+    geometry = expected_geometry(
+        _block_with_face_hole(
+            f"extrude_base.{role}", (10.0, 5.0), blind=True, base_plane=base_plane
+        )
+    )
+    removed = HOLE_AREA * HOLE_DEPTH
+    assert geometry.volume_mm3 == pytest.approx(BLOCK_VOLUME - removed)
+    assert geometry.surface_area_mm2 == pytest.approx(
+        2 * 1200 + 140 * 10 + math.pi * HOLE_DIA * HOLE_DEPTH
+    )
+    (cyl,) = geometry.cylinders
+    assert (cyl.point.x, cyl.point.y, cyl.point.z) == pytest.approx(exp_cyl_pt)
+    assert (cyl.direction.x, cyl.direction.y, cyl.direction.z) == pytest.approx(exp_cyl_dir)
+    assert cyl.radius == pytest.approx(2.5)

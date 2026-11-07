@@ -23,6 +23,7 @@ def _graph(
     plane: str = "extrude_base.end_face",
     center: tuple[float, float] = (0.0, 0.0),
     outline: Sequence[tuple[float, float]] | None = None,
+    base_plane: str = "plane:front",
 ) -> dict[str, Any]:
     box = [(-20, -15), (20, -15), (20, 15), (-20, 15)]
     return {
@@ -34,7 +35,7 @@ def _graph(
         "nodes": {
             "sketch_base": {
                 "type": "sketch",
-                "plane": "plane:front",
+                "plane": base_plane,
                 "entities": _lines(outline or box),
             },
             "extrude_base": {
@@ -94,6 +95,9 @@ def test_the_sketch_must_list_the_extrude_as_a_dependency() -> None:
 
 def test_a_start_face_sketch_is_checked_in_the_base_frame() -> None:
     # The arm of the L is x 0..20, y 20..40. On a start face, sketch x is mirrored.
-    assert _messages(_graph("extrude_base.end_face", (10, 30), L_OUTLINE)) == ""
-    assert _messages(_graph("extrude_base.start_face", (-10, 30), L_OUTLINE)) == ""
-    assert "inside" in _messages(_graph("extrude_base.start_face", (10, 30), L_OUTLINE))
+    for base_plane in ("plane:front", "plane:top", "plane:right"):
+        assert _messages(_graph("extrude_base.end_face", (10, 30), L_OUTLINE, base_plane)) == ""
+        assert _messages(_graph("extrude_base.start_face", (-10, 30), L_OUTLINE, base_plane)) == ""
+        assert "inside" in _messages(
+            _graph("extrude_base.start_face", (10, 30), L_OUTLINE, base_plane)
+        )

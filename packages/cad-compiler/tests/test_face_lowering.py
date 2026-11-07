@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import pytest
 from cad_compiler.api import CompileContext, CompileInput, compile_bundle
 from cad_compiler.profile import CapabilityProfile
 from cad_ir.bundle.manifest import BundleManifest
@@ -11,7 +12,7 @@ from cad_ir.generated.ipc import HelloResult, OperationInfo, SolidWorksInfo
 HOLE_DEPTH = 4
 
 
-def _graph(plane: str) -> dict[str, Any]:
+def _graph(plane: str, base_plane: str = "plane:front") -> dict[str, Any]:
     box = [(-20, -15), (20, -15), (20, 15), (-20, 15)]
     return {
         "module": "part",
@@ -22,7 +23,7 @@ def _graph(plane: str) -> dict[str, Any]:
         "nodes": {
             "sketch_base": {
                 "type": "sketch",
-                "plane": "plane:front",
+                "plane": base_plane,
                 "entities": {
                     f"l{i + 1}": {
                         "type": "line",
@@ -118,3 +119,69 @@ def test_a_cut_from_an_origin_plane_is_not_marked() -> None:
 def test_an_unsupported_host_still_fails_to_compile() -> None:
     result = _compile(_graph("geo:abc"))
     assert result.plan is None
+
+
+@pytest.mark.parametrize(
+    ("base_plane", "role", "exp_normal", "exp_offset", "exp_axes"),
+    [
+        (
+            "plane:front",
+            "end_face",
+            [0.0, 0.0, 1.0],
+            10.0,
+            ([1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
+        ),
+        (
+            "plane:front",
+            "start_face",
+            [0.0, 0.0, -1.0],
+            0.0,
+            ([-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
+        ),
+        (
+            "plane:top",
+            "end_face",
+            [0.0, 1.0, 0.0],
+            10.0,
+            ([1.0, 0.0, 0.0], [0.0, 0.0, -1.0]),
+        ),
+        (
+            "plane:top",
+            "start_face",
+            [0.0, -1.0, 0.0],
+            0.0,
+            ([-1.0, 0.0, 0.0], [0.0, 0.0, -1.0]),
+        ),
+        (
+            "plane:right",
+            "end_face",
+            [1.0, 0.0, 0.0],
+            10.0,
+            ([0.0, 0.0, -1.0], [0.0, 1.0, 0.0]),
+        ),
+        (
+            "plane:right",
+            "start_face",
+            [-1.0, 0.0, 0.0],
+            0.0,
+            ([0.0, 0.0, 1.0], [0.0, 1.0, 0.0]),
+        ),
+    ],
+)
+def test_lowering_all_six_datum_and_cap_combinations(
+    base_plane: str,
+    role: str,
+    exp_normal: list[float],
+    exp_offset: float,
+    exp_axes: tuple[list[float], list[float]],
+) -> None:
+    ops = _ops(_compile(_graph(f"extrude_base.{role}", base_plane=base_plane)))
+    assert ops["op_4"]["params"]["face"] == {
+        "feature": "extrude_base",
+        "role": role,
+        "normal": exp_normal,
+        "offset_mm": exp_offset,
+        "x_axis": exp_axes[0],
+        "y_axis": exp_axes[1],
+    }
+    assert ops["op_5"]["params"]["host"] == "face"

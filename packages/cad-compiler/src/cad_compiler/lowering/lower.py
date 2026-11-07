@@ -6,9 +6,8 @@ from typing import Any, Final
 
 from cad_ir.core.issues import ValidationIssue
 from cad_ir.generated import ErrorCode
-from cad_ir.part_feature_graph.faces import face_frame, parse_face_plane
 from cad_ir.part_feature_graph.model import Line, PartGraph, SketchNode, SolidNode
-from cad_ir.part_feature_graph.planes import plane_axes
+from cad_references.semantic import parse_face_plane, resolve_cap_face_signature
 
 from cad_compiler.graph.analyze import GraphAnalysis
 from cad_compiler.profile import CapabilityProfile
@@ -78,23 +77,7 @@ def _check_capabilities(graph: PartGraph, profile: CapabilityProfile) -> list[Va
 
 def _face_params(graph: PartGraph, plane: str) -> dict[str, Any] | None:
     """The ``face`` parameter of a sketch on a cap face, or None for any other host (ADR-070)."""
-    face = parse_face_plane(plane)
-    if face is None:
-        return None
-    extrude = graph.nodes[face.node_id]
-    assert isinstance(extrude, SolidNode)
-    assert extrude.end_condition.depth is not None
-    base = graph.nodes[extrude.profile]
-    assert isinstance(base, SketchNode)
-    frame = face_frame(plane_axes(base.plane), float(extrude.end_condition.depth), face.role)
-    return {
-        "feature": face.node_id,
-        "role": face.role,
-        "normal": [float(v) for v in frame.normal],
-        "offset_mm": float(frame.offset_mm),
-        "x_axis": [float(v) for v in frame.x_axis],
-        "y_axis": [float(v) for v in frame.y_axis],
-    }
+    return resolve_cap_face_signature(graph, plane)
 
 
 def _lower_sketch(
