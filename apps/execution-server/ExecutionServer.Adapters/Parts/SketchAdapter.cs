@@ -156,6 +156,50 @@ public sealed class SketchAdapter
                     CreateLineSegment(sm, maxX, maxY, minX, maxY);
                     CreateLineSegment(sm, minX, maxY, minX, minY);
                 }
+                else if (entity.Type == SketchCreateEntityType.StraightSlot)
+                {
+                    if (entity.StartPoint == null || entity.StartPoint.Count < 2 ||
+                        entity.EndPoint == null || entity.EndPoint.Count < 2 ||
+                        !entity.Width.HasValue)
+                    {
+                        throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "StraightSlot entity requires start_point [x, y], end_point [x, y], and width.");
+                    }
+
+                    double p1x = PartUnits.MmToMetres(entity.StartPoint[0]);
+                    double p1y = PartUnits.MmToMetres(entity.StartPoint[1]);
+                    double p2x = PartUnits.MmToMetres(entity.EndPoint[0]);
+                    double p2y = PartUnits.MmToMetres(entity.EndPoint[1]);
+                    double w = PartUnits.MmToMetres(entity.Width.Value);
+
+                    double dx = p2x - p1x;
+                    double dy = p2y - p1y;
+                    double length = Math.Sqrt(dx * dx + dy * dy);
+                    if (length < 1e-9)
+                    {
+                        throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "StraightSlot entity cannot have zero length centerline.");
+                    }
+
+                    double r = w / 2.0;
+                    double nx = -dy / length;
+                    double ny = dx / length;
+                    double ox = r * nx;
+                    double oy = r * ny;
+
+                    double l1StartX = p1x - ox;
+                    double l1StartY = p1y - oy;
+                    double l1EndX = p2x - ox;
+                    double l1EndY = p2y - oy;
+
+                    double l2StartX = p2x + ox;
+                    double l2StartY = p2y + oy;
+                    double l2EndX = p1x + ox;
+                    double l2EndY = p1y + oy;
+
+                    CreateLineSegment(sm, l1StartX, l1StartY, l1EndX, l1EndY);
+                    CreateArcSegment(sm, p2x, p2y, l1EndX, l1EndY, l2StartX, l2StartY, 1);
+                    CreateLineSegment(sm, l2StartX, l2StartY, l2EndX, l2EndY);
+                    CreateArcSegment(sm, p1x, p1y, l2EndX, l2EndY, l1StartX, l1StartY, 1);
+                }
                 else if (entity.Type == SketchCreateEntityType.CenterRectangle)
                 {
                     if (entity.Center == null || entity.Center.Count < 2 ||
@@ -332,6 +376,15 @@ public sealed class SketchAdapter
         if (line != null && Marshal.IsComObject(line))
         {
             Marshal.ReleaseComObject(line);
+        }
+    }
+
+    private static void CreateArcSegment(ISketchManager sm, double xc, double yc, double xp1, double yp1, double xp2, double yp2, short dir)
+    {
+        var arc = sm.CreateArc(xc, yc, 0, xp1, yp1, 0, xp2, yp2, 0, dir);
+        if (arc != null && Marshal.IsComObject(arc))
+        {
+            Marshal.ReleaseComObject(arc);
         }
     }
 }
