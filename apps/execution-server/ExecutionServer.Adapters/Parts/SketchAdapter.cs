@@ -110,6 +110,29 @@ public sealed class SketchAdapter
                         Marshal.ReleaseComObject(circle);
                     }
                 }
+                else if (entity.Type == SketchCreateEntityType.Arc)
+                {
+                    if (entity.Center == null || entity.Center.Count < 2 ||
+                        entity.Start == null || entity.Start.Count < 2 ||
+                        entity.End == null || entity.End.Count < 2)
+                    {
+                        throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Arc entity requires center, start, and end points [x, y].");
+                    }
+
+                    double xc = PartUnits.MmToMetres(entity.Center[0]);
+                    double yc = PartUnits.MmToMetres(entity.Center[1]);
+                    double xp1 = PartUnits.MmToMetres(entity.Start[0]);
+                    double yp1 = PartUnits.MmToMetres(entity.Start[1]);
+                    double xp2 = PartUnits.MmToMetres(entity.End[0]);
+                    double yp2 = PartUnits.MmToMetres(entity.End[1]);
+                    short dir = entity.Direction == SketchCreateEntityDirection.Cw ? (short)-1 : (short)1;
+
+                    var arc = sm.CreateArc(xc, yc, 0, xp1, yp1, 0, xp2, yp2, 0, dir);
+                    if (arc != null && Marshal.IsComObject(arc))
+                    {
+                        Marshal.ReleaseComObject(arc);
+                    }
+                }
                 else
                 {
                     throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, $"Unsupported sketch entity type '{entity.Type}'.");
