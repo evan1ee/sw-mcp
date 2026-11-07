@@ -20,15 +20,12 @@ Last updated: 2026-11-07 (`main`, spec v1.38).
 
 ## Changes Made
 
-- **Clear Post-MVP 3D Part Tech Debt (PR #16, spec v1.38, [plan](docs/superpowers/plans/2026-11-07-clear-part-mvp-tech-debt.md)):**
-  - **K29 Closed (Datum-Plane Generalization):** Generalized `<extrude>.start_face` and `<extrude>.end_face` frames, signatures, lowering, and verification across `plane:front`, `plane:top`, and `plane:right` in [`faces.py`](packages/cad-ir/src/cad_ir/part_feature_graph/faces.py), [`cap_faces.py`](packages/cad-geometry/src/cad_geometry/cap_faces.py), [`cap_face_signatures.py`](packages/cad-references/src/cad_references/cap_face_signatures.py), [`part.py` (compiler)](packages/cad-compiler/src/cad_compiler/part.py), [`part.py` (verification)](packages/cad-verification/src/cad_verification/part.py), and [`FaceSignatureTests.cs`](apps/execution-server/ExecutionServer.Tests/Parts/FaceSignatureTests.cs).
-  - **Live 3D Part Coverage:** Added `test_blind_hole_in_start_face`, parameterized `test_blind_hole_across_datum_and_cap_faces` (all 6 datum × cap combinations with off-center holes), and `test_block_centre_hole` in [`test_live_part_chain.py`](tests/live/test_live_part_chain.py).
-  - **Prompt-to-IR Baseline:** Added `blind_hole_start_face` case, recorded [`part_ir_baseline_answers.json`](tests/cad-benchmark/part_ir_baseline_answers.json), and added [`test_part_ir_benchmark.py`](tests/cad-benchmark/test_part_ir_benchmark.py).
-  - **COM & Contract Hygiene:** Scoped COM pointers via `ComScope`, closed untitled `.SLDPRT` handles on `SaveAs4` failure, mapped `COMException` on feature creation/rebuild to `BACKEND_REBUILD_ERROR` in [`ExecutionServer.Adapters/Parts/`](apps/execution-server/ExecutionServer.Adapters/Parts/), and rejected `bool`-for-`int`/`float` in [`contracts.py`](packages/cad-verification/src/cad_verification/api/contracts.py).
+- **Implementation Checklists (branch `docs/implementation-checklists`, docs and tooling only):**
+  - Added [`docs/implementation/`](docs/implementation/README.md): the single source of truth for Sketch and Part Feature capability status (stable IDs, one row per option, six-layer tracking), plus the audit script [`scripts/check_implementation_checklists.py`](scripts/check_implementation_checklists.py) that derives all counts. CI runs the audit. No spec, schema or source changes; audit discrepancies, owner decisions and the live evidence still needed are listed in the index.
 
 ## Next Steps
 
-1. **Owner Decision on Next 3D Part Milestone ([Roadmap §18](docs/specifications/roadmap.md)):**
+1. **Owner Decision on Next 3D Part Milestone (pick rows from the [checklists](docs/implementation/README.md) and its owner-decision list) ([Roadmap §18](docs/specifications/roadmap.md)):**
    - Expand 3D Part IR feature coverage (arcs, fillets, chamfers, linear/circular patterns, or side-face references `<node>.side_faces` under K23/K26/K28) via new spec + ADR before implementation.
 2. **When Drawing Freeze Lifts ([architecture review](docs/superpowers/review/2026-11-05-architecture-review.md), [roadmap](docs/superpowers/review/2026-11-05-architecture-roadmap.md)):**
    - Resolve owner decisions O1–O6 and open items K3, K8–K10, J11 in [`open-decisions.md`](docs/specifications/open-decisions.md), then execute milestones M0–M11 (document custody, real geometry read-back, `not_evaluated` guards, and `produce_drawing`).

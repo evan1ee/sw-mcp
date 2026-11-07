@@ -12,6 +12,7 @@ docs/
 ├── adr/              architecture decision records, ADR-001 … ADR-069
 ├── development/      repository layout and testing
 ├── plans/            cross-cutting implementation roadmaps
+├── implementation/   Sketch and Part Feature checklists: what is built and verified
 ```
 
 ## Reading order
@@ -21,6 +22,7 @@ docs/
 3. [Production drawings](architecture/production-drawings.md) — the P0 capability
 4. [Roadmap](specifications/roadmap.md) — phases, the Phase 0 assumption register and the Phase 1 work order
 5. [Decisions](adr/README.md) — why things are the way they are
+6. [Implementation checklists](implementation/README.md) — per-capability build and verification status
 
 ## Specifications
 
