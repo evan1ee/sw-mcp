@@ -12,8 +12,9 @@ from pathlib import Path
 
 from cad_application.authoring_eval.cases import CASES
 from cad_application.authoring_eval.checker import score_all
+from cad_application.authoring_eval.references import REFERENCE_ANSWERS
 
-USAGE = "usage: score_part_ir.py (--prompts | answers.json)\n"
+USAGE = "usage: score_part_ir.py (--prompts | --baseline | answers.json)\n"
 
 
 def main(argv: list[str]) -> int:
@@ -24,7 +25,10 @@ def main(argv: list[str]) -> int:
     if len(argv) != 1:
         sys.stderr.write(USAGE)
         return 2
-    answers = json.loads(Path(argv[0]).read_text(encoding="utf-8"))
+    if argv == ["--baseline"]:
+        answers = REFERENCE_ANSWERS
+    else:
+        answers = json.loads(Path(argv[0]).read_text(encoding="utf-8"))
     results = score_all(answers)
     for case_id, problems in results.items():
         sys.stdout.write(f"{'PASS' if not problems else 'FAIL'} {case_id}\n")
