@@ -14,6 +14,7 @@ from cad_ir.part_feature_graph.model import (
     Line,
     LinearPattern,
     LinearPatternDirection,
+    Mirror,
     PartGraph,
     SketchNode,
     SolidNode,
@@ -33,6 +34,7 @@ EXPECTED_CHECKS_COUNT = 8
 THREE_FAILURES_COUNT = 3
 EXPECTED_PATTERN_CYLINDERS = 4
 EXPECTED_PATTERN_FEATURES = 5
+EXPECTED_MIRROR_CYLINDERS = 2
 
 
 def make_plate_graph() -> PartGraph:
@@ -1190,3 +1192,65 @@ def test_circular_pattern_expected_geometry() -> None:
     assert len(geom.features) == EXPECTED_PATTERN_FEATURES
     assert geom.features[-1].feature_type == "circular_pattern"
     assert geom.features[-1].native_type == "CirPattern"
+
+
+def test_mirror_expected_geometry() -> None:
+    """Plate with one cut hole mirrored across Right Plane."""
+    graph = PartGraph(
+        id="plate_mirror",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(
+                plane="plane:front",
+                entities={
+                    "l1": Line(start=(-50.0, -25.0), end=(50.0, -25.0)),
+                    "l2": Line(start=(50.0, -25.0), end=(50.0, 25.0)),
+                    "l3": Line(start=(50.0, 25.0), end=(-50.0, 25.0)),
+                    "l4": Line(start=(-50.0, 25.0), end=(-50.0, -25.0)),
+                },
+            ),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+            "sketch_hole": SketchNode(
+                plane="plane:front",
+                entities={"c1": Circle(center=(25.0, 0.0), diameter=10.0)},
+            ),
+            "cut_hole": SolidNode(
+                type="cut_extrude",
+                profile="sketch_hole",
+                end_condition=EndCondition(type="through_all_both"),
+                dependencies=("sketch_hole", "extrude_base"),
+            ),
+            "mirror_hole": Mirror(
+                seeds=("cut_hole",),
+                plane="plane:right",
+                merge=True,
+                dependencies=("cut_hole", "extrude_base"),
+            ),
+        },
+    )
+    geom = expected_geometry(graph)
+    assert geom.solid_body_count == 1
+    # Base: 100 x 50 x 10 = 50000
+    # 2 holes: dia 10, depth 10 -> each vol = 250 * pi -> total 500 * pi ~ 1570.796
+    # Net vol = 50000 - 500 * pi ~ 48429.204
+    expected_vol = 50000.0 - 500.0 * math.pi
+    assert geom.volume_mm3 == pytest.approx(expected_vol, abs=0.01)
+    # 2 hole cylinders (radius 5)
+    cyl_tol = 1e-3
+    assert len(geom.cylinders) == EXPECTED_MIRROR_CYLINDERS
+    hole_cyls = [c for c in geom.cylinders if abs(c.radius - 5.0) < cyl_tol]
+    assert len(hole_cyls) == EXPECTED_MIRROR_CYLINDERS
+    # One cylinder at x = 25, the other at x = -25
+    xs = sorted([c.point.x for c in hole_cyls])
+    assert xs[0] == pytest.approx(-25.0, abs=cyl_tol)
+    assert xs[1] == pytest.approx(25.0, abs=cyl_tol)
+    assert len(geom.features) == EXPECTED_PATTERN_FEATURES
+    assert geom.features[-1].feature_type == "mirror"
+    assert geom.features[-1].native_type == "MirrorPattern"
