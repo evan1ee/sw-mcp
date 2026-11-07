@@ -60,7 +60,7 @@ public sealed class FaceSignatureTests
         yield return new object[]
         {
             "plane:top", "start_face", 0,
-            new[] { -1.0, 0.0, 0.0 }, new[] { 0.0, 0.0, -1.0 }, new[] { 0.0, -1.0, 0.0 }, 0.0
+            new[] { 1.0, 0.0, 0.0 }, new[] { 0.0, 0.0, 1.0 }, new[] { 0.0, -1.0, 0.0 }, 0.0
         };
         yield return new object[]
         {

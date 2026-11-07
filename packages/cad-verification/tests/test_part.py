@@ -804,7 +804,7 @@ def test_through_hole_from_a_face_removes_the_full_depth() -> None:
         ("plane:front", "end_face", (10.0, 5.0, 10.0), (0.0, 0.0, 1.0)),
         ("plane:front", "start_face", (-10.0, 5.0, 0.0), (0.0, 0.0, 1.0)),
         ("plane:top", "end_face", (10.0, 10.0, -5.0), (0.0, 1.0, 0.0)),
-        ("plane:top", "start_face", (-10.0, 0.0, -5.0), (0.0, 1.0, 0.0)),
+        ("plane:top", "start_face", (10.0, 0.0, 5.0), (0.0, 1.0, 0.0)),
         ("plane:right", "end_face", (10.0, 5.0, -10.0), (1.0, 0.0, 0.0)),
         ("plane:right", "start_face", (0.0, 5.0, 10.0), (1.0, 0.0, 0.0)),
     ],

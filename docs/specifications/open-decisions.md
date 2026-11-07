@@ -15,7 +15,7 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-Twenty-two open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, K19, K20, K21, K23, K24, K25, K26, K27, K28 and K29. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+Twenty-one open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, K19, K20, K21, K23, K24, K25, K26, K27 and K28. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
 
 ### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
 
@@ -170,19 +170,13 @@ Twenty-two open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, 
 - **Document:** Spec (7.5, 8.9.12), ADR-067.
 - **Blocks:** `later` (A6).
 
-### K29: Sketch frame on a face of a part built on `plane:top` or `plane:right`
-
-- **Why it matters.** ADR-070's frame rule (an end face has the base plane's axes; a start face mirrors x) was measured only on `plane:front`. On the other two planes the real frame may differ, and every coordinate the IR places on that face depends on it. The add-in compares the frame and fails safely, so a wrong rule costs a failed job, not a wrong part.
-- **Recommendation.** Extend the face spike to parts built on `plane:top` and `plane:right`, for both caps, and record the frames in 5.7.4. Until then the authoring guide steers faces to parts built on `plane:front`.
-- **Document:** Spec (5.7.4), ADR-070.
-- **Blocks:** `later` (faces on parts built on `plane:top` or `plane:right`).
-
 ---
 
 ## Closed
 
 | ID | Item | Recorded in |
 | --- | --- | --- |
+| K29 | Sketch frame on a cap face (`start_face`, `end_face`) of a part built on `plane:top` or `plane:right`, measured and verified live in SOLIDWORKS 2025 across all 6 datum-and-cap combinations | [§5.7.4](../architecture/feature-schema-guide.md#574-sketches), [ADR-070](../adr/ADR-070-sketch-on-extrude-cap-face.md) |
 | K22 | Whether a feature warning blocks a commit: it does in the MVP, and a reviewed list may be allowed later (owner decision, 2026-11-05) | [ADR-064](../adr/ADR-064-per-operation-verification-contracts.md), [§10.2.1](../architecture/verification-engine.md#1021-part-chain-mvp-checks-builders-call) |
 | K17 | What the ledger records when an operation took effect and then failed (owner decision, 2026-11-05) | [§8.7](../architecture/execution-engine.md#87-ipc-messages-builders-call), [§13.2.3](../architecture/project-store.md#1323-job-journal), [§8.9.5](solidworks-adapter.md#895-error-contract) |
 | K7 | Sheet format generation path from Drawing Template IR | [§6.5.2](../architecture/backend-operations.md#652-vocabulary), [§11.12](../architecture/drawing-template-ir.md), [ADR-055](../adr/ADR-055-generated-sheet-formats.md) |

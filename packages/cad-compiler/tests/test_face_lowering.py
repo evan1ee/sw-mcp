@@ -150,7 +150,7 @@ def test_an_unsupported_host_still_fails_to_compile() -> None:
             "start_face",
             [0.0, -1.0, 0.0],
             0.0,
-            ([-1.0, 0.0, 0.0], [0.0, 0.0, -1.0]),
+            ([1.0, 0.0, 0.0], [0.0, 0.0, 1.0]),
         ),
         (
             "plane:right",

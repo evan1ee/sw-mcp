@@ -9,8 +9,8 @@ import re
 from dataclasses import dataclass, replace
 from typing import Final
 
-from cad_ir.part_feature_graph.model import Circle, Line, PartGraph, SketchNode
-from cad_ir.part_feature_graph.planes import PlaneAxes
+from cad_ir.part_feature_graph.model import Circle, Line, PartGraph, SketchNode, SolidNode
+from cad_ir.part_feature_graph.planes import PlaneAxes, plane_axes
 
 SUPPORTED_ROLES: Final[tuple[str, ...]] = ("start_face", "end_face")
 
@@ -37,6 +37,7 @@ class FaceFrame:
     offset_mm: float  # signed distance of the face plane from the model origin along ``normal``
     x_sign: float  # 1.0 when sketch x equals the base plane's x, -1.0 when mirrored
     base_normal: tuple[float, float, float]
+    y_sign: float = 1.0  # 1.0 when sketch y equals the base plane's y, -1.0 when mirrored
 
     def into_body_depth_from_base(self, depth: float, cut: float) -> tuple[float, float]:
         """The span, along the base plane's normal, that a blind cut of ``cut`` mm covers.
@@ -87,6 +88,20 @@ def face_frame(base: PlaneAxes, depth: float, role: str) -> FaceFrame:
         )
     if role == "start_face":
         bx, by, bz = base.normal
+        # In SOLIDWORKS, a sketch opened on a horizontal start_face (normal = (0, -1, 0), i.e.
+        # plane:top) keeps x_axis = (1, 0, 0) and negates y_axis = (0, 0, 1). On vertical cap
+        # faces (plane:front and plane:right), y_axis stays (0, 1, 0) and x_axis is negated.
+        if by != 0.0:
+            return FaceFrame(
+                role=role,
+                x_axis=base.x_axis,
+                y_axis=(-base.y_axis[0], -base.y_axis[1], -base.y_axis[2]),
+                normal=(-bx, -by, -bz),
+                offset_mm=0.0,
+                x_sign=1.0,
+                base_normal=base.normal,
+                y_sign=-1.0,
+            )
         return FaceFrame(
             role=role,
             x_axis=(-base.x_axis[0], -base.x_axis[1], -base.x_axis[2]),
@@ -95,21 +110,28 @@ def face_frame(base: PlaneAxes, depth: float, role: str) -> FaceFrame:
             offset_mm=0.0,
             x_sign=-1.0,
             base_normal=base.normal,
+            y_sign=1.0,
         )
     raise ValueError(f"unsupported face role {role!r}: use start_face or end_face")
 
 
-def _mirror_x(entity: Line | Circle) -> Line | Circle:
+def _scale_xy(entity: Line | Circle, x_sign: float, y_sign: float) -> Line | Circle:
     if isinstance(entity, Line):
-        return Line(start=(-entity.start[0], entity.start[1]), end=(-entity.end[0], entity.end[1]))
-    return Circle(center=(-entity.center[0], entity.center[1]), diameter=entity.diameter)
+        return Line(
+            start=(x_sign * entity.start[0], y_sign * entity.start[1]),
+            end=(x_sign * entity.end[0], y_sign * entity.end[1]),
+        )
+    return Circle(
+        center=(x_sign * entity.center[0], y_sign * entity.center[1]),
+        diameter=entity.diameter,
+    )
 
 
 def in_base_frame(graph: PartGraph) -> PartGraph:
     """Return the graph with every start-face sketch mirrored into the base sketch frame.
 
-    A start face has x mirrored against the base plane (ADR-070), so checks that compare a cut
-    with the base profile must see both in one frame. Other sketches are returned unchanged.
+    A start face has x (on plane:front/plane:right) or y (on plane:top) mirrored against the base
+    plane (ADR-070, K29), so checks that compare a cut with the base profile see both in one frame.
     """
     nodes = dict(graph.nodes)
     for node_id, node in graph.nodes.items():
@@ -117,6 +139,17 @@ def in_base_frame(graph: PartGraph) -> PartGraph:
             continue
         face = parse_face_plane(node.plane)
         if face is not None and face.role == "start_face":
-            mirrored = {key: _mirror_x(ent) for key, ent in node.entities.items()}
+            x_sign, y_sign = -1.0, 1.0
+            parent = graph.nodes.get(face.node_id)
+            if isinstance(parent, SolidNode):
+                base_sketch = graph.nodes.get(parent.profile)
+                if isinstance(base_sketch, SketchNode) and base_sketch.plane in (
+                    "plane:front",
+                    "plane:top",
+                    "plane:right",
+                ):
+                    frame = face_frame(plane_axes(base_sketch.plane), 0.0, face.role)
+                    x_sign, y_sign = frame.x_sign, frame.y_sign
+            mirrored = {key: _scale_xy(ent, x_sign, y_sign) for key, ent in node.entities.items()}
             nodes[node_id] = replace(node, entities=mirrored)
     return replace(graph, nodes=nodes)

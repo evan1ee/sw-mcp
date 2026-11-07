@@ -94,10 +94,15 @@ def test_the_sketch_must_list_the_extrude_as_a_dependency() -> None:
 
 
 def test_a_start_face_sketch_is_checked_in_the_base_frame() -> None:
-    # The arm of the L is x 0..20, y 20..40. On a start face, sketch x is mirrored.
-    for base_plane in ("plane:front", "plane:top", "plane:right"):
+    # The arm of the L is x 0..20, y 20..40.
+    # On plane:front and plane:right, start_face mirrors x; on plane:top, start_face mirrors y.
+    for base_plane, valid_pt, invalid_pt in (
+        ("plane:front", (-10, 30), (10, 30)),
+        ("plane:top", (10, -30), (10, 30)),
+        ("plane:right", (-10, 30), (10, 30)),
+    ):
         assert _messages(_graph("extrude_base.end_face", (10, 30), L_OUTLINE, base_plane)) == ""
-        assert _messages(_graph("extrude_base.start_face", (-10, 30), L_OUTLINE, base_plane)) == ""
+        assert _messages(_graph("extrude_base.start_face", valid_pt, L_OUTLINE, base_plane)) == ""
         assert "inside" in _messages(
-            _graph("extrude_base.start_face", (10, 30), L_OUTLINE, base_plane)
+            _graph("extrude_base.start_face", invalid_pt, L_OUTLINE, base_plane)
         )

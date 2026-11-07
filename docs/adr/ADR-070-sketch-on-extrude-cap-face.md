@@ -1,7 +1,7 @@
 # ADR-070: A sketch may sit on an extrude's cap face, found by signature at use time
 
 - **Status:** Accepted (owner, 2026-11-06, in the face reference plan)
-- **Source:** [plan](../superpowers/plans/2026-11-06-face-reference-sketches.md); [live spike](../superpowers/review/2026-11-06-face-sketch-spike.md); specification v1.37, section 5.7.4. Uses ADR-005; narrows ADR-049 and ADR-067 (both Proposed) for this one case
+- **Source:** [plan](../superpowers/plans/2026-11-06-face-reference-sketches.md); [live spike](../superpowers/review/2026-11-06-face-sketch-spike.md); specification v1.38, section 5.7.4. Uses ADR-005; narrows ADR-049 and ADR-067 (both Proposed) for this one case
 
 ## Context
 
@@ -21,7 +21,7 @@ The spike showed the cap faces are unique and planar, that a hole cut in one lea
 ## Consequences
 
 - "Hole in the top face" becomes buildable; side faces, edges and persistence stay for a later phase (K28).
-- Frames were measured on `plane:front` only. The rule for other planes is an assumption that the add-in's frame check turns into a safe failure (open decision K29).
+- Frames are measured and verified live in SOLIDWORKS 2025 across all 6 datum-and-cap combinations (`plane:front`, `plane:top`, `plane:right` × `start_face`, `end_face`), closing K29. On `plane:front` and `plane:right`, `start_face` mirrors the sketch `x` axis; on `plane:top`, `start_face` mirrors the sketch `y` axis (`x = (1, 0, 0)`, `y = (0, 0, 1)`, `normal = (0, -1, 0)`). The add-in's frame check still enforces `REF_SIGNATURE_MISMATCH` on any unexpected frame.
 - Plan hashes change when a graph uses a face, and the stage versions bump.
 
 ## Where it applies

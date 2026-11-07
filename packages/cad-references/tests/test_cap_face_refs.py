@@ -82,7 +82,7 @@ def _graph(base_plane: str, cap_role: str) -> PartGraph:
             "start_face",
             [0.0, -1.0, 0.0],
             0.0,
-            ([-1.0, 0.0, 0.0], [0.0, 0.0, -1.0]),
+            ([1.0, 0.0, 0.0], [0.0, 0.0, 1.0]),
         ),
         (
             "plane:right",
