@@ -29,6 +29,29 @@ def _rect(width: float, height: float) -> list[Point]:
     return [(-x, -y), (x, -y), (x, y), (-x, y)]
 
 
+def _slot(length: float, width: float) -> dict[str, Any]:
+    r = width / 2.0
+    half_l = (length - width) / 2.0
+    return {
+        "l1": {"type": "line", "start": [-half_l, -r], "end": [half_l, -r]},
+        "a1": {
+            "type": "arc",
+            "center": [half_l, 0.0],
+            "start": [half_l, -r],
+            "end": [half_l, r],
+            "direction": "ccw",
+        },
+        "l2": {"type": "line", "start": [half_l, r], "end": [-half_l, r]},
+        "a2": {
+            "type": "arc",
+            "center": [-half_l, 0.0],
+            "start": [-half_l, r],
+            "end": [-half_l, -r],
+            "direction": "ccw",
+        },
+    }
+
+
 def part(
     graph_id: str,
     base_entities: dict[str, Any],
@@ -104,6 +127,7 @@ REFERENCE_ANSWERS: dict[str, dict[str, Any] | None] = {
     "l_bracket_plate": part("l_plate", _lines(L_SHAPE), 8),
     "blind_hole_top_face": _top_face_hole(),
     "blind_hole_start_face": _start_face_hole(),
+    "plate_slot": part("plate_slot", _slot(60, 20), 10),
     "refuse_fillet": None,
     "refuse_hole_in_side_face": None,
     "refuse_assembly": None,

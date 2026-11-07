@@ -36,7 +36,7 @@ def test_guide_tells_the_agent_to_refuse_unsupported_requests() -> None:
     guide = build_guide().lower()
     assert "cannot fulfil" in guide
     assert "do not approximate" in guide
-    for unsupported in ("fillet", "chamfer", "arc", "pattern", "face"):
+    for unsupported in ("fillet", "chamfer", "spline", "pattern", "face"):
         assert unsupported in guide
 
 
@@ -62,6 +62,15 @@ def test_block_example_matches_its_stated_size() -> None:
     assert isinstance(graph, PartGraph)
     box = expected_geometry(graph).bbox_mm
     assert (box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z) == (40, 30, 10)
+
+
+def test_slot_plate_example_matches_its_stated_size() -> None:
+    graph = parse_part_graph(EXAMPLES["slot_plate"].graph)
+    assert isinstance(graph, PartGraph)
+    box = expected_geometry(graph).bbox_mm
+    assert (box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z) == pytest.approx(
+        (60, 20, 10)
+    )
 
 
 def test_every_example_has_a_request_sentence() -> None:

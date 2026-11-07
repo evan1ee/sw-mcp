@@ -21,22 +21,24 @@ _RULES: Final[tuple[str, ...]] = (
     " node in the graph. A feature lists the sketch it uses and the nodes it builds on.",
     "A part has exactly one `extrude`. It is the base body; `cut_extrude` nodes remove material"
     " from it and must depend on it.",
-    "An extrude profile is either one closed, non-self-intersecting loop of `line` entities or"
-    " exactly one `circle`. Lines and circles are never mixed in one extrude profile.",
+    "An extrude profile is either one closed, non-self-intersecting loop of `line` and `arc`"
+    " entities or exactly one `circle`. Lines/arcs and circles are never mixed in one extrude"
+    " profile.",
     "A cut profile is lines or circles, never both. Every cut shape lies strictly inside the"
     " extrude profile (not touching its edge) and cut shapes do not overlap each other.",
     "A sketch's `plane` is an origin plane or a cap face of the extrude: `<extrude_id>.end_face`"
     " (the face the extrude grows towards) or `<extrude_id>.start_face` (the face on the sketch"
     " plane). A sketch on a face lists the extrude in its `dependencies`.",
-    "Lines have a non-zero length, circle diameters are at least 0.01 and depths are positive.",
+    "Lines have a non-zero length, arcs have equal start/end radius and distinct endpoints,"
+    " circle diameters are at least 0.01 and depths are positive.",
     '`extrude` takes `{"type": "blind", "depth": D}`. `cut_extrude` takes the same, with D'
     ' smaller than the extrude depth, or `{"type": "through_all_both"}`.',
 )
 
 _UNSUPPORTED: Final[tuple[str, ...]] = (
     "fillets and chamfers",
-    "arcs, splines, ellipses, text, and any outline that is not a closed loop of straight lines"
-    " or a single circle",
+    "splines, ellipses, text, and any outline that is not a closed loop of straight lines and"
+    " arcs or a single circle",
     "patterns (linear, circular, mirror) as a feature; only write out shapes the user lists",
     "revolves, sweeps, lofts, shells, ribs, threads, sheet metal",
     "sketches on any face other than the extrude's start_face or end_face (side faces, faces"
@@ -72,6 +74,29 @@ def _circle_sketch(diameter: float) -> dict[str, Any]:
         "type": "sketch",
         "plane": "plane:front",
         "entities": {"c1": {"type": "circle", "center": [0, 0], "diameter": diameter}},
+    }
+
+
+def _slot_plate_entities(length: float, width: float) -> dict[str, Any]:
+    r = width / 2.0
+    half_l = (length - width) / 2.0
+    return {
+        "l1": {"type": "line", "start": [-half_l, -r], "end": [half_l, -r]},
+        "a1": {
+            "type": "arc",
+            "center": [half_l, 0.0],
+            "start": [half_l, -r],
+            "end": [half_l, r],
+            "direction": "ccw",
+        },
+        "l2": {"type": "line", "start": [half_l, r], "end": [-half_l, r]},
+        "a2": {
+            "type": "arc",
+            "center": [-half_l, 0.0],
+            "start": [-half_l, r],
+            "end": [-half_l, -r],
+            "direction": "ccw",
+        },
     }
 
 
@@ -150,6 +175,20 @@ def _build_examples() -> dict[str, Example]:
                     "extrude_base": _extrude(8),
                     "sketch_hole": _circle_sketch(6),
                     "cut_hole": hole_cut,
+                },
+            ),
+        ),
+        "slot_plate": Example(
+            "Make a 60 x 20 x 10 mm slot plate with semicircular rounded ends.",
+            _header(
+                "slot_plate_60x20x10",
+                {
+                    "sketch_base": {
+                        "type": "sketch",
+                        "plane": "plane:front",
+                        "entities": _slot_plate_entities(60, 20),
+                    },
+                    "extrude_base": _extrude(10),
                 },
             ),
         ),
