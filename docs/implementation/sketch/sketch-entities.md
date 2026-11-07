@@ -47,7 +47,7 @@ Geometry primitives allowed in a sketch. Schema: [v0.json](../../../schemas/part
 | `SK-ENT-018` | Partial ellipse | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SK-ENT-019` | Spline (fit points) | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.3 Tier 2 |
 | `SK-ENT-020` | Style spline | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
-| `SK-ENT-021` | Straight slot | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.2 Tier 1 |
+| `SK-ENT-021` | Straight slot | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ADR-073; lowered to CCW lines/arcs; `test_live_slot_plate`; `test_live_direct_slot_ops` |
 | `SK-ENT-022` | Centerpoint straight slot | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SK-ENT-023` | Arc slot | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SK-ENT-024` | Centerpoint arc slot | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
