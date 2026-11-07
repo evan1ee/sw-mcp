@@ -1,6 +1,6 @@
 # 17. Repository Architecture
 
-> Specification v1.44, section 17. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.45, section 17. Index and section map: [specifications/README.md](../specifications/README.md).
 
 Target structure for the new implementation (ADR-039). Python lives in `apps/mcp-server/`, `apps/core-service/` and `packages/` (ADR-034, ADR-041); C# lives only in `apps/execution-server/` (ADR-038); `schemas/` is the contract both sides are generated from (ADR-035).
 

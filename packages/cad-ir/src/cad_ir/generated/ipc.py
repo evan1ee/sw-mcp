@@ -100,7 +100,7 @@ type CompletenessState = Literal['present', 'empty', 'unavailable', 'unsupported
 
 type FeatureCreateEndConditionType = Literal['blind', 'through_all_both']
 
-type FeatureCreateParamsType = Literal['extrude', 'cut_extrude', 'linear_pattern', 'circular_pattern']
+type FeatureCreateParamsType = Literal['extrude', 'cut_extrude', 'linear_pattern', 'circular_pattern', 'mirror']
 
 type FeatureCreateParamsHost = Literal['plane', 'face']
 
@@ -1882,6 +1882,8 @@ class FeatureCreateParams:
     spacing: float | None = None
     equal_spacing: bool | None = None
     reverse: bool | None = None
+    plane: str | None = None
+    merge: bool | None = None
     meta: Meta | None = None
 
     @classmethod
@@ -1905,6 +1907,8 @@ class FeatureCreateParams:
             spacing=_opt(obj, "spacing", where, _num),
             equal_spacing=_opt(obj, "equal_spacing", where, _bool),
             reverse=_opt(obj, "reverse", where, _bool),
+            plane=_opt(obj, "plane", where, _str),
+            merge=_opt(obj, "merge", where, _bool),
             meta=_opt(obj, "_meta", where, Meta._at),
         )
 
@@ -1934,6 +1938,10 @@ class FeatureCreateParams:
             out["equal_spacing"] = _dump(self.equal_spacing)
         if self.reverse is not None:
             out["reverse"] = _dump(self.reverse)
+        if self.plane is not None:
+            out["plane"] = _dump(self.plane)
+        if self.merge is not None:
+            out["merge"] = _dump(self.merge)
         if self.meta is not None:
             out["_meta"] = _dump(self.meta)
         return out

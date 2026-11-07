@@ -260,6 +260,58 @@ def _circular_pattern_flange() -> dict[str, Any]:
     }
 
 
+def _mirror_hole_plate() -> dict[str, Any]:
+    return {
+        "module": "part",
+        "id": "plate_mirror_hole",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "l1": {"type": "line", "start": [-50.0, -25.0], "end": [50.0, -25.0]},
+                    "l2": {"type": "line", "start": [50.0, -25.0], "end": [50.0, 25.0]},
+                    "l3": {"type": "line", "start": [50.0, 25.0], "end": [-50.0, 25.0]},
+                    "l4": {"type": "line", "start": [-50.0, 25.0], "end": [-50.0, -25.0]},
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+            "sketch_hole": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "c1": {
+                        "type": "circle",
+                        "center": [25.0, 0.0],
+                        "diameter": 10.0,
+                    }
+                },
+            },
+            "cut_hole": {
+                "type": "cut_extrude",
+                "dependencies": ["sketch_hole", "extrude_base"],
+                "profile": "sketch_hole",
+                "end_condition": {"type": "through_all_both"},
+            },
+            "mirror_hole": {
+                "type": "mirror",
+                "dependencies": ["cut_hole", "extrude_base"],
+                "seeds": ["cut_hole"],
+                "plane": "plane:right",
+                "merge": True,
+            },
+        },
+    }
+
+
 # A None answer is a refusal.
 REFERENCE_ANSWERS: dict[str, dict[str, Any] | None] = {
     "block": part("block", _lines(_rect(40, 30)), 10),
@@ -281,6 +333,7 @@ REFERENCE_ANSWERS: dict[str, dict[str, Any] | None] = {
     "plate_rectangles": _rectangles_plate(),
     "plate_pattern_holes": _pattern_holes_plate(),
     "round_flange_pattern_holes": _circular_pattern_flange(),
+    "plate_mirror_hole": _mirror_hole_plate(),
     "refuse_fillet": None,
     "refuse_hole_in_side_face": None,
     "refuse_assembly": None,

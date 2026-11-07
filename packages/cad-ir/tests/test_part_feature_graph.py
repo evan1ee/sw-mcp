@@ -19,6 +19,7 @@ from cad_ir.part_feature_graph import (
     Line,
     LinearPattern,
     LinearPatternDirection,
+    Mirror,
     PartGraph,
     PlaneAxes,
     SketchNode,
@@ -568,3 +569,63 @@ def test_circular_pattern_parses() -> None:
     assert pat.spacing == expected_spacing
     assert pat.equal_spacing is True
     assert pat.reverse is False
+
+
+def test_parse_mirror_feature() -> None:
+    doc = {
+        "module": "part",
+        "id": "mirror_part",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "l1": {"type": "line", "start": [-50.0, -25.0], "end": [50.0, -25.0]},
+                    "l2": {"type": "line", "start": [50.0, -25.0], "end": [50.0, 25.0]},
+                    "l3": {"type": "line", "start": [50.0, 25.0], "end": [-50.0, 25.0]},
+                    "l4": {"type": "line", "start": [-50.0, 25.0], "end": [-50.0, -25.0]},
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+            "sketch_hole": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "c1": {
+                        "type": "circle",
+                        "center": [25.0, 0.0],
+                        "diameter": 10.0,
+                    }
+                },
+            },
+            "cut_hole": {
+                "type": "cut_extrude",
+                "dependencies": ["sketch_hole", "extrude_base"],
+                "profile": "sketch_hole",
+                "end_condition": {"type": "through_all_both"},
+            },
+            "mirror_hole": {
+                "type": "mirror",
+                "dependencies": ["cut_hole", "extrude_base"],
+                "seeds": ["cut_hole"],
+                "plane": "plane:right",
+                "merge": True,
+            },
+        },
+    }
+    res = parse_part_graph(cast(JsonValue, doc))
+    assert isinstance(res, PartGraph)
+    mir = res.nodes["mirror_hole"]
+    assert isinstance(mir, Mirror)
+    assert mir.type == "mirror"
+    assert mir.seeds == ("cut_hole",)
+    assert mir.plane == "plane:right"
+    assert mir.merge is True

@@ -21,6 +21,7 @@ from cad_ir.part_feature_graph.model import (
     Line,
     LinearPattern,
     LinearPatternDirection,
+    Mirror,
     PartGraph,
     SketchNode,
     SolidNode,
@@ -1121,4 +1122,83 @@ def test_circular_pattern_spacing_out_of_bounds_rejected() -> None:
     issues = validate_graph(graph)
     assert any(
         i.code == ErrorCode.IR_RULE_VIOLATED and "spacing" in i.message.lower() for i in issues
+    )
+
+
+def _mirror_base_graph(
+    *,
+    hole: tuple[float, float, float] = (25.0, 0.0, 10.0),
+    plane: str = "plane:right",
+    merge: bool = True,
+    seeds: tuple[str, ...] = ("cut_hole",),
+    mirror_deps: tuple[str, ...] = ("cut_hole", "extrude_base"),
+) -> PartGraph:
+    return PartGraph(
+        id="mirror_graph",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(
+                plane="plane:front",
+                entities={
+                    "l1": Line(start=(-50.0, -25.0), end=(50.0, -25.0)),
+                    "l2": Line(start=(50.0, -25.0), end=(50.0, 25.0)),
+                    "l3": Line(start=(50.0, 25.0), end=(-50.0, 25.0)),
+                    "l4": Line(start=(-50.0, 25.0), end=(-50.0, -25.0)),
+                },
+            ),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+            "sketch_hole": SketchNode(
+                plane="plane:front",
+                entities={"c1": Circle(center=(hole[0], hole[1]), diameter=hole[2])},
+            ),
+            "cut_hole": SolidNode(
+                type="cut_extrude",
+                profile="sketch_hole",
+                end_condition=EndCondition(type="through_all_both"),
+                dependencies=("sketch_hole", "extrude_base"),
+            ),
+            "mirror_hole": Mirror(
+                seeds=seeds,
+                plane=plane,
+                merge=merge,
+                dependencies=mirror_deps,
+            ),
+        },
+    )
+
+
+def test_mirror_accepted() -> None:
+    graph = _mirror_base_graph()
+    assert validate_graph(graph) == ()
+
+
+def test_mirror_unresolved_seed_rejected() -> None:
+    graph = _mirror_base_graph(seeds=("missing_cut",), mirror_deps=("missing_cut", "extrude_base"))
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_REFERENCE_UNRESOLVED and "missing_cut" in i.message for i in issues
+    )
+
+
+def test_mirror_non_solid_seed_rejected() -> None:
+    graph = _mirror_base_graph(seeds=("sketch_base",), mirror_deps=("sketch_base", "extrude_base"))
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "must be a solid or pattern feature" in i.message
+        for i in issues
+    )
+
+
+def test_mirror_missing_dependency_rejected() -> None:
+    graph = _mirror_base_graph(mirror_deps=("extrude_base",))
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "must depend on seed" in i.message for i in issues
     )

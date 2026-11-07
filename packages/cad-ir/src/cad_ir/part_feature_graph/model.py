@@ -264,7 +264,35 @@ class CircularPattern:
         return res
 
 
-PartNode = SketchNode | SolidNode | LinearPattern | CircularPattern
+@dataclass(frozen=True, slots=True)
+class Mirror:
+    """Mirror feature node (spec 5.7.3, ADR-076)."""
+
+    seeds: tuple[str, ...]
+    plane: str
+    merge: bool = True
+    dependencies: tuple[str, ...] = ()
+    display_name: str | None = None
+    realizes: tuple[str, ...] = ()
+    type: str = "mirror"
+
+    def to_dict(self) -> dict[str, Any]:
+        res: dict[str, Any] = {
+            "type": self.type,
+            "seeds": list(self.seeds),
+            "plane": self.plane,
+            "merge": self.merge,
+        }
+        if self.dependencies:
+            res["dependencies"] = list(self.dependencies)
+        if self.display_name is not None:
+            res["display_name"] = self.display_name
+        if self.realizes:
+            res["realizes"] = list(self.realizes)
+        return res
+
+
+PartNode = SketchNode | SolidNode | LinearPattern | CircularPattern | Mirror
 
 
 @dataclass(frozen=True, slots=True)

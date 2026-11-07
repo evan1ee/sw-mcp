@@ -16,6 +16,7 @@ from cad_ir.part_feature_graph.model import (
     Line,
     LinearPattern,
     LinearPatternDirection,
+    Mirror,
     PartGraph,
     SketchNode,
     SolidNode,
@@ -363,12 +364,20 @@ def _collect_features(
                     native_type="LPattern",
                 )
             )
-        else:
+        elif isinstance(node, CircularPattern):
             features.append(
                 ExpectedFeature(
                     node_id=nid,
                     feature_type="circular_pattern",
                     native_type="CirPattern",
+                )
+            )
+        else:
+            features.append(
+                ExpectedFeature(
+                    node_id=nid,
+                    feature_type="mirror",
+                    native_type="MirrorPattern",
                 )
             )
     return features, solid_nodes
@@ -791,6 +800,86 @@ def _apply_circular_pattern_instances(
                 )
 
 
+def _mirror_plane_origin_and_normal(
+    plane_name: str,
+    base_plane: PlaneAxes,
+    base_depth: float,
+) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    face = parse_face_plane(plane_name)
+    if face is None:
+        p_axes = plane_axes(plane_name)
+        return (0.0, 0.0, 0.0), p_axes.normal
+    frame = face_frame(base_plane, base_depth, face.role)
+    origin = (
+        frame.base_normal[0] * frame.offset_mm,
+        frame.base_normal[1] * frame.offset_mm,
+        frame.base_normal[2] * frame.offset_mm,
+    )
+    return origin, frame.base_normal
+
+
+def _apply_mirror_instances(
+    mir: Mirror,
+    graph: PartGraph,
+    base_plane: PlaneAxes,
+    base_depth: float,
+    acc: _GeometryAccumulator,
+) -> None:
+    p0, normal = _mirror_plane_origin_and_normal(mir.plane, base_plane, base_depth)
+    nx, ny, nz = normal
+    p0x, p0y, p0z = p0
+
+    def reflect_point(pt: tuple[float, float, float]) -> tuple[float, float, float]:
+        vx, vy, vz = pt[0] - p0x, pt[1] - p0y, pt[2] - p0z
+        dist = vx * nx + vy * ny + vz * nz
+        return (pt[0] - 2.0 * dist * nx, pt[1] - 2.0 * dist * ny, pt[2] - 2.0 * dist * nz)
+
+    def reflect_dir(d: tuple[float, float, float]) -> tuple[float, float, float]:
+        dot = d[0] * nx + d[1] * ny + d[2] * nz
+        return (d[0] - 2.0 * dot * nx, d[1] - 2.0 * dot * ny, d[2] - 2.0 * dot * nz)
+
+    for seed_id in mir.seeds:
+        seed_node = graph.nodes.get(seed_id)
+        if not isinstance(seed_node, SolidNode) or seed_node.type != "cut_extrude":
+            continue
+        cut_sketch_raw = graph.nodes.get(seed_node.profile)
+        if not isinstance(cut_sketch_raw, SketchNode):
+            continue
+
+        is_through = seed_node.end_condition.type in ("through_all", "through_all_both")
+        cut_depth = base_depth if is_through else float(seed_node.end_condition.depth or 0.0)
+        projector, depth_center, circle_depth, cyl_dir = _cut_frame_and_depths(
+            cut_sketch_raw.plane, base_plane, base_depth, cut_depth
+        )
+
+        regions = list(_cut_regions(cut_sketch_raw))
+        seed_cylinders = _collect_cut_entity_cylinders(
+            cut_sketch_raw, projector, circle_depth, cyl_dir
+        )
+
+        for area, perimeter, center_x, center_y in regions:
+            region_vol = area * cut_depth
+            seed_com = projector.to_model(center_x, center_y, depth_center)
+            mir_com = reflect_point(seed_com)
+
+            acc.volume -= region_vol
+            acc.moment[0] -= region_vol * mir_com[0]
+            acc.moment[1] -= region_vol * mir_com[1]
+            acc.moment[2] -= region_vol * mir_com[2]
+            acc.area += perimeter * cut_depth - (2.0 * area if is_through else 0.0)
+
+        for cyl in seed_cylinders:
+            cp = reflect_point((cyl.point.x, cyl.point.y, cyl.point.z))
+            cd = reflect_dir(cyl.direction)
+            acc.cylinders.append(
+                ExpectedCylinder(
+                    point=Point3(cp[0], cp[1], cp[2]),
+                    direction=cd,
+                    radius=cyl.radius,
+                )
+            )
+
+
 def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
     """Compute expected geometry from a PartGraph alone (spec 10.2, design 9)."""
     features, solid_nodes = _collect_features(graph)
@@ -856,6 +945,8 @@ def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
         _apply_pattern_instances(pat, graph, base_plane, base_depth, acc)
     for pat in [n for n in graph.nodes.values() if isinstance(n, CircularPattern)]:
         _apply_circular_pattern_instances(pat, graph, base_plane, base_depth, acc)
+    for mir in [n for n in graph.nodes.values() if isinstance(n, Mirror)]:
+        _apply_mirror_instances(mir, graph, base_plane, base_depth, acc)
 
     total_volume = acc.volume
     total_area = acc.area

@@ -14,6 +14,7 @@ MVP_TYPES: Final[tuple[tuple[str, str], ...]] = (
     ("cut_extrude", "Blind or through-all-both cut extrude from a sketch profile."),
     ("linear_pattern", "Linear pattern of seed cut features along 1 or 2 directions."),
     ("circular_pattern", "Circular pattern of seed cut features around an axis."),
+    ("mirror", "Mirror pattern of solid or cut features across a plane or planar face."),
 )
 
 

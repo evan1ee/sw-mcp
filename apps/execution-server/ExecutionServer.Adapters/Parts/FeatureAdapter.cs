@@ -161,6 +161,45 @@ public sealed class FeatureAdapter
 
                 createdFeature = scope.Track((IFeature?)doc.FeatureManager.CreateFeature(featData));
             }
+            else if (p.Type == FeatureCreateParamsType.Mirror)
+            {
+                if (p.Seeds == null || p.Seeds.Count == 0)
+                {
+                    throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Mirror feature requires at least one seed feature.");
+                }
+                if (string.IsNullOrEmpty(p.Plane))
+                {
+                    throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Mirror feature requires plane.");
+                }
+
+                doc.ClearSelection2(true);
+
+                // 1. Select seed features with Mark = 1 (features to mirror)
+                bool append = false;
+                foreach (var seedId in p.Seeds)
+                {
+                    var sf = FeatureLookup.FindById(doc, seedId, scope);
+                    if (sf == null)
+                    {
+                        throw new IpcException(ErrorCodes.IR_REFERENCE_UNRESOLVED, $"Seed feature '{seedId}' not found in document.");
+                    }
+                    sf.Select2(append, 1);
+                    append = true;
+                }
+
+                // 2. Select mirror plane with Mark = 2
+                var mirrorPlane = ResolveMirrorPlaneFeature(doc, p.Plane!, scope);
+                mirrorPlane.Select2(true, 2);
+
+                // 3. Create mirror feature
+                createdFeature = scope.Track((IFeature?)doc.FeatureManager.InsertMirrorFeature2(
+                    false, // BMirrorBody = false (mirror features, not solid bodies)
+                    false, // BGeometryPattern = false (solve features)
+                    p.Merge ?? true, // BMerge = true
+                    false, // BKnit = false
+                    0 // ScopeOptions = 0
+                ));
+            }
             else
             {
                 if (string.IsNullOrEmpty(p.Profile))
@@ -256,6 +295,7 @@ public sealed class FeatureAdapter
                 FeatureCreateParamsType.CutExtrude => "FeatureCut4",
                 FeatureCreateParamsType.LinearPattern => "CreateFeature(ILinearPatternFeatureData)",
                 FeatureCreateParamsType.CircularPattern => "CreateFeature(ICircularPatternFeatureData)",
+                FeatureCreateParamsType.Mirror => "InsertMirrorFeature2",
                 _ => "Unknown"
             };
             var details = new JObject
@@ -280,6 +320,7 @@ public sealed class FeatureAdapter
                 FeatureCreateParamsType.CutExtrude => "FeatureCut4",
                 FeatureCreateParamsType.LinearPattern => "CreateFeature(ILinearPatternFeatureData)",
                 FeatureCreateParamsType.CircularPattern => "CreateFeature(ICircularPatternFeatureData)",
+                FeatureCreateParamsType.Mirror => "InsertMirrorFeature2",
                 _ => "Unknown"
             };
             var details = new JObject
@@ -363,6 +404,7 @@ public sealed class FeatureAdapter
             FeatureCreateParamsType.CutExtrude => "cut_extrude",
             FeatureCreateParamsType.LinearPattern => "linear_pattern",
             FeatureCreateParamsType.CircularPattern => "circular_pattern",
+            FeatureCreateParamsType.Mirror => "mirror",
             _ => "unknown"
         };
 
@@ -685,5 +727,48 @@ public sealed class FeatureAdapter
             Ok = errors.Count == 0,
             Errors = errors
         };
+    }
+    private static IFeature ResolveMirrorPlaneFeature(IModelDoc2 doc, string planeRef, ComScope scope)
+    {
+        string lower = planeRef.ToLowerInvariant();
+        int planeIndex;
+        if (lower is "plane:front" or "front" or "z")
+        {
+            planeIndex = 0;
+        }
+        else if (lower is "plane:top" or "top" or "y")
+        {
+            planeIndex = 1;
+        }
+        else if (lower is "plane:right" or "right" or "x")
+        {
+            planeIndex = 2;
+        }
+        else
+        {
+            var pf = FeatureLookup.FindById(doc, planeRef, scope);
+            if (pf != null) return pf;
+            throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, $"Unsupported mirror plane reference '{planeRef}'.");
+        }
+
+        var refPlanes = new List<IFeature>();
+        var feat = scope.Track((IFeature?)doc.FirstFeature());
+        while (feat != null)
+        {
+            if (string.Equals(feat.GetTypeName2(), "RefPlane", StringComparison.OrdinalIgnoreCase))
+            {
+                refPlanes.Add(feat);
+            }
+            feat = scope.Track((IFeature?)feat.GetNextFeature());
+        }
+
+        if (refPlanes.Count <= planeIndex)
+        {
+            throw new IpcException(
+                ErrorCodes.BACKEND_OPERATION_FAILED,
+                $"Standard plane index {planeIndex} for '{planeRef}' not found in document (found {refPlanes.Count} planes).");
+        }
+
+        return refPlanes[planeIndex];
     }
 }

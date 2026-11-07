@@ -103,6 +103,12 @@ CASES: tuple[Case, ...] = (
         " circularly patterned around the center on a 70 mm bolt circle.",
         Facts((12, 100, 100), _disc(100, 12) - 6 * _disc(8, 12), (8, 8, 8, 8, 8, 8, 100)),
     ),
+    Case(
+        "plate_mirror_hole",
+        "Make a plate 100 x 50 x 10 mm with a 10 mm diameter through hole at (25, 0)"
+        " and mirror it across the right plane.",
+        Facts((10, 50, 100), 100 * 50 * 10 - 2 * _disc(10, 10), (10, 10)),
+    ),
     Case("refuse_fillet", "Make a 40 x 30 x 10 block and fillet all edges with 3 mm.", None),
     Case(
         "refuse_hole_in_side_face",

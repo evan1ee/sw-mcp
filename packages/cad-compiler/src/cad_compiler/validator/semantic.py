@@ -16,6 +16,7 @@ from cad_ir.part_feature_graph.model import (
     Line,
     LinearPattern,
     LinearPatternDirection,
+    Mirror,
     PartGraph,
     SketchEntity,
     SketchNode,
@@ -253,7 +254,7 @@ def _check_references(graph: PartGraph, issues: list[ValidationIssue]) -> None:
                         message=f"Profile '{node.profile}' must be a sketch",
                     )
                 )
-        elif isinstance(node, (LinearPattern, CircularPattern)):
+        elif isinstance(node, (LinearPattern, CircularPattern, Mirror)):
             for seed in node.seeds:
                 if seed not in graph.nodes:
                     issues.append(
@@ -1094,6 +1095,52 @@ def _check_circular_patterns(graph: PartGraph, issues: list[ValidationIssue]) ->
             )
 
 
+def _check_mirrors(graph: PartGraph, issues: list[ValidationIssue]) -> None:
+    mirrors = [(nid, n) for nid, n in graph.nodes.items() if isinstance(n, Mirror)]
+    if not mirrors:
+        return
+
+    deps_map = resolve_dependencies(graph)
+
+    def get_transitive_deps(start: str) -> set[str]:
+        visited: set[str] = set()
+        queue = list(deps_map.get(start, set()))
+        while queue:
+            curr = queue.pop(0)
+            if curr not in visited:
+                visited.add(curr)
+                queue.extend(deps_map.get(curr, set()))
+        return visited
+
+    for mir_id, mir in mirrors:
+        trans_deps = get_transitive_deps(mir_id)
+
+        for seed_id in mir.seeds:
+            seed_node = graph.nodes.get(seed_id)
+            if seed_node is not None and not (
+                (isinstance(seed_node, SolidNode) and seed_node.type in ("cut_extrude", "extrude"))
+                or isinstance(seed_node, (LinearPattern, CircularPattern))
+            ):
+                issues.append(
+                    ValidationIssue(
+                        code=ErrorCode.IR_RULE_VIOLATED,
+                        pointer=f"/nodes/{mir_id}/seeds",
+                        message=(
+                            f"Seed '{seed_id}' of mirror '{mir_id}'"
+                            " must be a solid or pattern feature"
+                        ),
+                    )
+                )
+            if seed_node is not None and seed_id not in trans_deps:
+                issues.append(
+                    ValidationIssue(
+                        code=ErrorCode.IR_RULE_VIOLATED,
+                        pointer=f"/nodes/{mir_id}/dependencies",
+                        message=f"Mirror '{mir_id}' must depend on seed feature '{seed_id}'",
+                    )
+                )
+
+
 def validate_graph(graph: PartGraph) -> tuple[ValidationIssue, ...]:
     """Validate semantic rules of a Part Feature Graph (spec 5.7, 6.7.2).
 
@@ -1120,6 +1167,7 @@ def validate_graph(graph: PartGraph) -> tuple[ValidationIssue, ...]:
     _check_sketches(graph, issues)
     _check_linear_patterns(graph, issues)
     _check_circular_patterns(graph, issues)
+    _check_mirrors(graph, issues)
 
     extrudes = [
         (nid, n)

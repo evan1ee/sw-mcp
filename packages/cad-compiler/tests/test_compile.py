@@ -727,3 +727,74 @@ def test_circular_pattern_lowers_to_feature_create() -> None:
     assert pat_op["params"]["count"] == expected_count
     assert pat_op["params"]["spacing"] == expected_spacing
     assert pat_op["params"]["equal_spacing"] is True
+
+
+def test_mirror_lowers_to_feature_create() -> None:
+    raw = {
+        "module": "part",
+        "id": "mirror_part",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "l1": {"type": "line", "start": [-50.0, -25.0], "end": [50.0, -25.0]},
+                    "l2": {"type": "line", "start": [50.0, -25.0], "end": [50.0, 25.0]},
+                    "l3": {"type": "line", "start": [50.0, 25.0], "end": [-50.0, 25.0]},
+                    "l4": {"type": "line", "start": [-50.0, 25.0], "end": [-50.0, -25.0]},
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+            "sketch_hole": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "c1": {
+                        "type": "circle",
+                        "center": [25.0, 0.0],
+                        "diameter": 10.0,
+                    }
+                },
+            },
+            "cut_hole": {
+                "type": "cut_extrude",
+                "dependencies": ["sketch_hole", "extrude_base"],
+                "profile": "sketch_hole",
+                "end_condition": {"type": "through_all_both"},
+            },
+            "mirror_hole": {
+                "type": "mirror",
+                "dependencies": ["cut_hole", "extrude_base"],
+                "seeds": ["cut_hole"],
+                "plane": "plane:right",
+                "merge": True,
+            },
+        },
+    }
+    ref_str = "part:mirror_part@1"
+    manifest = BundleManifest("1.0", (parse_document_ref(ref_str),))
+    source = CompileInput(manifest=manifest, documents={ref_str: cast(dict[str, JsonValue], raw)})
+    ctx = CompileContext("0.1.0", CapabilityProfile.from_session(_make_session()), {})
+    result = compile_bundle(source, ctx)
+    assert result.plan is not None
+    plan = cast(dict[str, Any], result.plan)
+    operations = cast(dict[str, dict[str, Any]], plan["operations"])
+    mir_ops = [
+        op
+        for op in operations.values()
+        if op["op"] == "feature.create" and op["params"].get("type") == "mirror"
+    ]
+    assert len(mir_ops) == 1
+    mir_op = mir_ops[0]
+    assert mir_op["source"] == "mirror_hole"
+    assert mir_op["params"]["seeds"] == ["cut_hole"]
+    assert mir_op["params"]["plane"] == "plane:right"
+    assert mir_op["params"]["merge"] is True
