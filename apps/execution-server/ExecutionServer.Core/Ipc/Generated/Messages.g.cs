@@ -94,7 +94,9 @@ public enum FeatureCreateParamsType
     [EnumMember(Value = "cut_extrude")]
     CutExtrude,
     [EnumMember(Value = "linear_pattern")]
-    LinearPattern
+    LinearPattern,
+    [EnumMember(Value = "circular_pattern")]
+    CircularPattern
 }
 
 [JsonConverter(typeof(StringEnumConverter))]
@@ -1017,6 +1019,21 @@ public sealed class FeatureCreateParams
 
     [JsonProperty("direction_2", NullValueHandling = NullValueHandling.Ignore)]
     public FeatureCreateLinearPatternDirection? Direction2 { get; set; }
+
+    [JsonProperty("axis", NullValueHandling = NullValueHandling.Ignore)]
+    public string? Axis { get; set; }
+
+    [JsonProperty("count", NullValueHandling = NullValueHandling.Ignore)]
+    public long? Count { get; set; }
+
+    [JsonProperty("spacing", NullValueHandling = NullValueHandling.Ignore)]
+    public double? Spacing { get; set; }
+
+    [JsonProperty("equal_spacing", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? EqualSpacing { get; set; }
+
+    [JsonProperty("reverse", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Reverse { get; set; }
 
     [JsonProperty("_meta", NullValueHandling = NullValueHandling.Ignore)]
     public Meta? Meta { get; set; }

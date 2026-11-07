@@ -2,6 +2,17 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.44
+
+Adds circular pattern solid feature (`PAT-CIR-001` through `PAT-CIR-005`) to the Part Feature Graph IR and execution pipeline. Decided in [ADR-075](../adr/ADR-075-circular-pattern-feature.md).
+
+- **IR and Schemas (5.7.3, 22.5.2):** creates `schemas/part-feature-graph/features/circular_pattern.json`, adds `circular_pattern` to `schemas/part-feature-graph/v0.json` node union, and updates `schemas/ipc/ops/feature.create.json` with `circular_pattern` type, `axis`, `count`, `spacing`, `equal_spacing`, and `reverse` parameters.
+- **Compiler and lowering:** validates `circular_pattern` node constraints (seeds exist and reference cut features, count >= 2, spacing in (0, 360] degrees); lowers `circular_pattern` to `feature.create` operation.
+- **Verification:** computes closed-form volume deduction ($N \times V_{\text{seed}}$) and rotated cylinder replication ($N \times \text{seed cylinders}$) for circular patterns in `cad-verification`.
+- **Execution & Adapter:** handles `circular_pattern` in C# `FeatureAdapter.cs` via `FeatureManager.CreateDefinition(swFmCirPattern)` and `ICircularPatternFeatureData` with Mark 4 seeds, Mark 1 coaxial axis entity selection, and COM cleanup (`Marshal.ReleaseComObject`).
+- **Authoring & Benchmark:** documents `circular_pattern` in authoring guide rules and examples, and adds circular patterned flange case to benchmark.
+- **Checklists & Live:** adds live SOLIDWORKS integration tests promoting `PAT-CIR-001` - `PAT-CIR-005` to Verified.
+
 ## What changed in 1.43
 
 Adds linear pattern solid feature (`PAT-LIN-001` through `PAT-LIN-004`) to the Part Feature Graph IR and execution pipeline. Decided in [ADR-074](../adr/ADR-074-linear-pattern-feature.md).

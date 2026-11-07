@@ -1,6 +1,6 @@
 # 7. Semantic Geometry Reference System (P1)
 
-> Specification v1.43, section 7. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.44, section 7. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 7.1 Purpose
 

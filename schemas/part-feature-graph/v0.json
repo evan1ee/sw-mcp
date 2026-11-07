@@ -46,7 +46,8 @@
               "sketch",
               "extrude",
               "cut_extrude",
-              "linear_pattern"
+              "linear_pattern",
+              "circular_pattern"
             ]
           }
         },
@@ -100,6 +101,18 @@
             },
             "then": {
               "$ref": "features/linear_pattern.json"
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "circular_pattern"
+                }
+              }
+            },
+            "then": {
+              "$ref": "features/circular_pattern.json"
             }
           }
         ]
