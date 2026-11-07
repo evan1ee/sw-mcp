@@ -105,6 +105,9 @@ def resolve_node_refs(
         axis = resolved.get("axis")
         if isinstance(axis, str) and axis in feature_ids:
             resolved["axis"] = feature_ids[axis]
+        plane = resolved.get("plane")
+        if isinstance(plane, str) and plane in feature_ids:
+            resolved["plane"] = feature_ids[plane]
     elif op_name == "sketch.create":
         face = resolved.get("face")
         if isinstance(face, dict):

@@ -1817,3 +1817,150 @@ def test_live_direct_circular_pattern_ops(tmp_path: Path) -> None:
     finally:
         backend.close()
         _close_in_solidworks_by_path(target)
+
+
+def test_live_mirror_plate(tmp_path: Path) -> None:
+    """Verify mirror feature end-to-end against live SOLIDWORKS."""
+    session = _get_live_session()
+    template = _resolve_template()
+    proj = tmp_path / "proj"
+    proj.mkdir(parents=True, exist_ok=True)
+    target = proj / "plate_mirror_hole.SLDPRT"
+
+    provider = NamedPipeBackendProvider(target_session=str(session.pid))
+    service = _start_core(
+        tmp_path, allowed_roots=(proj,), template_path=template, provider=provider
+    )
+    try:
+        applied = _call_ok(
+            service,
+            "apply_part_graph",
+            {"graph": REFERENCE_ANSWERS["plate_mirror_hole"], "target_path": str(target)},
+        )
+        final = _wait_for_job(service, str(applied["execution_id"]))
+        assert final["state"] == "COMMITTED", final
+        assert target.is_file()
+
+        part_result = cast(dict[str, Any], final["part_result"])
+        checks = cast(list[dict[str, Any]], part_result["checks"])
+        assert len(checks) > 0
+        assert all(c["status"] == "passed" for c in checks), checks
+    finally:
+        service.stop()
+        _close_in_solidworks_by_path(target)
+
+
+def test_live_direct_mirror_ops(tmp_path: Path) -> None:
+    """Verify direct IPC feature.create with mirror."""
+    session = _get_live_session()
+    template = _resolve_template()
+    target = tmp_path / "direct_mirror.SLDPRT"
+    job_id = f"live_mirror_{time.time_ns()}"
+
+    provider = NamedPipeBackendProvider(target_session=str(session.pid))
+    backend = cast(IpcBackend, provider.acquire(on_notification=lambda _m, _p: None))
+    try:
+        op_create = Operation(
+            operation_id=f"{job_id}:1",
+            op="part.create",
+            params={"template": template, "_meta": {"job_id": job_id}},
+        )
+        res_create = backend.apply_ops(
+            [OperationGroup(document=str(target), operations=(op_create,))]
+        )
+        assert res_create.outcomes[0].error is None
+
+        op_sk_base = Operation(
+            operation_id=f"{job_id}:2",
+            op="sketch.create",
+            params={
+                "node_id": "sk_base",
+                "plane": "plane:front",
+                "entities": [
+                    {"type": "line", "start": [-50.0, -25.0], "end": [50.0, -25.0]},
+                    {"type": "line", "start": [50.0, -25.0], "end": [50.0, 25.0]},
+                    {"type": "line", "start": [50.0, 25.0], "end": [-50.0, 25.0]},
+                    {"type": "line", "start": [-50.0, 25.0], "end": [-50.0, -25.0]},
+                ],
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_sk_base = backend.apply_ops(
+            [OperationGroup(document=str(target), operations=(op_sk_base,))]
+        )
+        assert res_sk_base.outcomes[0].error is None
+        base_sk_id = str(cast(dict[str, Any], res_sk_base.outcomes[0].result)["feature_id"])
+
+        op_ext = Operation(
+            operation_id=f"{job_id}:3",
+            op="feature.create",
+            params={
+                "node_id": "ext_base",
+                "type": "extrude",
+                "profile": base_sk_id,
+                "end_condition": {"type": "blind", "depth": 10.0},
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_ext = backend.apply_ops([OperationGroup(document=str(target), operations=(op_ext,))])
+        assert res_ext.outcomes[0].error is None
+
+        op_sk_hole = Operation(
+            operation_id=f"{job_id}:4",
+            op="sketch.create",
+            params={
+                "node_id": "sk_hole",
+                "plane": "plane:front",
+                "entities": [
+                    {
+                        "type": "circle",
+                        "center": [25.0, 0.0],
+                        "diameter": 10.0,
+                    }
+                ],
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_sk_hole = backend.apply_ops(
+            [OperationGroup(document=str(target), operations=(op_sk_hole,))]
+        )
+        assert res_sk_hole.outcomes[0].error is None
+        hole_sk_id = str(cast(dict[str, Any], res_sk_hole.outcomes[0].result)["feature_id"])
+
+        op_cut = Operation(
+            operation_id=f"{job_id}:5",
+            op="feature.create",
+            params={
+                "node_id": "cut_hole",
+                "type": "cut_extrude",
+                "profile": hole_sk_id,
+                "end_condition": {"type": "through_all_both"},
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_cut = backend.apply_ops([OperationGroup(document=str(target), operations=(op_cut,))])
+        assert res_cut.outcomes[0].error is None
+        cut_id = str(cast(dict[str, Any], res_cut.outcomes[0].result)["feature_id"])
+
+        op_mir = Operation(
+            operation_id=f"{job_id}:6",
+            op="feature.create",
+            params={
+                "node_id": "mir_hole",
+                "type": "mirror",
+                "seeds": [cut_id],
+                "plane": "plane:right",
+                "merge": True,
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_mir = backend.apply_ops([OperationGroup(document=str(target), operations=(op_mir,))])
+        assert res_mir.outcomes[0].error is None
+
+        meas = cast(dict[str, Any], backend.measure_part(str(target)))
+        # Expected volume: (100 * 50 * 10 - 2 * pi * 5^2 * 10) mm3 = (50000 - 500 * pi) mm3
+        expected_vol = (50000.0 - 500.0 * math.pi) * 1e-9
+        assert meas["volume_m3"] == pytest.approx(expected_vol, rel=1e-3)
+    finally:
+        backend.close()
+        _close_in_solidworks_by_path(target)

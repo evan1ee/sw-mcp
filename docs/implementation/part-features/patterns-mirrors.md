@@ -157,10 +157,10 @@ Mirrors features or bodies about a plane. IR type `mirror`. The one authoritativ
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `PAT-MIR-001` | Mirror features (`seeds`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
-| `PAT-MIR-002` | Mirror plane (`plane`): standard plane | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
+| `PAT-MIR-001` | Mirror features (`seeds`) | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 22.5.2; ADR-076; `test_live_mirror_plate` |
+| `PAT-MIR-002` | Mirror plane (`plane`): standard plane | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 22.5.2; ADR-076; `test_live_mirror_plate` |
 | `PAT-MIR-003` | Mirror plane: reference plane or planar face | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Needs [`RG-PLN`](reference-geometry.md#rg-pln--reference-plane), K28 |
-| `PAT-MIR-004` | Merge result | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
+| `PAT-MIR-004` | Merge result | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 22.5.2; ADR-076; `test_live_mirror_plate` |
 | `PAT-MIR-005` | Geometry pattern | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `PAT-MIR-006` | Mirror Body | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3; bodies mark 256 ◐ |
 
@@ -169,6 +169,6 @@ Mirrors features or bodies about a plane. IR type `mirror`. The one authoritativ
 | Item | Value |
 |---|---|
 | Spec | [5.7](../../../docs/architecture/feature-schema-guide.md) §5.7.3; [22.5](../../../docs/specifications/ir-specification.md#225-feature-model) |
-| SOLIDWORKS API | `IFeatureManager.InsertMirrorFeature2` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); features mark 1, bodies 256, plane 2 |
-| Tests | — |
-| Depends on | [`RG-PLN`](reference-geometry.md#rg-pln--reference-plane), seed features |
+| SOLIDWORKS API | `IFeatureManager.InsertMirrorFeature2` ● ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); features mark 1, bodies 256, plane 2 |
+| Tests | `tests/live/test_live_part_chain.py::test_live_mirror_plate`, `tests/live/test_live_part_chain.py::test_live_direct_mirror_ops` |
+| Depends on | Standard plane, seed features |
