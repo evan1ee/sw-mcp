@@ -1,4 +1,6 @@
 using System;
+using System.Runtime.InteropServices;
+using ExecutionServer.Adapters.Native;
 using SolidWorks.Interop.sldworks;
 
 namespace ExecutionServer.Adapters.Parts;
@@ -6,7 +8,7 @@ namespace ExecutionServer.Adapters.Parts;
 /// <summary>Finds a feature by the <c>f&lt;id&gt;</c> handle the add-in returned (valid across close and reopen).</summary>
 internal static class FeatureLookup
 {
-    public static IFeature? FindById(IModelDoc2 doc, string featureId)
+    public static IFeature? FindById(IModelDoc2 doc, string featureId, ComScope? scope = null)
     {
         if (string.IsNullOrWhiteSpace(featureId)) return null;
 
@@ -18,10 +20,15 @@ internal static class FeatureLookup
         {
             if (feat.GetID() == targetId)
             {
-                return feat;
+                return scope != null ? scope.Track(feat) : feat;
             }
 
-            feat = (IFeature?)feat.GetNextFeature();
+            var next = (IFeature?)feat.GetNextFeature();
+            if (Marshal.IsComObject(feat))
+            {
+                Marshal.ReleaseComObject(feat);
+            }
+            feat = next;
         }
 
         return null;

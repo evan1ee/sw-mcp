@@ -176,3 +176,52 @@ def test_evaluate_type_and_entity_count_mismatch() -> None:
     assert tm.status == "failed"
     ec = next(r for r in results if r.name == "entity_count")
     assert ec.status == "failed"
+
+
+def test_boolean_error_code_is_malformed_not_passed() -> None:
+    graph = _sample_graph()
+    contract = feature_contracts(graph)[1]  # extrude_base
+    obs: dict[str, Any] = {
+        "type": "extrude",
+        "error_code": False,  # bool is subclass of int in Python, must be rejected as malformed
+        "is_warning": False,
+        "suppressed": False,
+    }
+    results = evaluate(contract, obs)
+    status_ok = next(r for r in results if r.name == "status_ok")
+    assert status_ok.status == "not_evaluated"
+    assert status_ok.reason == "malformed_data"
+
+
+def test_non_boolean_suppressed_or_is_warning_is_malformed() -> None:
+    graph = _sample_graph()
+    contract = feature_contracts(graph)[1]  # extrude_base
+    obs: dict[str, Any] = {
+        "type": "extrude",
+        "error_code": 0,
+        "is_warning": "no",
+        "suppressed": 0,
+    }
+    results = evaluate(contract, obs)
+    status_ok = next(r for r in results if r.name == "status_ok")
+    assert status_ok.status == "not_evaluated"
+    assert status_ok.reason == "malformed_data"
+    not_supp = next(r for r in results if r.name == "not_suppressed")
+    assert not_supp.status == "not_evaluated"
+    assert not_supp.reason == "malformed_data"
+
+
+def test_boolean_entity_count_is_malformed() -> None:
+    graph = _sample_graph()
+    contract = feature_contracts(graph)[2]  # sketch_hole, 1 entity
+    obs: dict[str, Any] = {
+        "type": "sketch",
+        "error_code": 0,
+        "is_warning": False,
+        "suppressed": False,
+        "entity_count": True,  # True == 1 in Python, must be rejected as malformed
+    }
+    results = evaluate(contract, obs)
+    ec = next(r for r in results if r.name == "entity_count")
+    assert ec.status == "not_evaluated"
+    assert ec.reason == "malformed_data"

@@ -123,7 +123,17 @@ def feature_contracts(graph: PartGraph) -> tuple[VerificationContract, ...]:
 def _eval_status_ok(
     check: ContractCheck, observation: Mapping[str, JsonValue]
 ) -> PostconditionResult:
-    is_warning = bool(observation.get("is_warning"))
+    raw_warning = observation.get("is_warning")
+    if raw_warning is not None and not isinstance(raw_warning, bool):
+        return PostconditionResult(
+            name=check.name,
+            required=check.required,
+            expected=0,
+            measured=raw_warning,
+            status="not_evaluated",
+            reason="malformed_data",
+        )
+    is_warning = bool(raw_warning)
     error_code = observation.get("error_code")
     if is_warning:
         return PostconditionResult(
@@ -141,6 +151,15 @@ def _eval_status_ok(
             measured=None,
             status="not_evaluated",
             reason="missing_data",
+        )
+    if isinstance(error_code, bool) or not isinstance(error_code, int):
+        return PostconditionResult(
+            name=check.name,
+            required=check.required,
+            expected=0,
+            measured=error_code,
+            status="not_evaluated",
+            reason="malformed_data",
         )
     if error_code != 0:
         return PostconditionResult(
@@ -172,6 +191,15 @@ def _eval_not_suppressed(
             status="not_evaluated",
             reason="missing_data",
         )
+    if not isinstance(suppressed, bool):
+        return PostconditionResult(
+            name=check.name,
+            required=check.required,
+            expected=False,
+            measured=suppressed,
+            status="not_evaluated",
+            reason="malformed_data",
+        )
     if suppressed is True:
         return PostconditionResult(
             name=check.name,
@@ -198,6 +226,25 @@ def _eval_exact_field(check: ContractCheck, measured: JsonValue) -> Postconditio
             measured=None,
             status="not_evaluated",
             reason="missing_data",
+        )
+    if isinstance(check.expected, int) and not isinstance(check.expected, bool):
+        if isinstance(measured, bool) or not isinstance(measured, int):
+            return PostconditionResult(
+                name=check.name,
+                required=check.required,
+                expected=check.expected,
+                measured=measured,
+                status="not_evaluated",
+                reason="malformed_data",
+            )
+    elif isinstance(check.expected, str) and not isinstance(measured, str):
+        return PostconditionResult(
+            name=check.name,
+            required=check.required,
+            expected=check.expected,
+            measured=measured,
+            status="not_evaluated",
+            reason="malformed_data",
         )
     status: CheckStatus = "passed" if measured == check.expected else "failed"
     return PostconditionResult(
