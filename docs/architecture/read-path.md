@@ -1,6 +1,6 @@
 # 5.8 Read Path: Feature Tree to Read-only Part Feature Graph
 
-> Specification v1.42, section 5.8. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.43, section 5.8. Index and section map: [specifications/README.md](../specifications/README.md).
 
 Phase 1b drawings mostly document hand-modelled parts (ADR-029). The Read path turns such a part's feature tree into a read-only Part Feature Graph (`origin: read`, 5.1), so Drawing Intent, the Resolved Scheme and check D4 can refer to its features and parameters by stable IDs.
 

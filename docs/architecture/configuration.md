@@ -1,6 +1,6 @@
 # 13.3 Configuration
 
-> Specification v1.42, section 13.3. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.43, section 13.3. Index and section map: [specifications/README.md](../specifications/README.md).
 
 One configuration format for the core service, the MCP front-end and the add-in's limits, so no module invents its own.
 

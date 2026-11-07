@@ -12,10 +12,10 @@ Repeats seed features along one or two directions. IR type `linear_pattern`.
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `PAT-LIN-001` | Seed features (`seeds`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
-| `PAT-LIN-002` | Direction (`direction`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
-| `PAT-LIN-003` | Spacing | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
-| `PAT-LIN-004` | Instance count | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
+| `PAT-LIN-001` | Seed features (`seeds`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern`; ADR-074 |
+| `PAT-LIN-002` | Direction (`direction`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern`; ADR-074 |
+| `PAT-LIN-003` | Spacing | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern`; ADR-074 |
+| `PAT-LIN-004` | Instance count | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern`; ADR-074 |
 | `PAT-LIN-005` | Reverse direction | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
 ### Direction 2

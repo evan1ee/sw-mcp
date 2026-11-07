@@ -1,0 +1,16 @@
+[
+  {},
+  {
+    "direction": "plane:right"
+  },
+  {
+    "direction": "plane:right",
+    "spacing": -5.0,
+    "count": 4
+  },
+  {
+    "direction": "plane:right",
+    "spacing": 20.0,
+    "count": 1
+  }
+]

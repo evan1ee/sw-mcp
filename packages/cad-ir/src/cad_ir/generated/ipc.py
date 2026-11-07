@@ -100,7 +100,7 @@ type CompletenessState = Literal['present', 'empty', 'unavailable', 'unsupported
 
 type FeatureCreateEndConditionType = Literal['blind', 'through_all_both']
 
-type FeatureCreateParamsType = Literal['extrude', 'cut_extrude']
+type FeatureCreateParamsType = Literal['extrude', 'cut_extrude', 'linear_pattern']
 
 type FeatureCreateParamsHost = Literal['plane', 'face']
 
@@ -1837,12 +1837,46 @@ class FeatureCreateEndCondition:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class FeatureCreateLinearPatternDirection:
+    direction: str
+    spacing: float
+    count: int
+    reverse: bool | None = None
+
+    @classmethod
+    def from_json(cls, value: JsonValue) -> Self:
+        return cls._at(value, "FeatureCreateLinearPatternDirection")
+
+    @classmethod
+    def _at(cls, value: JsonValue, where: str) -> Self:
+        obj = _obj(value, where)
+        return cls(
+            direction=_str(_req(obj, "direction", where), f"{where}.direction"),
+            spacing=_num(_req(obj, "spacing", where), f"{where}.spacing"),
+            count=_int(_req(obj, "count", where), f"{where}.count"),
+            reverse=_opt(obj, "reverse", where, _bool),
+        )
+
+    def to_json(self) -> dict[str, JsonValue]:
+        out: dict[str, JsonValue] = {}
+        out["direction"] = _dump(self.direction)
+        out["spacing"] = _dump(self.spacing)
+        out["count"] = _dump(self.count)
+        if self.reverse is not None:
+            out["reverse"] = _dump(self.reverse)
+        return out
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class FeatureCreateParams:
     node_id: str
     type: FeatureCreateParamsType
-    profile: str
-    end_condition: FeatureCreateEndCondition
+    profile: str | None = None
+    end_condition: FeatureCreateEndCondition | None = None
     host: FeatureCreateParamsHost | None = None
+    seeds: tuple[str, ...] | None = None
+    direction_1: FeatureCreateLinearPatternDirection | None = None
+    direction_2: FeatureCreateLinearPatternDirection | None = None
     meta: Meta | None = None
 
     @classmethod
@@ -1855,9 +1889,12 @@ class FeatureCreateParams:
         return cls(
             node_id=_str(_req(obj, "node_id", where), f"{where}.node_id"),
             type=_str(_req(obj, "type", where), f"{where}.type"),
-            profile=_str(_req(obj, "profile", where), f"{where}.profile"),
-            end_condition=FeatureCreateEndCondition._at(_req(obj, "end_condition", where), f"{where}.end_condition"),
+            profile=_opt(obj, "profile", where, _str),
+            end_condition=_opt(obj, "end_condition", where, FeatureCreateEndCondition._at),
             host=_opt(obj, "host", where, _str),
+            seeds=_opt(obj, "seeds", where, _list_of(_str)),
+            direction_1=_opt(obj, "direction_1", where, FeatureCreateLinearPatternDirection._at),
+            direction_2=_opt(obj, "direction_2", where, FeatureCreateLinearPatternDirection._at),
             meta=_opt(obj, "_meta", where, Meta._at),
         )
 
@@ -1865,10 +1902,18 @@ class FeatureCreateParams:
         out: dict[str, JsonValue] = {}
         out["node_id"] = _dump(self.node_id)
         out["type"] = _dump(self.type)
-        out["profile"] = _dump(self.profile)
-        out["end_condition"] = _dump(self.end_condition)
+        if self.profile is not None:
+            out["profile"] = _dump(self.profile)
+        if self.end_condition is not None:
+            out["end_condition"] = _dump(self.end_condition)
         if self.host is not None:
             out["host"] = _dump(self.host)
+        if self.seeds is not None:
+            out["seeds"] = _dump(self.seeds)
+        if self.direction_1 is not None:
+            out["direction_1"] = _dump(self.direction_1)
+        if self.direction_2 is not None:
+            out["direction_2"] = _dump(self.direction_2)
         if self.meta is not None:
             out["_meta"] = _dump(self.meta)
         return out
