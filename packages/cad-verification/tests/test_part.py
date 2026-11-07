@@ -8,6 +8,7 @@ from cad_ir.part_feature_graph.model import (
     Arc,
     CenterRectangle,
     Circle,
+    CircularPattern,
     CornerRectangle,
     EndCondition,
     Line,
@@ -1129,3 +1130,63 @@ def test_linear_pattern_expected_geometry() -> None:
     assert len(geom.features) == EXPECTED_PATTERN_FEATURES
     assert geom.features[-1].feature_type == "linear_pattern"
     assert geom.features[-1].native_type == "LPattern"
+
+
+def test_circular_pattern_expected_geometry() -> None:
+    """Cylindrical flange with 6 circular patterned holes."""
+    graph = PartGraph(
+        id="flange_pattern",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(
+                plane="plane:front",
+                entities={"c1": Circle(center=(0.0, 0.0), diameter=100.0)},
+            ),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+            "sketch_hole": SketchNode(
+                plane="plane:front",
+                entities={"c2": Circle(center=(35.0, 0.0), diameter=10.0)},
+            ),
+            "cut_hole": SolidNode(
+                type="cut_extrude",
+                profile="sketch_hole",
+                end_condition=EndCondition(type="through_all_both"),
+                dependencies=("sketch_hole", "extrude_base"),
+            ),
+            "pattern_holes": CircularPattern(
+                seeds=("cut_hole",),
+                axis="plane:front",
+                count=6,
+                spacing=360.0,
+                equal_spacing=True,
+                dependencies=("cut_hole", "extrude_base"),
+            ),
+        },
+    )
+    geom = expected_geometry(graph)
+    assert geom.solid_body_count == 1
+    # Base: dia 100, depth 10 -> vol = 25000 * pi ~ 78539.816
+    # 6 holes: dia 10, depth 10 -> each vol = 250 * pi -> total 1500 * pi ~ 4712.389
+    # Net vol = 23500 * pi ~ 73827.427
+    expected_vol = 23500.0 * math.pi
+    assert geom.volume_mm3 == pytest.approx(expected_vol, abs=0.01)
+    # 1 outer cylinder (radius 50) + 6 hole cylinders (radius 5) = 7 cylinders
+    expected_cyl_count = 7
+    cyl_tol = 1e-3
+    assert len(geom.cylinders) == expected_cyl_count
+    hole_cyls = [c for c in geom.cylinders if abs(c.radius - 5.0) < cyl_tol]
+    expected_hole_cyl_count = 6
+    assert len(hole_cyls) == expected_hole_cyl_count
+    # All hole cylinders should be at radius 35 from origin
+    for c in hole_cyls:
+        assert math.hypot(c.point.x, c.point.y) == pytest.approx(35.0, abs=cyl_tol)
+    assert len(geom.features) == EXPECTED_PATTERN_FEATURES
+    assert geom.features[-1].feature_type == "circular_pattern"
+    assert geom.features[-1].native_type == "CirPattern"
