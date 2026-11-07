@@ -19,6 +19,7 @@ from cad_ir.part_feature_graph import (
     PlaneAxes,
     SketchNode,
     SolidNode,
+    StraightSlot,
     parse_part_graph,
     plane_axes,
 )
@@ -32,6 +33,7 @@ EXPECTED_BASE_ENTITIES_COUNT = 4
 EXPECTED_HOLES_ENTITIES_COUNT = 4
 EXPECTED_EXTRUDE_DEPTH = 10.0
 EXPECTED_HOLE_DIAMETER = 8.0
+SLOT_WIDTH = 15.0
 MAX_EXAMPLE_TOKENS = 400
 RECT_W: Final[float] = 100.0
 RECT_H: Final[float] = 60.0
@@ -380,4 +382,50 @@ def test_center_rectangle_parses() -> None:
         "center": [0.0, 0.0],
         "width": RECT_W,
         "height": RECT_H,
+    }
+
+
+def test_straight_slot_parses() -> None:
+    doc: dict[str, Any] = {
+        "module": "part",
+        "id": "straight_slot_part",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "s1": {
+                        "type": "straight_slot",
+                        "start_point": [-20.0, 0.0],
+                        "end_point": [20.0, 0.0],
+                        "width": SLOT_WIDTH,
+                    }
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+        },
+    }
+    res = parse_part_graph(doc)
+    assert isinstance(res, PartGraph)
+    sketch = res.nodes["sketch_base"]
+    assert isinstance(sketch, SketchNode)
+    s1 = sketch.entities["s1"]
+    assert isinstance(s1, StraightSlot)
+    assert s1.start_point == (-20.0, 0.0)
+    assert s1.end_point == (20.0, 0.0)
+    assert s1.width == SLOT_WIDTH
+    assert s1.type == "straight_slot"
+    assert s1.to_dict() == {
+        "type": "straight_slot",
+        "start_point": [-20.0, 0.0],
+        "end_point": [20.0, 0.0],
+        "width": SLOT_WIDTH,
     }

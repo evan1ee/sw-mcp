@@ -17,6 +17,7 @@ from cad_ir.part_feature_graph.model import (
     SketchEntity,
     SketchNode,
     SolidNode,
+    StraightSlot,
 )
 
 
@@ -83,6 +84,14 @@ def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
                         center=(float(raw_center[0]), float(raw_center[1])),
                         width=float(cast(float | int, ent_data["width"])),
                         height=float(cast(float | int, ent_data["height"])),
+                    )
+                elif ent_type == "straight_slot":
+                    raw_p1 = cast(list[float], ent_data["start_point"])
+                    raw_p2 = cast(list[float], ent_data["end_point"])
+                    entities[ent_id] = StraightSlot(
+                        start_point=(float(raw_p1[0]), float(raw_p1[1])),
+                        end_point=(float(raw_p2[0]), float(raw_p2[1])),
+                        width=float(cast(float | int, ent_data["width"])),
                     )
             nodes[node_id] = SketchNode(
                 plane=str(node_data["plane"]),

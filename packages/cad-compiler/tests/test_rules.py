@@ -21,6 +21,7 @@ from cad_ir.part_feature_graph.model import (
     PartGraph,
     SketchNode,
     SolidNode,
+    StraightSlot,
 )
 from cad_ir.part_feature_graph.parse import parse_part_graph
 
@@ -836,4 +837,99 @@ def test_center_rectangle_degenerate_rejected() -> None:
     issues = validate_graph(graph)
     assert any(
         i.code == ErrorCode.IR_RULE_VIOLATED and "rectangle" in i.message.lower() for i in issues
+    )
+
+
+def test_straight_slot_profile_valid() -> None:
+    entities = {
+        "s1": StraightSlot(start_point=(-20.0, 0.0), end_point=(20.0, 0.0), width=10.0),
+    }
+    graph = PartGraph(
+        id="straight_slot_valid",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(plane="plane:front", entities=entities),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+        },
+    )
+    issues = validate_graph(graph)
+    assert not issues, [f"{i.pointer}: {i.message}" for i in issues]
+
+
+def test_straight_slot_zero_length_rejected() -> None:
+    entities = {
+        "s1": StraightSlot(start_point=(10.0, 10.0), end_point=(10.0, 10.0), width=10.0),
+    }
+    graph = PartGraph(
+        id="straight_slot_degen_len",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(plane="plane:front", entities=entities),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+        },
+    )
+    issues = validate_graph(graph)
+    assert any(i.code == ErrorCode.IR_RULE_VIOLATED and "slot" in i.message.lower() for i in issues)
+
+
+def test_straight_slot_too_narrow_rejected() -> None:
+    entities = {
+        "s1": StraightSlot(start_point=(0.0, 0.0), end_point=(20.0, 0.0), width=0.005),
+    }
+    graph = PartGraph(
+        id="straight_slot_degen_w",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(plane="plane:front", entities=entities),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+        },
+    )
+    issues = validate_graph(graph)
+    assert any(i.code == ErrorCode.IR_RULE_VIOLATED and "slot" in i.message.lower() for i in issues)
+
+
+def test_straight_slot_mixed_profile_rejected() -> None:
+    entities: dict[str, Any] = {
+        "s1": StraightSlot(start_point=(-20.0, 0.0), end_point=(20.0, 0.0), width=10.0),
+        "c1": Circle(center=(0.0, 0.0), diameter=5.0),
+    }
+    graph = PartGraph(
+        id="straight_slot_mixed",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(plane="plane:front", entities=entities),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+        },
+    )
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "cannot mix" in i.message.lower() for i in issues
     )

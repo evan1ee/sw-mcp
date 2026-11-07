@@ -93,7 +93,25 @@ class CenterRectangle:
         }
 
 
-SketchEntity = Line | Circle | Arc | CornerRectangle | CenterRectangle
+@dataclass(frozen=True, slots=True)
+class StraightSlot:
+    """2D straight slot in sketch coordinates (spec 5.7.4, 22.4.1, ADR-073)."""
+
+    start_point: tuple[float, float]
+    end_point: tuple[float, float]
+    width: float
+    type: str = "straight_slot"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": self.type,
+            "start_point": list(self.start_point),
+            "end_point": list(self.end_point),
+            "width": self.width,
+        }
+
+
+SketchEntity = Line | Circle | Arc | CornerRectangle | CenterRectangle | StraightSlot
 
 
 @dataclass(frozen=True, slots=True)
