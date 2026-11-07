@@ -798,3 +798,109 @@ def test_mirror_lowers_to_feature_create() -> None:
     assert mir_op["params"]["seeds"] == ["cut_hole"]
     assert mir_op["params"]["plane"] == "plane:right"
     assert mir_op["params"]["merge"] is True
+
+
+def test_compile_revolve_and_cut_revolve() -> None:
+    raw: dict[str, Any] = {
+        "module": "part",
+        "id": "turned_shaft",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_shaft": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "cl": {
+                        "type": "line",
+                        "start": [0.0, 0.0],
+                        "end": [0.0, 50.0],
+                        "construction": True,
+                    },
+                    "l1": {"type": "line", "start": [0.0, 0.0], "end": [15.0, 0.0]},
+                    "l2": {"type": "line", "start": [15.0, 0.0], "end": [15.0, 50.0]},
+                    "l3": {"type": "line", "start": [15.0, 50.0], "end": [0.0, 50.0]},
+                    "l4": {"type": "line", "start": [0.0, 50.0], "end": [0.0, 0.0]},
+                },
+            },
+            "shaft_body": {
+                "type": "revolve",
+                "dependencies": ["sketch_shaft"],
+                "profile": "sketch_shaft",
+                "axis": "sketch_shaft.cl",
+                "angle": 360.0,
+                "merge_result": True,
+            },
+            "sketch_groove": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "cl": {
+                        "type": "line",
+                        "start": [0.0, 0.0],
+                        "end": [0.0, 50.0],
+                        "construction": True,
+                    },
+                    "g1": {"type": "line", "start": [12.0, 20.0], "end": [15.0, 20.0]},
+                    "g2": {"type": "line", "start": [15.0, 20.0], "end": [15.0, 25.0]},
+                    "g3": {"type": "line", "start": [15.0, 25.0], "end": [12.0, 25.0]},
+                    "g4": {"type": "line", "start": [12.0, 25.0], "end": [12.0, 20.0]},
+                },
+            },
+            "cut_groove": {
+                "type": "cut_revolve",
+                "dependencies": ["sketch_groove", "shaft_body"],
+                "profile": "sketch_groove",
+                "axis": "sketch_groove.cl",
+                "angle": 360.0,
+            },
+        },
+    }
+    ref_str = "part:turned_shaft@1"
+    manifest = BundleManifest("1.0", (parse_document_ref(ref_str),))
+    source = CompileInput(manifest=manifest, documents={ref_str: cast(dict[str, JsonValue], raw)})
+    ctx = CompileContext("0.1.0", CapabilityProfile.from_session(_make_session()), {})
+    result = compile_bundle(source, ctx)
+    assert result.plan is not None
+    plan = cast(dict[str, Any], result.plan)
+    operations = cast(dict[str, dict[str, Any]], plan["operations"])
+
+    # Verify sketch entities lowered with construction line
+    sketch_ops = [
+        op
+        for op in operations.values()
+        if op["op"] == "sketch.create" and op["source"] == "sketch_shaft"
+    ]
+    assert len(sketch_ops) == 1
+    cl_ent = next(e for e in sketch_ops[0]["params"]["entities"] if e.get("construction") is True)
+    assert cl_ent["start"] == [0.0, 0.0]
+    assert cl_ent["end"] == [0.0, 50.0]
+
+    # Verify revolve operation
+    rev_ops = [
+        op
+        for op in operations.values()
+        if op["op"] == "feature.create" and op["params"].get("type") == "revolve"
+    ]
+    assert len(rev_ops) == 1
+    rev_op = rev_ops[0]
+    assert rev_op["source"] == "shaft_body"
+    assert rev_op["params"]["profile"] == "sketch_shaft"
+    assert rev_op["params"]["axis"] == "sketch_shaft.cl"
+    expected_full_circle: Final[float] = 360.0
+    assert rev_op["params"]["angle"] == expected_full_circle
+    assert rev_op["params"]["merge"] is True
+
+    # Verify cut_revolve operation
+    cut_rev_ops = [
+        op
+        for op in operations.values()
+        if op["op"] == "feature.create" and op["params"].get("type") == "cut_revolve"
+    ]
+    assert len(cut_rev_ops) == 1
+    cut_rev_op = cut_rev_ops[0]
+    assert cut_rev_op["source"] == "cut_groove"
+    assert cut_rev_op["params"]["profile"] == "sketch_groove"
+    assert cut_rev_op["params"]["axis"] == "sketch_groove.cl"
+    assert cut_rev_op["params"]["angle"] == expected_full_circle

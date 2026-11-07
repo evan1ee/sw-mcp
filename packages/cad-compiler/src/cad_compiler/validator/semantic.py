@@ -13,11 +13,13 @@ from cad_ir.part_feature_graph.model import (
     Circle,
     CircularPattern,
     CornerRectangle,
+    CutRevolve,
     Line,
     LinearPattern,
     LinearPatternDirection,
     Mirror,
     PartGraph,
+    Revolve,
     SketchEntity,
     SketchNode,
     SolidNode,
@@ -236,7 +238,7 @@ def _check_face_planes(graph: PartGraph, issues: list[ValidationIssue]) -> None:
 
 def _check_references(graph: PartGraph, issues: list[ValidationIssue]) -> None:
     for node_id, node in graph.nodes.items():
-        if isinstance(node, SolidNode):
+        if isinstance(node, (SolidNode, Revolve, CutRevolve)):
             if node.profile not in graph.nodes:
                 issues.append(
                     ValidationIssue(
@@ -281,18 +283,22 @@ def _check_solids(graph: PartGraph, issues: list[ValidationIssue]) -> None:
     solid_nodes = [(nid, n) for nid, n in graph.nodes.items() if isinstance(n, SolidNode)]
     extrudes = [(nid, n) for nid, n in solid_nodes if n.type == "extrude"]
     cuts = [(nid, n) for nid, n in solid_nodes if n.type == "cut_extrude"]
+    base_solids = [
+        nid
+        for nid, n in graph.nodes.items()
+        if (isinstance(n, SolidNode) and n.type == "extrude") or isinstance(n, Revolve)
+    ]
 
-    if len(extrudes) > 1:
-        for ext_id, _ in extrudes[1:]:
+    if len(base_solids) > 1:
+        for extra_id in base_solids[1:]:
             issues.append(
                 ValidationIssue(
                     code=ErrorCode.IR_RULE_VIOLATED,
-                    pointer=f"/nodes/{ext_id}/type",
+                    pointer=f"/nodes/{extra_id}/type",
                     message="Only one extrude feature is allowed: remove the extra extrude",
                 )
             )
 
-    extrude_node_id = extrudes[0][0] if extrudes else None
     extrude_node = extrudes[0][1] if extrudes else None
     deps_map = resolve_dependencies(graph)
 
@@ -308,7 +314,7 @@ def _check_solids(graph: PartGraph, issues: list[ValidationIssue]) -> None:
 
     for cut_id, _ in cuts:
         trans_deps = get_transitive_deps(cut_id)
-        if extrude_node_id is None or extrude_node_id not in trans_deps:
+        if not any(b in trans_deps for b in base_solids):
             issues.append(
                 ValidationIssue(
                     code=ErrorCode.IR_RULE_VIOLATED,
@@ -500,7 +506,11 @@ def _check_sketches(graph: PartGraph, issues: list[ValidationIssue]) -> None:
     for s_id, node in graph.nodes.items():
         if not isinstance(node, SketchNode):
             continue
-        curves: list[Line | Arc] = [e for e in node.entities.values() if isinstance(e, (Line, Arc))]
+        curves: list[Line | Arc] = [
+            e
+            for e in node.entities.values()
+            if isinstance(e, (Line, Arc)) and not getattr(e, "construction", False)
+        ]
         for ent in node.entities.values():
             if isinstance(ent, (CornerRectangle, CenterRectangle)):
                 curves.extend(_rect_to_lines(ent))
@@ -517,7 +527,11 @@ def _check_extrude_profile(
     extrude_sketch: SketchNode,
     issues: list[ValidationIssue],
 ) -> None:
-    ext_curves = [e for e in extrude_sketch.entities.values() if isinstance(e, (Line, Arc))]
+    ext_curves = [
+        e
+        for e in extrude_sketch.entities.values()
+        if isinstance(e, (Line, Arc)) and not getattr(e, "construction", False)
+    ]
     ext_circles = [e for e in extrude_sketch.entities.values() if isinstance(e, Circle)]
     ext_rects = [
         e
@@ -596,7 +610,11 @@ def _chain_lines_into_loop(lines: list[Line]) -> list[tuple[float, float]]:
 
 
 def _sketch_lines(sketch: SketchNode) -> list[Line]:
-    lines = [e for e in sketch.entities.values() if isinstance(e, Line)]
+    lines = [
+        e
+        for e in sketch.entities.values()
+        if isinstance(e, Line) and not getattr(e, "construction", False)
+    ]
     for e in sketch.entities.values():
         if isinstance(e, (CornerRectangle, CenterRectangle)):
             lines.extend(_rect_to_lines(e))
@@ -1141,6 +1159,65 @@ def _check_mirrors(graph: PartGraph, issues: list[ValidationIssue]) -> None:
                 )
 
 
+def _check_revolves(graph: PartGraph, issues: list[ValidationIssue]) -> None:
+    deps_map = resolve_dependencies(graph)
+
+    def get_transitive_deps(start: str) -> set[str]:
+        visited: set[str] = set()
+        queue = list(deps_map.get(start, set()))
+        while queue:
+            curr = queue.pop(0)
+            if curr not in visited:
+                visited.add(curr)
+                queue.extend(deps_map.get(curr, set()))
+        return visited
+
+    base_solids = [
+        nid
+        for nid, n in graph.nodes.items()
+        if (isinstance(n, SolidNode) and n.type == "extrude") or isinstance(n, Revolve)
+    ]
+
+    for node_id, node in graph.nodes.items():
+        if isinstance(node, (Revolve, CutRevolve)):
+            if node.angle <= _TOL or node.angle > 360.0 + _TOL:
+                issues.append(
+                    ValidationIssue(
+                        code=ErrorCode.IR_RULE_VIOLATED,
+                        pointer=f"/nodes/{node_id}/angle",
+                        message=f"Revolve '{node_id}' angle must be in (0, 360] degrees",
+                    )
+                )
+            if node.profile in graph.nodes:
+                trans_deps = get_transitive_deps(node_id)
+                if node.profile not in trans_deps:
+                    issues.append(
+                        ValidationIssue(
+                            code=ErrorCode.IR_RULE_VIOLATED,
+                            pointer=f"/nodes/{node_id}/dependencies",
+                            message=(
+                                f"Revolve '{node_id}' must depend on"
+                                f" profile sketch '{node.profile}'"
+                            ),
+                        )
+                    )
+
+            if isinstance(node, CutRevolve):
+                trans_deps = get_transitive_deps(node_id)
+                has_solid = any(s in trans_deps for s in base_solids if s != node_id)
+                if not has_solid:
+                    issues.append(
+                        ValidationIssue(
+                            code=ErrorCode.IR_RULE_VIOLATED,
+                            pointer=f"/nodes/{node_id}/dependencies",
+                            message=(
+                                f"Cut revolve '{node_id}' must depend on"
+                                " at least one prior solid feature"
+                            ),
+                        )
+                    )
+
+
 def validate_graph(graph: PartGraph) -> tuple[ValidationIssue, ...]:
     """Validate semantic rules of a Part Feature Graph (spec 5.7, 6.7.2).
 
@@ -1168,6 +1245,7 @@ def validate_graph(graph: PartGraph) -> tuple[ValidationIssue, ...]:
     _check_linear_patterns(graph, issues)
     _check_circular_patterns(graph, issues)
     _check_mirrors(graph, issues)
+    _check_revolves(graph, issues)
 
     extrudes = [
         (nid, n)

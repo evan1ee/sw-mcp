@@ -16,12 +16,14 @@ from cad_ir.part_feature_graph import (
     Circle,
     CircularPattern,
     CornerRectangle,
+    CutRevolve,
     Line,
     LinearPattern,
     LinearPatternDirection,
     Mirror,
     PartGraph,
     PlaneAxes,
+    Revolve,
     SketchNode,
     SolidNode,
     StraightSlot,
@@ -629,3 +631,88 @@ def test_parse_mirror_feature() -> None:
     assert mir.seeds == ("cut_hole",)
     assert mir.plane == "plane:right"
     assert mir.merge is True
+
+
+def test_revolve_and_cut_revolve_dataclass_and_parsing() -> None:
+    doc: dict[str, Any] = {
+        "module": "part",
+        "id": "turned_shaft",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_shaft": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "cl": {
+                        "type": "line",
+                        "start": [0.0, 0.0],
+                        "end": [0.0, 50.0],
+                        "construction": True,
+                    },
+                    "l1": {"type": "line", "start": [0.0, 0.0], "end": [15.0, 0.0]},
+                    "l2": {"type": "line", "start": [15.0, 0.0], "end": [15.0, 50.0]},
+                    "l3": {"type": "line", "start": [15.0, 50.0], "end": [0.0, 50.0]},
+                    "l4": {"type": "line", "start": [0.0, 50.0], "end": [0.0, 0.0]},
+                },
+            },
+            "shaft_body": {
+                "type": "revolve",
+                "dependencies": ["sketch_shaft"],
+                "profile": "sketch_shaft",
+                "axis": "sketch_shaft.cl",
+                "angle": 360.0,
+                "merge_result": True,
+            },
+            "sketch_groove": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "cl": {
+                        "type": "line",
+                        "start": [0.0, 0.0],
+                        "end": [0.0, 50.0],
+                        "construction": True,
+                    },
+                    "g1": {"type": "line", "start": [12.0, 20.0], "end": [15.0, 20.0]},
+                    "g2": {"type": "line", "start": [15.0, 20.0], "end": [15.0, 25.0]},
+                    "g3": {"type": "line", "start": [15.0, 25.0], "end": [12.0, 25.0]},
+                    "g4": {"type": "line", "start": [12.0, 25.0], "end": [12.0, 20.0]},
+                },
+            },
+            "cut_groove": {
+                "type": "cut_revolve",
+                "dependencies": ["sketch_groove", "shaft_body"],
+                "profile": "sketch_groove",
+                "axis": "sketch_groove.cl",
+                "angle": 360.0,
+            },
+        },
+    }
+    res = parse_part_graph(cast(JsonValue, doc))
+    assert isinstance(res, PartGraph)
+
+    sk = cast(SketchNode, res.nodes["sketch_shaft"])
+    cl_ent = sk.entities["cl"]
+    assert isinstance(cl_ent, Line)
+    assert cl_ent.construction is True
+    l1_ent = sk.entities["l1"]
+    assert isinstance(l1_ent, Line)
+    assert l1_ent.construction is False
+
+    expected_angle: Final[float] = 360.0
+    rev = cast(Revolve, res.nodes["shaft_body"])
+    assert isinstance(rev, Revolve)
+    assert rev.type == "revolve"
+    assert rev.profile == "sketch_shaft"
+    assert rev.axis == "sketch_shaft.cl"
+    assert rev.angle == expected_angle
+    assert rev.merge_result is True
+
+    cut_rev = cast(CutRevolve, res.nodes["cut_groove"])
+    assert isinstance(cut_rev, CutRevolve)
+    assert cut_rev.type == "cut_revolve"
+    assert cut_rev.profile == "sketch_groove"
+    assert cut_rev.axis == "sketch_groove.cl"
+    assert cut_rev.angle == expected_angle

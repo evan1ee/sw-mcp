@@ -13,10 +13,12 @@ from cad_ir.part_feature_graph.model import (
     Circle,
     CircularPattern,
     CornerRectangle,
+    CutRevolve,
     Line,
     LinearPattern,
     Mirror,
     PartGraph,
+    Revolve,
     SketchNode,
     SolidNode,
 )
@@ -100,13 +102,14 @@ def _lower_sketch(
     for ent_id in sorted(node.entities.keys()):
         ent = node.entities[ent_id]
         if isinstance(ent, Line):
-            entities_list.append(
-                {
-                    "type": "line",
-                    "start": [float(ent.start[0]), float(ent.start[1])],
-                    "end": [float(ent.end[0]), float(ent.end[1])],
-                }
-            )
+            line_dict: dict[str, Any] = {
+                "type": "line",
+                "start": [float(ent.start[0]), float(ent.start[1])],
+                "end": [float(ent.end[0]), float(ent.end[1])],
+            }
+            if getattr(ent, "construction", False):
+                line_dict["construction"] = True
+            entities_list.append(line_dict)
         elif isinstance(ent, Circle):
             entities_list.append(
                 {
@@ -321,6 +324,39 @@ def _lower_mirror(
     return op_body, op_id
 
 
+def _lower_revolve(
+    graph: PartGraph, node_id: str, node: Revolve | CutRevolve, seq: int, deps: list[str]
+) -> tuple[dict[str, Any], str]:
+    params: dict[str, Any] = {
+        "node_id": node_id,
+        "type": node.type,
+        "profile": node.profile,
+        "angle": node.angle,
+    }
+    if node.axis is not None:
+        params["axis"] = node.axis
+    if node.mid_plane:
+        params["mid_plane"] = True
+    if node.reverse:
+        params["reverse"] = True
+    if isinstance(node, Revolve) and not node.merge_result:
+        params["merge"] = False
+    elif isinstance(node, Revolve):
+        params["merge"] = True
+
+    op_id = f"op_{seq}"
+    op_body = {
+        "sequence": seq,
+        "document": WORKING,
+        "op": "feature.create",
+        "params": params,
+        "source": node_id,
+        "depends_on": deps,
+        "postconditions": ["feature_exists", "feature_status_ok", "rebuild_ok"],
+    }
+    return op_body, op_id
+
+
 def lower_graph(
     graph: PartGraph,
     analysis: GraphAnalysis,
@@ -373,8 +409,12 @@ def lower_graph(
             op_body, vp_id = _lower_circular_pattern(graph, node_id, node, seq, dep_op_ids)
             operations[op_id] = op_body
             verification_points.append(vp_id)
-        else:
+        elif isinstance(node, Mirror):
             op_body, vp_id = _lower_mirror(graph, node_id, node, seq, dep_op_ids)
+            operations[op_id] = op_body
+            verification_points.append(vp_id)
+        else:
+            op_body, vp_id = _lower_revolve(graph, node_id, node, seq, dep_op_ids)
             operations[op_id] = op_body
             verification_points.append(vp_id)
 

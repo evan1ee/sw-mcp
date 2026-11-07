@@ -1,6 +1,6 @@
 """Parser and validation driver for Part Feature Graph IR (spec 5.7)."""
 
-from typing import cast
+from typing import Any, cast
 
 from cad_ir.core.issues import IssueReport, build_report
 from cad_ir.core.json_types import JsonValue
@@ -12,6 +12,7 @@ from cad_ir.part_feature_graph.model import (
     Circle,
     CircularPattern,
     CornerRectangle,
+    CutRevolve,
     EndCondition,
     Line,
     LinearPattern,
@@ -19,6 +20,7 @@ from cad_ir.part_feature_graph.model import (
     Mirror,
     PartGraph,
     PartNode,
+    Revolve,
     SketchEntity,
     SketchNode,
     SolidNode,
@@ -35,9 +37,11 @@ def _parse_sketch_entities(
         if ent_type == "line":
             raw_start = cast(list[float], ent_data["start"])
             raw_end = cast(list[float], ent_data["end"])
+            construction = bool(ent_data.get("construction", False))
             entities[ent_id] = Line(
                 start=(float(raw_start[0]), float(raw_start[1])),
                 end=(float(raw_end[0]), float(raw_end[1])),
+                construction=construction,
             )
         elif ent_type == "circle":
             raw_center = cast(list[float], ent_data["center"])
@@ -160,6 +164,62 @@ def _parse_mirror(
     )
 
 
+def _parse_revolve(
+    node_data: dict[str, JsonValue],
+    dependencies: tuple[str, ...],
+    display_name: str | None,
+    realizes: tuple[str, ...],
+) -> Revolve:
+    profile = str(node_data["profile"])
+    raw_axis = node_data.get("axis")
+    axis = str(raw_axis) if raw_axis is not None else None
+    angle = float(cast(float | int, node_data.get("angle", 360.0)))
+    mid_plane = bool(node_data.get("mid_plane", False))
+    reverse = bool(node_data.get("reverse", False))
+    raw_thin = node_data.get("thin")
+    thin = cast(dict[str, Any], raw_thin) if isinstance(raw_thin, dict) else None
+    merge_result = bool(node_data.get("merge_result", True))
+    return Revolve(
+        profile=profile,
+        axis=axis,
+        angle=angle,
+        mid_plane=mid_plane,
+        reverse=reverse,
+        thin=thin,
+        merge_result=merge_result,
+        dependencies=dependencies,
+        display_name=display_name,
+        realizes=realizes,
+    )
+
+
+def _parse_cut_revolve(
+    node_data: dict[str, JsonValue],
+    dependencies: tuple[str, ...],
+    display_name: str | None,
+    realizes: tuple[str, ...],
+) -> CutRevolve:
+    profile = str(node_data["profile"])
+    raw_axis = node_data.get("axis")
+    axis = str(raw_axis) if raw_axis is not None else None
+    angle = float(cast(float | int, node_data.get("angle", 360.0)))
+    mid_plane = bool(node_data.get("mid_plane", False))
+    reverse = bool(node_data.get("reverse", False))
+    raw_thin = node_data.get("thin")
+    thin = cast(dict[str, Any], raw_thin) if isinstance(raw_thin, dict) else None
+    return CutRevolve(
+        profile=profile,
+        axis=axis,
+        angle=angle,
+        mid_plane=mid_plane,
+        reverse=reverse,
+        thin=thin,
+        dependencies=dependencies,
+        display_name=display_name,
+        realizes=realizes,
+    )
+
+
 def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
     """Validate and parse a Part Feature Graph IR document.
 
@@ -213,6 +273,10 @@ def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
             )
         elif node_type == "mirror":
             nodes[node_id] = _parse_mirror(node_data, dependencies, display_name, realizes)
+        elif node_type == "revolve":
+            nodes[node_id] = _parse_revolve(node_data, dependencies, display_name, realizes)
+        elif node_type == "cut_revolve":
+            nodes[node_id] = _parse_cut_revolve(node_data, dependencies, display_name, realizes)
 
     return PartGraph(
         id=str(doc_dict["id"]),
