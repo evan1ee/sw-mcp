@@ -12,10 +12,10 @@ Repeats seed features along one or two directions. IR type `linear_pattern`.
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `PAT-LIN-001` | Seed features (`seeds`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern`; ADR-074 |
-| `PAT-LIN-002` | Direction (`direction`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern`; ADR-074 |
-| `PAT-LIN-003` | Spacing | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern`; ADR-074 |
-| `PAT-LIN-004` | Instance count | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern`; ADR-074 |
+| `PAT-LIN-001` | Seed features (`seeds`) | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 5.7.3 `pattern`; ADR-074; `test_live_linear_pattern_plate` |
+| `PAT-LIN-002` | Direction (`direction`) | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 5.7.3 `pattern`; ADR-074; `test_live_linear_pattern_plate` |
+| `PAT-LIN-003` | Spacing | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 5.7.3 `pattern`; ADR-074; `test_live_linear_pattern_plate` |
+| `PAT-LIN-004` | Instance count | In Scope | P1 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 5.7.3 `pattern`; ADR-074; `test_live_linear_pattern_plate` |
 | `PAT-LIN-005` | Reverse direction | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
 ### Direction 2
@@ -40,8 +40,8 @@ Repeats seed features along one or two directions. IR type `linear_pattern`.
 | Item | Value |
 |---|---|
 | Spec | [5.7](../../../docs/architecture/feature-schema-guide.md) §5.7.3 `pattern`; [22.5](../../../docs/specifications/ir-specification.md#225-feature-model) |
-| SOLIDWORKS API | `CreateDefinition(swFmLPattern)`, `ILinearPatternFeatureData` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); `FeatureLinearPattern5` is obsolete |
-| Tests | — |
+| SOLIDWORKS API | `CreateDefinition(swFmLPattern)`, `ILinearPatternFeatureData` ● ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); `FeatureLinearPattern5` is obsolete |
+| Tests | `tests/live/test_live_part_chain.py::test_live_linear_pattern_plate`, `tests/live/test_live_part_chain.py::test_live_direct_linear_pattern_ops` |
 | Depends on | Seed features, direction references (K23) |
 
 ## PAT-CIR — Circular Pattern

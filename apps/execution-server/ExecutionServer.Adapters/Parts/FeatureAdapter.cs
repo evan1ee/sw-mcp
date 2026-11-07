@@ -50,13 +50,10 @@ public sealed class FeatureAdapter
                     throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "Linear pattern requires direction_1.");
                 }
 
-                var featData = scope.Track((ILinearPatternFeatureData?)doc.FeatureManager.CreateDefinition((int)swFeatureNameID_e.swFmLPattern));
-                if (featData == null)
-                {
-                    throw new IpcException(ErrorCodes.BACKEND_OPERATION_FAILED, "Failed to create linear pattern definition.");
-                }
+                doc.ClearSelection2(true);
 
-                var seedFeatures = new List<object>();
+                // 1. Select seed features with Mark = 4 (spike / SW API convention)
+                bool append = false;
                 foreach (var seedId in p.Seeds)
                 {
                     var sf = FeatureLookup.FindById(doc, seedId, scope);
@@ -64,26 +61,47 @@ public sealed class FeatureAdapter
                     {
                         throw new IpcException(ErrorCodes.IR_REFERENCE_UNRESOLVED, $"Seed feature '{seedId}' not found in document.");
                     }
-                    seedFeatures.Add(sf);
+                    sf.Select2(append, 4);
+                    append = true;
                 }
-                featData.PatternFeatureArray = seedFeatures.ToArray();
 
-                object dir1Obj = ResolveDirectionObject(doc, p.Direction1.Direction, scope);
-                featData.D1Axis = dir1Obj;
+                var selMgr = (ISelectionMgr)doc.SelectionManager;
+
+                // 2. Select Direction 1 reference edge with Mark = 1
+                var (dir1Edge, dir1NeedsRev) = ResolveDirectionEdge(doc, p.Direction1.Direction, scope);
+                var selData1 = scope.Track((SelectData?)selMgr.CreateSelectData());
+                if (selData1 != null) selData1.Mark = 1;
+                ((IEntity)dir1Edge).Select4(true, selData1);
+
+                // 3. Select Direction 2 reference edge with Mark = 2 if present
+                bool dir2NeedsRev = false;
+                if (p.Direction2 != null)
+                {
+                    var (dir2Edge, d2Rev) = ResolveDirectionEdge(doc, p.Direction2.Direction, scope);
+                    dir2NeedsRev = d2Rev;
+                    var selData2 = scope.Track((SelectData?)selMgr.CreateSelectData());
+                    if (selData2 != null) selData2.Mark = 2;
+                    ((IEntity)dir2Edge).Select4(true, selData2);
+                }
+
+                // 4. Create definition (populates references from active selection marks 4, 1, 2)
+                var featData = scope.Track((ILinearPatternFeatureData?)doc.FeatureManager.CreateDefinition((int)swFeatureNameID_e.swFmLPattern));
+                if (featData == null)
+                {
+                    throw new IpcException(ErrorCodes.BACKEND_OPERATION_FAILED, "Failed to create linear pattern definition.");
+                }
+
                 featData.D1Spacing = PartUnits.MmToMetres(p.Direction1.Spacing);
                 featData.D1TotalInstances = (int)p.Direction1.Count;
-                featData.D1ReverseDirection = p.Direction1.Reverse ?? false;
+                featData.D1ReverseDirection = dir1NeedsRev ^ (p.Direction1.Reverse ?? false);
 
                 if (p.Direction2 != null)
                 {
-                    object dir2Obj = ResolveDirectionObject(doc, p.Direction2.Direction, scope);
-                    featData.D2Axis = dir2Obj;
                     featData.D2Spacing = PartUnits.MmToMetres(p.Direction2.Spacing);
                     featData.D2TotalInstances = (int)p.Direction2.Count;
-                    featData.D2ReverseDirection = p.Direction2.Reverse ?? false;
+                    featData.D2ReverseDirection = dir2NeedsRev ^ (p.Direction2.Reverse ?? false);
                 }
 
-                doc.ClearSelection2(true);
                 createdFeature = scope.Track((IFeature?)doc.FeatureManager.CreateFeature(featData));
             }
             else
@@ -316,50 +334,85 @@ public sealed class FeatureAdapter
         };
     }
 
-    private static object ResolveDirectionObject(IModelDoc2 doc, string direction, ComScope scope)
+    private static (IEdge Edge, bool NeedsReverse) ResolveDirectionEdge(IModelDoc2 doc, string direction, ComScope scope)
     {
-        if (direction.StartsWith("plane:", StringComparison.OrdinalIgnoreCase))
+        double[] targetDir;
+        string lower = direction.ToLowerInvariant();
+        if (lower is "plane:right" or "x")
         {
-            return ResolveStandardPlane(doc, direction, scope);
+            targetDir = new[] { 1.0, 0.0, 0.0 };
+        }
+        else if (lower is "plane:top" or "y")
+        {
+            targetDir = new[] { 0.0, 1.0, 0.0 };
+        }
+        else if (lower is "plane:front" or "z")
+        {
+            targetDir = new[] { 0.0, 0.0, 1.0 };
+        }
+        else if (lower is "-plane:right" or "-x")
+        {
+            targetDir = new[] { -1.0, 0.0, 0.0 };
+        }
+        else if (lower is "-plane:top" or "-y")
+        {
+            targetDir = new[] { 0.0, -1.0, 0.0 };
+        }
+        else if (lower is "-plane:front" or "-z")
+        {
+            targetDir = new[] { 0.0, 0.0, -1.0 };
+        }
+        else
+        {
+            throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, $"Unsupported direction reference '{direction}'.");
         }
 
-        var feat = FeatureLookup.FindById(doc, direction, scope);
-        if (feat != null)
-        {
-            return feat;
-        }
-
-        throw new IpcException(ErrorCodes.IR_REFERENCE_UNRESOLVED, $"Direction reference '{direction}' not found in document.");
+        return FindDirectionEdge(doc, targetDir, scope);
     }
 
-    private static IFeature ResolveStandardPlane(IModelDoc2 doc, string planeName, ComScope scope)
+    private static (IEdge Edge, bool NeedsReverse) FindDirectionEdge(IModelDoc2 doc, double[] targetDir, ComScope callerScope)
     {
-        int planeIndex = planeName.ToLowerInvariant() switch
+        var partDoc = (IPartDoc)doc;
+        var bodies = (object[]?)partDoc.GetBodies2((int)swBodyType_e.swSolidBody, false);
+        if (bodies != null)
         {
-            "plane:front" => 0,
-            "plane:top" => 1,
-            "plane:right" => 2,
-            _ => throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, $"Unsupported standard plane '{planeName}'.")
-        };
-
-        var feat = scope.Track((IFeature?)doc.FirstFeature());
-        int count = 0;
-        while (feat != null)
-        {
-            if (string.Equals(feat.GetTypeName2(), "RefPlane", StringComparison.OrdinalIgnoreCase))
+            foreach (object bodyObj in bodies)
             {
-                if (count == planeIndex)
+                var body = (IBody2)bodyObj;
+                var edges = (object[]?)body.GetEdges();
+                if (edges == null) continue;
+                foreach (object edgeObj in edges)
                 {
-                    return feat;
+                    var edge = (IEdge)edgeObj;
+                    using var localScope = new ComScope();
+                    var curve = localScope.Track((ICurve?)edge.GetCurve());
+                    if (curve != null && curve.IsLine())
+                    {
+                        var lineParams = (double[]?)curve.LineParams;
+                        if (lineParams != null && lineParams.Length >= 6)
+                        {
+                            double dx = lineParams[3];
+                            double dy = lineParams[4];
+                            double dz = lineParams[5];
+                            double dot = dx * targetDir[0] + dy * targetDir[1] + dz * targetDir[2];
+                            if (Math.Abs(Math.Abs(dot) - 1.0) < 1e-3)
+                            {
+                                bool reverse = dot < 0;
+                                return (callerScope.Track(edge)!, reverse);
+                            }
+                        }
+                    }
+                    if (Marshal.IsComObject(edge))
+                    {
+                        Marshal.ReleaseComObject(edge);
+                    }
                 }
-                count++;
             }
-            feat = scope.Track((IFeature?)feat.GetNextFeature());
         }
 
         throw new IpcException(
-            ErrorCodes.BACKEND_OPERATION_FAILED,
-            $"Standard plane '{planeName}' not found in document.");
+            ErrorCodes.IR_REFERENCE_UNRESOLVED,
+            $"No linear edge found aligned with direction [{targetDir[0]}, {targetDir[1]}, {targetDir[2]}].");
     }
 
     public DocumentRebuildResult Rebuild(string document, DocumentRebuildParams p, CancellationToken ct)

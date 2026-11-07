@@ -80,14 +80,28 @@ def resolve_node_refs(
 ) -> dict[str, JsonValue]:
     """Swap node ids in an operation's parameters for the feature ids the add-in returned.
 
-    ``feature.create`` names its profile sketch; ``sketch.create`` names the extrude whose cap
-    face it sits on (ADR-070). An id not yet known is left as it is. The input is not changed.
+    ``feature.create`` names its profile sketch or pattern seeds; ``sketch.create`` names the
+    extrude whose cap face it sits on (ADR-070). An id not yet known is left as it is.
+    The input is not changed.
     """
     resolved = dict(params)
     if op_name == "feature.create":
         profile = resolved.get("profile")
         if isinstance(profile, str) and profile in feature_ids:
             resolved["profile"] = feature_ids[profile]
+        seeds = resolved.get("seeds")
+        if isinstance(seeds, list):
+            resolved["seeds"] = [feature_ids.get(s, s) if isinstance(s, str) else s for s in seeds]
+        d1 = resolved.get("direction_1")
+        if isinstance(d1, dict):
+            dir_ref = d1.get("direction")
+            if isinstance(dir_ref, str) and dir_ref in feature_ids:
+                resolved["direction_1"] = {**d1, "direction": feature_ids[dir_ref]}
+        d2 = resolved.get("direction_2")
+        if isinstance(d2, dict):
+            dir_ref = d2.get("direction")
+            if isinstance(dir_ref, str) and dir_ref in feature_ids:
+                resolved["direction_2"] = {**d2, "direction": feature_ids[dir_ref]}
     elif op_name == "sketch.create":
         face = resolved.get("face")
         if isinstance(face, dict):

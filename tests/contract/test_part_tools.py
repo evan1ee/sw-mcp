@@ -16,7 +16,7 @@ from tests.integration.test_plan_job import PLATE_FIXTURE, PartRig
 
 TARGET = "C:\\Work\\plate.SLDPRT"
 MAX_WIN_PATH = 260
-EXPECTED_MVP_TYPES = 3
+EXPECTED_MVP_TYPES = 4
 
 
 def _plate_graph() -> dict[str, JsonValue]:
@@ -231,7 +231,7 @@ def test_list_types() -> None:
     assert isinstance(types, list)
     assert len(types) == EXPECTED_MVP_TYPES
     names = [t["type"] for t in types if isinstance(t, dict)]
-    assert names == ["sketch", "extrude", "cut_extrude"]
+    assert names == ["sketch", "extrude", "cut_extrude", "linear_pattern"]
 
 
 def test_schema_unknown_type() -> None:
