@@ -1,7 +1,8 @@
 """Audit the implementation checklists in ``docs/implementation`` and derive their summary.
 
-The checklist rows are the single source of truth. This script never stores state: it parses the
-rows, checks them for consistency, and prints or rewrites the summary block of the master index.
+The checklist rows are the single source of truth, and the master index defines the conventions.
+This script stores neither: it reads the conventions from the index, parses the rows, checks them
+for consistency, and prints or rewrites the summary block of the index.
 
 Usage:
     uv run python scripts/check_implementation_checklists.py          # audit, exit 1 on any issue
@@ -23,18 +24,19 @@ BEGIN: Final[str] = (
 )
 END: Final[str] = "<!-- END DERIVED SUMMARY -->"
 
-STATUSES: Final[tuple[str, ...]] = (
-    "Verified",
-    "Tested",
-    "Implemented",
-    "Partially Implemented",
-    "Specified",
-    "Not Started",
-    "Deferred",
-    "Under Evaluation",
-    "Not Applicable",
+RULED_STATUSES: Final[frozenset[str]] = frozenset(
+    {
+        "Verified",
+        "Tested",
+        "Implemented",
+        "Partially Implemented",
+        "Specified",
+        "Not Started",
+        "Deferred",
+        "Under Evaluation",
+        "Not Applicable",
+    }
 )
-SCOPES: Final[tuple[str, ...]] = ("In Scope", "Out of Scope", "Under Evaluation")
 LAYER_COUNT: Final[int] = 6
 LAYER_CELLS: Final[tuple[str, ...]] = ("✅", "◐", "⬜", "N/A")
 CATEGORIES: Final[tuple[tuple[str, str], ...]] = (
@@ -48,16 +50,24 @@ ROW_RE: Final[re.Pattern[str]] = re.compile(
     r"(?P<layers>(?:[^|]+ \| ){5}[^|]+?) \| (?P<note>[^|]*?) ?\|$"
 )
 FEATURE_RE: Final[re.Pattern[str]] = re.compile(r"^## (?P<id>[A-Z]+-[A-Z]+) — (?P<title>.+)$")
-FEATURE_REF_RE: Final[re.Pattern[str]] = re.compile(
-    r"`((?:SK|BF|CF|SHP|HT|PAT|RG|SRF|SMT|MBD|CM|ADV)-[A-Z]{3})`"
-)
-ROW_REF_RE: Final[re.Pattern[str]] = re.compile(
-    r"`((?:SK|BF|CF|SHP|HT|PAT|RG|SRF|SMT|MBD|CM|ADV)-[A-Z]{3}-\d{3})`"
-)
+FEATURE_REF_RE: Final[re.Pattern[str]] = re.compile(r"`([A-Z]{2,4}-[A-Z]{3})`")
+UNLINKED_REF_RE: Final[re.Pattern[str]] = re.compile(r"(?<!\[)`([A-Z]{2,4}-[A-Z]{3})`(?!\]\()")
+ROW_REF_RE: Final[re.Pattern[str]] = re.compile(r"`([A-Z]{2,4}-[A-Z]{3}-\d{3})`")
+HOSTS_RE: Final[re.Pattern[str]] = re.compile(r"^\| Depends on \| Hosts: (.+) \|$")
 ROW_LIKE_RE: Final[re.Pattern[str]] = re.compile(r"^\|\s*`?[A-Z]+-[A-Z]+-\d+`?\s*\|")
-PRIORITIES: Final[tuple[str, ...]] = ("P0", "P1", "P2", "P3")
 EVIDENCE_REQUIRED: Final[tuple[str, ...]] = ("Verified", "Tested")
 LINK_RE: Final[re.Pattern[str]] = re.compile(r"\[[^\]]*\]\(([^)\s]+)\)")
+TEST_NAME_RE: Final[re.Pattern[str]] = re.compile(r"`(test_[a-z0-9_]+)(?:\.py)?`")
+TEST_DEF_RE: Final[re.Pattern[str]] = re.compile(r"^\s*(?:async )?def (test_\w+)", re.MULTILINE)
+SPEC_CITATION_RE: Final[re.Pattern[str]] = re.compile(r"Tier \d|§\d+|\d+\.\d+|K\d+|ADR-\d+|`")
+TEST_ROOTS: Final[tuple[str, ...]] = ("tests", "packages", "apps")
+TABLE_HEADERS: Final[dict[str, str]] = {
+    "status": "| Status | Meaning",
+    "scope": "| Scope | Meaning",
+    "priority": "| Priority | Meaning",
+    "layer": "| Layer | Done means",
+    "prefix": "| ID prefix | Owning file",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +83,87 @@ class Row:
     feature: str
     path: Path
     line: int
+
+
+@dataclass(frozen=True, slots=True)
+class Conventions:
+    """The vocabulary the master index defines; the script holds no copy of it."""
+
+    statuses: tuple[str, ...]
+    scopes: tuple[str, ...]
+    priorities: tuple[str, ...]
+    layers: tuple[str, ...]
+    prefixes: tuple[tuple[str, str], ...]
+
+
+def _table_rows(text: str, header: str) -> list[list[str]]:
+    """Cells of the body rows of the Markdown table whose header starts with ``header``."""
+    lines = text.splitlines()
+    for number, line in enumerate(lines):
+        if line.startswith(header):
+            rows: list[list[str]] = []
+            for body in lines[number + 2 :]:
+                if not body.startswith("|"):
+                    break
+                rows.append([cell.strip() for cell in body.strip().strip("|").split(" | ")])
+            return rows
+    return []
+
+
+def conventions(index_text: str) -> Conventions:
+    """Read the status, scope, priority, layer and prefix tables from the index."""
+
+    def first_cells(key: str) -> tuple[str, ...]:
+        return tuple(row[0] for row in _table_rows(index_text, TABLE_HEADERS[key]))
+
+    prefixes: list[tuple[str, str]] = []
+    for row in _table_rows(index_text, TABLE_HEADERS["prefix"]):
+        target = LINK_RE.search(row[-1])
+        if target:
+            prefixes += [(p, target.group(1)) for p in re.findall(r"`([A-Z-]+)`", row[0])]
+    return Conventions(
+        first_cells("status"),
+        first_cells("scope"),
+        first_cells("priority"),
+        first_cells("layer"),
+        tuple(prefixes),
+    )
+
+
+def convention_problems(conv: Conventions) -> list[str]:
+    """The index must define every table, and the script must have a rule for every status."""
+    out: list[str] = []
+    found = {
+        "status": conv.statuses,
+        "scope": conv.scopes,
+        "priority": conv.priorities,
+        "layer": conv.layers,
+        "prefix": conv.prefixes,
+    }
+    out += [f"README.md: {key} table missing" for key, values in found.items() if not values]
+    if conv.statuses:
+        out += [
+            f"README.md: status '{s}' has no rule in the script"
+            for s in conv.statuses
+            if s not in RULED_STATUSES
+        ]
+        out += [
+            f"script: status rule '{s}' is not in the index"
+            for s in sorted(RULED_STATUSES - set(conv.statuses))
+        ]
+    if conv.layers and len(conv.layers) != LAYER_COUNT:
+        out.append(f"README.md: script expects {LAYER_COUNT} layers, index has {len(conv.layers)}")
+    return out
+
+
+def known_tests() -> set[str]:
+    """Every Python test function and test module name in the repository."""
+    names: set[str] = set()
+    for folder in TEST_ROOTS:
+        for path in (ROOT / folder).rglob("test_*.py"):
+            names.add(path.stem)
+            names.update(TEST_DEF_RE.findall(path.read_text(encoding="utf-8", errors="ignore")))
+    return names
 
 
 def slug(heading: str) -> str:
@@ -135,6 +226,40 @@ def parse(files: list[Path]) -> tuple[list[Row], dict[str, Path], list[str]]:
     return rows, features, problems
 
 
+def ownership_problems(features: dict[str, Path], conv: Conventions) -> list[str]:
+    """A feature must live in the file the index names for its ID prefix."""
+    out: list[str] = []
+    for fid, path in features.items():
+        owners = [target for prefix, target in conv.prefixes if fid.startswith(prefix)]
+        if not owners:
+            out.append(f"{path.name}: {fid} has no ID prefix in the index")
+        elif (IMPL / owners[0]).resolve() != path.resolve():
+            out.append(f"{path.name}: {fid} belongs in {owners[0]}")
+    return out
+
+
+def host_problems(files: list[Path], rows: list[Row]) -> list[str]:
+    """A shared section's ``Hosts`` list must equal the sections whose rows cite it."""
+    users: dict[str, set[str]] = {}
+    for row in rows:
+        for ref in FEATURE_REF_RE.findall(row.note):
+            users.setdefault(ref, set()).add(row.feature)
+    out: list[str] = []
+    for path in files:
+        current = ""
+        for line in path.read_text(encoding="utf-8").splitlines():
+            feature = FEATURE_RE.match(line)
+            current = feature.group("id") if feature else current
+            hosts = HOSTS_RE.match(line)
+            if not hosts:
+                continue
+            listed = set(FEATURE_REF_RE.findall(hosts.group(1)))
+            used = users.get(current, set())
+            out += [f"{path.name}: {current}: {f} uses it but is not listed" for f in used - listed]
+            out += [f"{path.name}: {current}: {f} is listed but has no row" for f in listed - used]
+    return sorted(out)
+
+
 def structure_problems(rows: list[Row], features: dict[str, Path], files: list[Path]) -> list[str]:
     """Row IDs must belong to their section and run 1..n; files must be in a known folder."""
     out: list[str] = []
@@ -155,18 +280,30 @@ def structure_problems(rows: list[Row], features: dict[str, Path], files: list[P
     return out
 
 
-def row_problems(row: Row) -> list[str]:
-    """Consistency of one row's status, scope, priority and layers."""
+def _note_problems(where: str, row: Row, tests: set[str]) -> list[str]:
+    """Notes are never empty; Specified rows cite the spec; Verified and Tested name a test."""
+    if not row.note:
+        return [f"{where}: {row.status} row needs a note"]
+    named = TEST_NAME_RE.findall(row.note)
+    out = [f"{where}: unknown test {name}" for name in named if name not in tests]
+    if row.status in EVIDENCE_REQUIRED and not named:
+        out.append(f"{where}: {row.status} note must name a test")
+    if row.status == "Specified" and not SPEC_CITATION_RE.search(row.note):
+        out.append(f"{where}: Specified note must cite a spec tier, section or field")
+    return out
+
+
+def row_problems(row: Row, conv: Conventions, tests: set[str]) -> list[str]:
+    """Consistency of one row's status, scope, priority, note and layers."""
     where = f"{row.path.name}:{row.line} {row.row_id}"
     out: list[str] = []
-    if row.status not in STATUSES:
+    if row.status not in conv.statuses:
         return [f"{where}: unknown status '{row.status}'"]
-    if row.scope not in SCOPES:
+    if row.scope not in conv.scopes:
         out.append(f"{where}: unknown scope '{row.scope}'")
-    if row.pri not in PRIORITIES:
+    if row.pri not in conv.priorities:
         out.append(f"{where}: unknown priority '{row.pri}'")
-    if row.status in EVIDENCE_REQUIRED and not row.note:
-        out.append(f"{where}: {row.status} needs evidence in Notes")
+    out += _note_problems(where, row, tests)
     if len(row.layers) != LAYER_COUNT or any(cell not in LAYER_CELLS for cell in row.layers):
         return [*out, f"{where}: layer cells must be six of {LAYER_CELLS}"]
     done = [cell for cell in row.layers if cell in ("✅", "◐")]
@@ -199,12 +336,29 @@ def _status_rules(where: str, row: Row, done: list[str], open_cells: list[str]) 
     return out
 
 
-def reference_problems(
-    files: list[Path], features: dict[str, Path], row_ids: set[str]
-) -> list[str]:
-    """Feature and row references and relative links that do not resolve."""
+def _link_problems(path: Path, text: str, cache: dict[Path, set[str]]) -> list[str]:
+    """Relative links and anchors of one file that do not resolve."""
     out: list[str] = []
-    anchor_cache: dict[Path, set[str]] = {}
+    for target in LINK_RE.findall(text):
+        if target.startswith(("http://", "https://", "mailto:")):
+            continue
+        file_part, _, fragment = target.partition("#")
+        resolved = path if not file_part else (path.parent / file_part).resolve()
+        if not resolved.exists():
+            out.append(f"{path.name}: broken link {target}")
+        elif fragment and resolved.suffix == ".md":
+            known = cache.setdefault(resolved, anchors(resolved))
+            if fragment not in known:
+                out.append(f"{path.name}: missing anchor {target}")
+    return out
+
+
+def reference_problems(
+    files: list[Path], features: dict[str, Path], row_ids: set[str], tests: set[str]
+) -> list[str]:
+    """IDs, tests and relative links that do not resolve, and feature IDs that are not links."""
+    out: list[str] = []
+    cache: dict[Path, set[str]] = {}
     for path in [*files, INDEX]:
         text = path.read_text(encoding="utf-8")
         for ref in FEATURE_REF_RE.findall(text):
@@ -213,17 +367,14 @@ def reference_problems(
         for ref in ROW_REF_RE.findall(text):
             if ref not in row_ids:
                 out.append(f"{path.name}: reference to unknown row {ref}")
-        for target in LINK_RE.findall(text):
-            if target.startswith(("http://", "https://", "mailto:")):
-                continue
-            file_part, _, fragment = target.partition("#")
-            resolved = path if not file_part else (path.parent / file_part).resolve()
-            if not resolved.exists():
-                out.append(f"{path.name}: broken link {target}")
-            elif fragment and resolved.suffix == ".md":
-                known = anchor_cache.setdefault(resolved, anchors(resolved))
-                if fragment not in known:
-                    out.append(f"{path.name}: missing anchor {target}")
+        out += [f"{path.name}: {ref} must be a link" for ref in UNLINKED_REF_RE.findall(text)]
+        out += _link_problems(path, text, cache)
+        if path == INDEX:
+            out += [
+                f"README.md: unknown test {name}"
+                for name in TEST_NAME_RE.findall(text)
+                if name not in tests
+            ]
     return out
 
 
@@ -233,10 +384,10 @@ def duplicate_problems(rows: list[Row]) -> list[str]:
     return [f"duplicate row ID {rid}" for rid, n in counts.items() if n > 1]
 
 
-def summary(rows: list[Row], features: dict[str, Path]) -> str:
-    """Markdown summary derived from the rows."""
-    header = "| Category | Capabilities | Items | " + " | ".join(STATUSES) + " |"
-    divider = "|---|---:|---:|" + "---:|" * len(STATUSES)
+def summary(rows: list[Row], features: dict[str, Path], conv: Conventions) -> str:
+    """Markdown summary derived from the rows, in the order the index defines."""
+    header = "| Category | Capabilities | Items | " + " | ".join(conv.statuses) + " |"
+    divider = "|---|---:|---:|" + "---:|" * len(conv.statuses)
     lines = [header, divider]
     totals: Counter[str] = Counter()
     total_items = 0
@@ -248,24 +399,24 @@ def summary(rows: list[Row], features: dict[str, Path]) -> str:
         totals.update(counts)
         total_items += len(mine)
         total_caps += caps
-        cells = " | ".join(str(counts[s]) for s in STATUSES)
+        cells = " | ".join(str(counts[s]) for s in conv.statuses)
         lines.append(f"| {label} | {caps} | {len(mine)} | {cells} |")
     lines.append(
         f"| **Total** | **{total_caps}** | **{total_items}** | "
-        + " | ".join(f"**{totals[s]}**" for s in STATUSES)
+        + " | ".join(f"**{totals[s]}**" for s in conv.statuses)
         + " |"
     )
     scope = Counter(r.scope for r in rows)
     pri = Counter(r.pri for r in rows)
     lines += [
         "",
-        "| Scope | " + " | ".join(SCOPES) + " |",
-        "|---|" + "---:|" * len(SCOPES),
-        "| Items | " + " | ".join(str(scope[s]) for s in SCOPES) + " |",
+        "| Scope | " + " | ".join(conv.scopes) + " |",
+        "|---|" + "---:|" * len(conv.scopes),
+        "| Items | " + " | ".join(str(scope[s]) for s in conv.scopes) + " |",
         "",
-        "| Priority | P0 | P1 | P2 | P3 |",
-        "|---|---:|---:|---:|---:|",
-        "| Items | " + " | ".join(str(pri[p]) for p in ("P0", "P1", "P2", "P3")) + " |",
+        "| Priority | " + " | ".join(conv.priorities) + " |",
+        "|---|" + "---:|" * len(conv.priorities),
+        "| Items | " + " | ".join(str(pri[p]) for p in conv.priorities) + " |",
         "",
         "| Document | Capabilities | Items | Verified | Tested | Partially Implemented |",
         "|---|---:|---:|---:|---:|---:|",
@@ -291,21 +442,26 @@ def splice(index_text: str, block: str) -> str:
 
 def audit() -> tuple[list[Row], dict[str, Path], list[str]]:
     """Parse the checklists and return every problem except summary staleness."""
+    conv = conventions(INDEX.read_text(encoding="utf-8"))
+    tests = known_tests()
     files = checklist_files()
     rows, features, problems = parse(files)
+    problems += convention_problems(conv)
     for row in rows:
-        problems += row_problems(row)
+        problems += row_problems(row, conv, tests)
     problems += duplicate_problems(rows)
     problems += structure_problems(rows, features, files)
-    problems += reference_problems(files, features, {row.row_id for row in rows})
+    problems += ownership_problems(features, conv)
+    problems += host_problems(files, rows)
+    problems += reference_problems(files, features, {row.row_id for row in rows}, tests)
     return rows, features, problems
 
 
 def main(argv: list[str]) -> int:
     """Run the audit; return a process exit code."""
     rows, features, problems = audit()
-    block = summary(rows, features)
     index_text = INDEX.read_text(encoding="utf-8")
+    block = summary(rows, features, conventions(index_text))
     if BEGIN not in index_text or END not in index_text:
         problems.append("README.md: derived summary markers missing")
     elif "--write" in argv:

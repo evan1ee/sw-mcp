@@ -25,7 +25,7 @@ Removes material by extruding a sketch profile. IR type `cut_extrude`; supports 
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `CF-EXT-007` | Cut sketched on `plane:front` | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `plate_4h` fixture in `test_plate_end_to_end` |
 | `CF-EXT-008` | Cut sketched on `plane:top` / `plane:right` | In Scope | P1 | Implemented | ✅ | ✅ | ✅ | ⬜ | ✅ | ⬜ | Same adapter path; no dedicated test |
-| `CF-EXT-009` | Cut sketched on `end_face` | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `Dir=false` |
+| `CF-EXT-009` | Cut sketched on `end_face` | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `Dir=false`; `test_blind_hole_in_top_face` |
 | `CF-EXT-010` | Cut sketched on `start_face` | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `test_blind_hole_in_start_face` |
 | `CF-EXT-011` | Cut sketched on a side face | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Refused (K28) |
 
@@ -61,10 +61,10 @@ Removes material by extruding a sketch profile. IR type `cut_extrude`; supports 
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `CF-EXT-028` | Depth (blind) in mm | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `test_blind_hole_in_top_face` (volume check) |
 | `CF-EXT-029` | Draft angle and outward | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 |
-| `CF-EXT-030` | Thin feature | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Shared `thin` object, tracked once in `SHP-THN` |
+| `CF-EXT-030` | Thin feature | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 `thin`; options defined in [`SHP-THN`](shape-modification.md#shp-thn--thin-feature-shared-object), this row tracks only this feature's support |
 | `CF-EXT-031` | Feature scope | In Scope | P2 | Partially Implemented | ⬜ | ⬜ | ◐ | ⬜ | ⬜ | ⬜ | Adapter fixes `UseFeatScope=true` |
 | `CF-EXT-032` | Auto-select bodies | In Scope | P2 | Partially Implemented | ⬜ | ⬜ | ◐ | ⬜ | ⬜ | ⬜ | Adapter fixes `UseAutoSelect=true` |
-| `CF-EXT-033` | `end_face`, `side_faces` roles | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
+| `CF-EXT-033` | `end_face`, `side_faces` roles | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2; K30 |
 | `CF-EXT-034` | Normal cut | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | `FeatureCut4` `NormalCut`; not named in the spec |
 | `CF-EXT-035` | Optimize geometry | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | `FeatureCut4` `OptimizeGeometry`; not named in the spec |
 | `CF-EXT-036` | Start condition: surface / vertex / offset | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | `FeatureCut4` `T0`, `StartOffset`, `FlipStartOffset`; not named in the spec |
@@ -87,14 +87,13 @@ Removes material by extruding a sketch profile. IR type `cut_extrude`; supports 
 | Compiler | [lower.py](../../../packages/cad-compiler/src/cad_compiler/lowering/lower.py), [semantic.py](../../../packages/cad-compiler/src/cad_compiler/validator/semantic.py) |
 | Adapter | [FeatureAdapter.cs](../../../apps/execution-server/ExecutionServer.Adapters/Parts/FeatureAdapter.cs) |
 | Tests | [test_live_part_chain.py](../../../tests/live/test_live_part_chain.py), [test_live_part_ops.py](../../../tests/live/test_live_part_ops.py), [test_face_lowering.py](../../../packages/cad-compiler/tests/test_face_lowering.py), [test_part.py](../../../packages/cad-verification/tests/test_part.py) |
-| Depends on | `BF-EXT`, `SK-PLN`, `SK-ENT` |
+| Depends on | [`BF-EXT`](base-features.md#bf-ext--extruded-bossbase), [`SK-PLN`](../sketch/sketch-management.md#sk-pln--sketch-placement-and-coordinate-frames), [`SK-ENT`](../sketch/sketch-entities.md#sk-ent--sketch-entities) |
 
 **Notes and limitations**
 
 - Blind direction: from an origin plane the adapter passes `Dir=true`; from a cap face it passes `Dir=false` (`Dir=true` cuts nothing, `Flip=true` removes the outside). See 5.7.4.
 - The adapter maps `through_all_both` to `FeatureCut4` with `T1=T2=swEndCondThroughAll` and `Sd=false`.
 - A blind cut depth must be smaller than the base extrude depth (validator rule).
-- HANDOFF.md says `through_all`; the schema and code use `through_all_both` (master index, Discrepancies).
 
 ## CF-REV — Revolved Cut
 
@@ -104,11 +103,11 @@ Removes material by revolving a profile. IR type `cut_revolve`.
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `CF-REV-001` | Profile and axis | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | See `BF-REV` axis kinds |
+| `CF-REV-001` | Profile and axis | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | See [`BF-REV`](base-features.md#bf-rev--revolved-bossbase) axis kinds |
 | `CF-REV-002` | Blind angle / full 360 | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `CF-REV-003` | Mid Plane | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `CF-REV-004` | Reverse direction | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
-| `CF-REV-005` | Thin feature | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Shared `thin` object, tracked once in `SHP-THN` |
+| `CF-REV-005` | Thin feature | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 `thin`; options defined in [`SHP-THN`](shape-modification.md#shp-thn--thin-feature-shared-object), this row tracks only this feature's support |
 | `CF-REV-006` | Selected contours | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
 **Metadata**
@@ -118,11 +117,11 @@ Removes material by revolving a profile. IR type `cut_revolve`.
 | Spec | [22.5](../../../docs/specifications/ir-specification.md#225-feature-model) §22.5.2 |
 | SOLIDWORKS API | `FeatureRevolve2` with `IsCut` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)) |
 | Tests | — |
-| Depends on | `BF-REV`, `SK-ENT` |
+| Depends on | [`BF-REV`](base-features.md#bf-rev--revolved-bossbase), [`SK-ENT`](../sketch/sketch-entities.md#sk-ent--sketch-entities) |
 
 **Notes and limitations**
 
-- Options mirror `BF-REV`; the axis, angle and direction definitions are not repeated here.
+- Options mirror [`BF-REV`](base-features.md#bf-rev--revolved-bossbase); the axis, angle and direction definitions are not repeated here.
 
 ## CF-SWP — Swept Cut
 
@@ -135,7 +134,7 @@ Removes material by sweeping a profile along a path. IR type `swept_cut`; Tier 2
 | `CF-SWP-001` | Profile and path | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `CF-SWP-002` | Guide curves | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `CF-SWP-003` | Twist | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
-| `CF-SWP-004` | Thin feature | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Shared `thin` object, tracked once in `SHP-THN` |
+| `CF-SWP-004` | Thin feature | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 `thin`; options defined in [`SHP-THN`](shape-modification.md#shp-thn--thin-feature-shared-object), this row tracks only this feature's support |
 
 **Metadata**
 
@@ -144,11 +143,11 @@ Removes material by sweeping a profile along a path. IR type `swept_cut`; Tier 2
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.3 |
 | SOLIDWORKS API | `CreateDefinition(swFmSweepCut)` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); `InsertCutSwept5` is obsolete |
 | Tests | — |
-| Depends on | `BF-SWP` |
+| Depends on | [`BF-SWP`](base-features.md#bf-swp--swept-bossbase) |
 
 **Notes and limitations**
 
-- Inputs and options mirror `BF-SWP`.
+- Inputs and options mirror [`BF-SWP`](base-features.md#bf-swp--swept-bossbase).
 
 ## CF-LFT — Lofted Cut
 
@@ -160,7 +159,7 @@ Removes material between two or more profiles. IR type `lofted_cut`; Tier 2.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `CF-LFT-001` | Ordered profiles | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `CF-LFT-002` | Guide curves and centerline | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
-| `CF-LFT-003` | Thin feature | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Shared `thin` object, tracked once in `SHP-THN` |
+| `CF-LFT-003` | Thin feature | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 `thin`; options defined in [`SHP-THN`](shape-modification.md#shp-thn--thin-feature-shared-object), this row tracks only this feature's support |
 
 **Metadata**
 
@@ -169,11 +168,11 @@ Removes material between two or more profiles. IR type `lofted_cut`; Tier 2.
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.3 |
 | SOLIDWORKS API | `IFeatureManager.InsertCutBlend` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)) |
 | Tests | — |
-| Depends on | `BF-LFT` |
+| Depends on | [`BF-LFT`](base-features.md#bf-lft--lofted-bossbase) |
 
 **Notes and limitations**
 
-- Inputs and options mirror `BF-LFT`.
+- Inputs and options mirror [`BF-LFT`](base-features.md#bf-lft--lofted-bossbase).
 
 ## CF-BND — Boundary Cut
 
@@ -192,7 +191,7 @@ Removes material between boundary curves.
 |---|---|
 | Spec | Not named in the spec |
 | Tests | — |
-| Depends on | `BF-BND` |
+| Depends on | [`BF-BND`](base-features.md#bf-bnd--boundary-bossbase) |
 
 **Notes and limitations**
 
@@ -216,7 +215,7 @@ Removes material with a surface.
 | Spec | Not named in the spec |
 | SOLIDWORKS API | Not searched; unverified |
 | Tests | — |
-| Depends on | `SRF-OFF` |
+| Depends on | [`SRF-OFF`](surface-features.md#srf-off--offset-surface) |
 
 **Notes and limitations**
 

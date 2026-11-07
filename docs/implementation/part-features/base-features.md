@@ -6,18 +6,18 @@ Boss/base features that add material.
 
 ## BF-EXT — Extruded Boss/Base
 
-Adds material by extruding a sketch profile. IR type `extrude`; the MVP allows exactly one per part and only a blind end condition.
+Adds material by extruding a sketch profile. IR type `extrude`.
 
 ### Profile
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BF-EXT-001` | Closed line-loop profile on `plane:front` | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Plate |
-| `BF-EXT-002` | Closed line-loop profile on `plane:top` / `plane:right` | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Cap-face parametrised live tests |
-| `BF-EXT-003` | Single-circle profile | In Scope | P0 | Tested | ✅ | ✅ | ✅ | ⬜ | ✅ | ⬜ | Unit and benchmark `disc`; not run live |
-| `BF-EXT-004` | Non-rectangular line-loop profile (e.g. L-shape) | In Scope | P1 | Tested | ✅ | ✅ | ✅ | ⬜ | ✅ | ⬜ | Benchmark `l_plate`; not run live |
+| `BF-EXT-001` | Closed line-loop profile on `plane:front` | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `test_plate_end_to_end` |
+| `BF-EXT-002` | Closed line-loop profile on `plane:top` / `plane:right` | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `test_blind_hole_on_non_front_base_planes` |
+| `BF-EXT-003` | Single-circle profile | In Scope | P0 | Tested | ✅ | ✅ | ✅ | ⬜ | ✅ | ⬜ | Unit and benchmark `disc` in `test_score_part_ir_baseline_answers_passes_all_cases`; not run live |
+| `BF-EXT-004` | Non-rectangular line-loop profile (e.g. L-shape) | In Scope | P1 | Tested | ✅ | ✅ | ✅ | ⬜ | ✅ | ⬜ | Benchmark `l_plate` in `test_score_part_ir_baseline_answers_passes_all_cases`; not run live |
 | `BF-EXT-005` | Profile with inner contours (holes in the same sketch) | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec; refused today |
-| `BF-EXT-006` | Several disjoint profiles in one sketch | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Multi-body result; no spec statement |
+| `BF-EXT-006` | Several disjoint profiles in one sketch | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Multi-body result; not named in the spec |
 | `BF-EXT-007` | Selected contours | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `BF-EXT-008` | Additional boss extrudes after the first | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Refused today; ADR-066 body order |
 
@@ -25,7 +25,7 @@ Adds material by extruding a sketch profile. IR type `extrude`; the MVP allows e
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BF-EXT-009` | Blind | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `swEndCondBlind` |
+| `BF-EXT-009` | Blind | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `swEndCondBlind`; `test_plate_end_to_end` |
 | `BF-EXT-010` | Through All (one direction) | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | In 5.7.3; whether SOLIDWORKS supports it on a boss is unverified, needs a spike |
 | `BF-EXT-011` | Through All, both directions (`through_all_both`) | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | In 5.7.3; whether SOLIDWORKS supports it on a boss is unverified, needs a spike |
 | `BF-EXT-012` | Up To Next | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.2 Tier 1 |
@@ -40,29 +40,29 @@ Adds material by extruding a sketch profile. IR type `extrude`; the MVP allows e
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BF-EXT-019` | One direction along the sketch normal | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Default |
+| `BF-EXT-019` | One direction along the sketch normal | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Default; `test_plate_end_to_end` |
 | `BF-EXT-020` | Reverse direction (`reverse`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3; adapter passes `Flip=false` |
 | `BF-EXT-021` | Two directions (`end_condition_2`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 |
 | `BF-EXT-022` | Direction 2 end condition | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 |
 | `BF-EXT-023` | Direction 2 depth | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 |
-| `BF-EXT-024` | Direction of extrusion by reference (non-normal) | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | No spec statement |
+| `BF-EXT-024` | Direction of extrusion by reference (non-normal) | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
 ### Parameters
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BF-EXT-025` | Depth (blind), positive, in mm | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `depth` above zero |
+| `BF-EXT-025` | Depth (blind), positive, in mm | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `depth` above zero; `test_plate_end_to_end` |
 | `BF-EXT-026` | Draft angle | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `draft.angle` |
 | `BF-EXT-027` | Draft outward | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `draft.outward` |
-| `BF-EXT-028` | Start condition: sketch plane | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Default |
+| `BF-EXT-028` | Start condition: sketch plane | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Default; `test_plate_end_to_end` |
 | `BF-EXT-029` | Start condition: surface / vertex / offset | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | `FeatureExtrusion3` `T0`, `StartOffset`; not named in the spec |
-| `BF-EXT-030` | Depth as an equation or global variable | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Tier 2; see `CM-EQN` |
+| `BF-EXT-030` | Depth as an equation or global variable | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Tier 2; see [`CM-EQN`](common-and-document.md#cm-eqn--parameters-and-equations) |
 
 ### Options
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BF-EXT-031` | Thin feature | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Shared `thin` object, tracked once in `SHP-THN` |
+| `BF-EXT-031` | Thin feature | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 `thin`; options defined in [`SHP-THN`](shape-modification.md#shp-thn--thin-feature-shared-object), this row tracks only this feature's support |
 | `BF-EXT-032` | Merge result | In Scope | P1 | Partially Implemented | ⬜ | ⬜ | ◐ | ⬜ | ⬜ | ⬜ | Adapter fixes `Merge=true`; no IR field |
 | `BF-EXT-033` | Feature scope | In Scope | P2 | Partially Implemented | ⬜ | ⬜ | ◐ | ⬜ | ⬜ | ⬜ | Adapter fixes `UseFeatScope=true`; no IR field |
 | `BF-EXT-034` | Auto-select bodies | In Scope | P2 | Partially Implemented | ⬜ | ⬜ | ◐ | ⬜ | ⬜ | ⬜ | Adapter fixes `UseAutoSelect=true`; no IR field |
@@ -71,9 +71,9 @@ Adds material by extruding a sketch profile. IR type `extrude`; the MVP allows e
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BF-EXT-035` | `start_face` role | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Used by cap-face sketches (ADR-070) |
-| `BF-EXT-036` | `end_face` role | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Used by cap-face sketches (ADR-070) |
-| `BF-EXT-037` | `side_faces` role | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Refused today (K23/K28) |
+| `BF-EXT-035` | `start_face` role | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Used by cap-face sketches (ADR-070); `test_blind_hole_in_start_face` |
+| `BF-EXT-036` | `end_face` role | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Used by cap-face sketches (ADR-070); `test_blind_hole_in_top_face` |
+| `BF-EXT-037` | `side_faces` role | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Refused today (K23/K28); K30 |
 | `BF-EXT-038` | `body` role | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 
 **Metadata**
@@ -86,7 +86,7 @@ Adds material by extruding a sketch profile. IR type `extrude`; the MVP allows e
 | Compiler | [lower.py](../../../packages/cad-compiler/src/cad_compiler/lowering/lower.py), [semantic.py](../../../packages/cad-compiler/src/cad_compiler/validator/semantic.py), [registry.py](../../../packages/cad-compiler/src/cad_compiler/registry.py) |
 | Adapter | [FeatureAdapter.cs](../../../apps/execution-server/ExecutionServer.Adapters/Parts/FeatureAdapter.cs) |
 | Tests | [test_live_part_chain.py](../../../tests/live/test_live_part_chain.py), [test_live_part_ops.py](../../../tests/live/test_live_part_ops.py), [test_rules.py](../../../packages/cad-compiler/tests/test_rules.py), [test_part.py](../../../packages/cad-verification/tests/test_part.py), [test_part_ir_benchmark.py](../../../tests/cad-benchmark/test_part_ir_benchmark.py) |
-| Depends on | `SK-PLN`, `SK-ENT`, `SK-VAL` |
+| Depends on | [`SK-PLN`](../sketch/sketch-management.md#sk-pln--sketch-placement-and-coordinate-frames), [`SK-ENT`](../sketch/sketch-entities.md#sk-ent--sketch-entities), [`SK-VAL`](../sketch/sketch-validation.md#sk-val--sketch-validation) |
 
 **Notes and limitations**
 
@@ -94,15 +94,15 @@ Adds material by extruding a sketch profile. IR type `extrude`; the MVP allows e
 
 ## BF-REV — Revolved Boss/Base
 
-Adds material by revolving a profile about an axis. IR type `revolve`; none is implemented.
+Adds material by revolving a profile about an axis. IR type `revolve`.
 
 ### Profile and axis
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `BF-REV-001` | Profile from a sketch | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Tier 1 |
-| `BF-REV-002` | Axis: sketch centerline | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Mark 4 or 16 ◐ |
-| `BF-REV-003` | Axis: sketch line | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `BF-REV-002` | Axis: sketch centerline | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 `axis`; mark 4 or 16 ◐ |
+| `BF-REV-003` | Axis: sketch line | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `BF-REV-004` | Axis: model edge | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Needs edge references (K28); not named in the spec |
 | `BF-REV-005` | Axis: reference axis | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.3.4 `axis` role |
 | `BF-REV-006` | Selected contours | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
@@ -122,7 +122,7 @@ Adds material by revolving a profile about an axis. IR type `revolve`; none is i
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BF-REV-013` | Thin feature | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Shared `thin` object, tracked once in `SHP-THN` |
+| `BF-REV-013` | Thin feature | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 `thin`; options defined in [`SHP-THN`](shape-modification.md#shp-thn--thin-feature-shared-object), this row tracks only this feature's support |
 | `BF-REV-014` | Merge result | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | `merge_result` |
 | `BF-REV-015` | `faces_by_axial_order` role | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `BF-REV-016` | `body` role | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
@@ -134,11 +134,11 @@ Adds material by revolving a profile about an axis. IR type `revolve`; none is i
 | Spec | [22.5](../../../docs/specifications/ir-specification.md#225-feature-model) §22.5.2; roadmap A5 |
 | SOLIDWORKS API | `IFeatureManager.FeatureRevolve2` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); angles in radians |
 | Tests | — |
-| Depends on | `SK-ENT`, `RG-AXS` |
+| Depends on | [`SK-ENT`](../sketch/sketch-entities.md#sk-ent--sketch-entities), [`RG-AXS`](reference-geometry.md#rg-axs--reference-axis) |
 
 **Notes and limitations**
 
-- `cut_revolve` is a separate IR type (`CF-REV`) although SOLIDWORKS uses one call with `IsCut`.
+- `cut_revolve` is a separate IR type ([`CF-REV`](cut-features.md#cf-rev--revolved-cut)) although SOLIDWORKS uses one call with `IsCut`.
 
 ## BF-SWP — Swept Boss/Base
 
@@ -168,7 +168,7 @@ Adds material by sweeping a profile along a path. IR type `sweep`; Tier 2.
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BF-SWP-011` | Thin feature | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Shared `thin` object, tracked once in `SHP-THN` |
+| `BF-SWP-011` | Thin feature | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 `thin`; options defined in [`SHP-THN`](shape-modification.md#shp-thn--thin-feature-shared-object), this row tracks only this feature's support |
 | `BF-SWP-012` | Merge result | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `BF-SWP-013` | `start_face`, `end_face` roles | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `BF-SWP-014` | `body` role | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
@@ -180,7 +180,7 @@ Adds material by sweeping a profile along a path. IR type `sweep`; Tier 2.
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.3; [22.5](../../../docs/specifications/ir-specification.md#225-feature-model) §22.5.2 |
 | SOLIDWORKS API | `CreateDefinition(swFmSweep)`, `ISweepFeatureData`, `CreateFeature` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); `InsertProtrusionSwept4` is obsolete (ADR-068) |
 | Tests | — |
-| Depends on | `SK-ENT`, `SK-PLN` |
+| Depends on | [`SK-ENT`](../sketch/sketch-entities.md#sk-ent--sketch-entities), [`SK-PLN`](../sketch/sketch-management.md#sk-pln--sketch-placement-and-coordinate-frames) |
 
 **Notes and limitations**
 
@@ -205,7 +205,7 @@ Adds material by blending two or more profiles. IR type `loft`; Tier 2.
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `BF-LFT-007` | Thin feature | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Shared `thin` object, tracked once in `SHP-THN` |
+| `BF-LFT-007` | Thin feature | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 `thin`; options defined in [`SHP-THN`](shape-modification.md#shp-thn--thin-feature-shared-object), this row tracks only this feature's support |
 | `BF-LFT-008` | Merge result | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `BF-LFT-009` | `start_face`, `end_face`, `body` roles | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 
@@ -216,7 +216,7 @@ Adds material by blending two or more profiles. IR type `loft`; Tier 2.
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.3; [22.5](../../../docs/specifications/ir-specification.md#225-feature-model) §22.5.2 |
 | SOLIDWORKS API | `IFeatureManager.InsertProtrusionBlend2` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); selection order sets direction |
 | Tests | — |
-| Depends on | `SK-ENT`, `SK-PLN`, `RG-PLN` |
+| Depends on | [`SK-ENT`](../sketch/sketch-entities.md#sk-ent--sketch-entities), [`SK-PLN`](../sketch/sketch-management.md#sk-pln--sketch-placement-and-coordinate-frames), [`RG-PLN`](reference-geometry.md#rg-pln--reference-plane) |
 
 **Notes and limitations**
 
@@ -241,7 +241,7 @@ Adds material between boundary curves in one or two directions.
 |---|---|
 | Spec | Not named in the spec |
 | Tests | — |
-| Depends on | `SK-ENT` |
+| Depends on | [`SK-ENT`](../sketch/sketch-entities.md#sk-ent--sketch-entities) |
 
 **Notes and limitations**
 

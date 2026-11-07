@@ -36,11 +36,11 @@ Rounds selected edges. IR type `fillet`; Tier 1 constant radius, Tier 2 variable
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.2–5.3.3; [22.5](../../../docs/specifications/ir-specification.md#225-feature-model) |
 | SOLIDWORKS API | `CreateDefinition(swFmFillet)`, `ISimpleFilletFeatureData2.Initialize` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); `FeatureFillet3` is obsolete (ADR-068) |
 | Tests | — |
-| Depends on | `BF-EXT` (body), edge references (K23, K28) |
+| Depends on | [`BF-EXT`](base-features.md#bf-ext--extruded-bossbase) (body), edge references (K23, K28) |
 
 **Notes and limitations**
 
-- Needs `<node>.end_edges`-style edge roles, which are not accepted by the schema today (K23).
+- Needs `<node>.end_edges`-style edge roles, which the schema does not accept (K23).
 
 ## SHP-CHM — Chamfer
 
@@ -62,7 +62,7 @@ Bevels selected edges. IR type `chamfer`.
 | `SHP-CHM-005` | Edge set (`edges`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `SHP-CHM-006` | Propagate along tangent edges | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `SHP-CHM-007` | Flip direction | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
-| `SHP-CHM-008` | `faces` role | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `SHP-CHM-008` | `faces` role | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
 **Metadata**
 
@@ -82,7 +82,7 @@ Hollows a body, leaving walls of a given thickness.
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `SHP-SHL-001` | Uniform thickness | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Tier 1 |
-| `SHP-SHL-002` | Faces to remove | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `SHP-SHL-002` | Faces to remove | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SHP-SHL-003` | Multi-thickness per face | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Tier 1 states uniform only |
 | `SHP-SHL-004` | Shell outward | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SHP-SHL-005` | Closed shell (no face removed) | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
@@ -112,9 +112,9 @@ Tapers faces relative to a pull direction. IR type `draft`.
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `SHP-DFT-004` | Draft angle | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
-| `SHP-DFT-005` | Faces to draft | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
-| `SHP-DFT-006` | Pull direction / reverse | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `SHP-DFT-004` | Draft angle | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
+| `SHP-DFT-005` | Faces to draft | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
+| `SHP-DFT-006` | Pull direction / reverse | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SHP-DFT-007` | Face propagation (none, tangent, all, inner, outer) | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
 **Metadata**
@@ -124,7 +124,7 @@ Tapers faces relative to a pull direction. IR type `draft`.
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.2–5.3.3 |
 | SOLIDWORKS API | `IModelDoc2.InsertMfDraft2` (5 params), `IFeatureManager.InsertMultiFaceDraft` (6 params) ◐ |
 | Tests | — |
-| Depends on | Face references (K28), `RG-PLN` |
+| Depends on | Face references (K28), [`RG-PLN`](reference-geometry.md#rg-pln--reference-plane) |
 
 ## SHP-RIB — Rib
 
@@ -135,12 +135,12 @@ Adds a thin supporting web from a sketch. Tier 1.
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `SHP-RIB-001` | Rib (create) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.2 Tier 1 |
-| `SHP-RIB-002` | Sketch profile | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
-| `SHP-RIB-003` | Thickness | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `SHP-RIB-002` | Sketch profile | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
+| `SHP-RIB-003` | Thickness | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SHP-RIB-004` | Thickness side: first, second or both | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | `InsertRib` has `Is2Sided` and `ReverseThicknessDir` only; not named in the spec |
 | `SHP-RIB-005` | Extrusion direction: parallel or normal to sketch | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SHP-RIB-006` | Flip material side | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
-| `SHP-RIB-007` | Draft angle | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `SHP-RIB-007` | Draft angle | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SHP-RIB-008` | Rib type: linear / natural | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SHP-RIB-009` | Selected contours | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
@@ -151,7 +151,7 @@ Adds a thin supporting web from a sketch. Tier 1.
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.2; [5.7](../../../docs/architecture/feature-schema-guide.md) §5.7.3 |
 | SOLIDWORKS API | `IFeatureManager.InsertRib` (10 params) ◐ |
 | Tests | — |
-| Depends on | `SK-PLN`, `SK-ENT` |
+| Depends on | [`SK-PLN`](../sketch/sketch-management.md#sk-pln--sketch-placement-and-coordinate-frames), [`SK-ENT`](../sketch/sketch-entities.md#sk-ent--sketch-entities) |
 
 ## SHP-THN — Thin Feature (shared object)
 
@@ -177,7 +177,7 @@ The `thin` object used by extrude, cut, revolve, sweep and loft. Defined once he
 | Spec | [5.7](../../../docs/architecture/feature-schema-guide.md) §5.7.3 |
 | SOLIDWORKS API | `IFeatureManager.FeatureExtrusionThin2` (30 params), `FeatureCutThin2` (29 params) ◐; `FeatureExtrusion3` has no thin arguments |
 | Tests | — |
-| Depends on | Hosts: `BF-EXT`, `CF-EXT`, `BF-REV`, `CF-REV`, `BF-SWP`, `BF-LFT` |
+| Depends on | Hosts: [`BF-EXT`](base-features.md#bf-ext--extruded-bossbase), [`CF-EXT`](cut-features.md#cf-ext--extruded-cut), [`BF-REV`](base-features.md#bf-rev--revolved-bossbase), [`CF-REV`](cut-features.md#cf-rev--revolved-cut), [`BF-SWP`](base-features.md#bf-swp--swept-bossbase), [`CF-SWP`](cut-features.md#cf-swp--swept-cut), [`BF-LFT`](base-features.md#bf-lft--lofted-bossbase), [`CF-LFT`](cut-features.md#cf-lft--lofted-cut) |
 
 ## SHP-DOM — Dome
 
@@ -188,8 +188,8 @@ Adds a domed face. Tier 2.
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `SHP-DOM-001` | Dome (create) | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.3 Tier 2 |
-| `SHP-DOM-002` | Distance and direction | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
-| `SHP-DOM-003` | Reverse direction | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `SHP-DOM-002` | Distance and direction | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
+| `SHP-DOM-003` | Reverse direction | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SHP-DOM-004` | Elliptical dome | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SHP-DOM-005` | Constraint point / direction | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SHP-DOM-006` | Continuous dome | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
@@ -286,7 +286,7 @@ Indents a target body with a tool body. Tier 3.
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.4 |
 | SOLIDWORKS API | `IFeatureManager.InsertIndent` (6 params) ◐ |
 | Tests | — |
-| Depends on | `MBD-ORD` |
+| Depends on | [`MBD-ORD`](multi-body-features.md#mbd-ord--body-order-and-multi-body-rules) |
 
 ## SHP-SCL — Scale
 

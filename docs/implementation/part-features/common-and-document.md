@@ -13,9 +13,9 @@ Creating and saving the part document that holds the graph.
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `CM-DOC-001` | Create part from template | In Scope | P0 | Verified | N/A | ✅ | ✅ | ✅ | ✅ | ✅ | `test_plate_end_to_end` |
-| `CM-DOC-002` | Save as `.SLDPRT` at the target path | In Scope | P0 | Verified | N/A | ✅ | ✅ | ✅ | ✅ | ✅ | Live tests |
+| `CM-DOC-002` | Save as `.SLDPRT` at the target path | In Scope | P0 | Verified | N/A | ✅ | ✅ | ✅ | ✅ | ✅ | `test_plate_end_to_end` |
 | `CM-DOC-003` | Refuse to overwrite an existing file | In Scope | P0 | Implemented | N/A | ✅ | ✅ | ✅ | ✅ | ⬜ | `test_part_create_refuses_existing_file` exists; no recorded run of `test_live_part_ops` |
-| `CM-DOC-004` | Template with reordered planes refused | In Scope | P0 | Implemented | N/A | ✅ | ✅ | ✅ | ✅ | ⬜ | `test_template_with_reordered_planes` asserts refusal but can skip, and `HANDOFF.md` records one unnamed skip |
+| `CM-DOC-004` | Template with reordered planes refused | In Scope | P0 | Implemented | N/A | ✅ | ✅ | ✅ | ✅ | ⬜ | `test_template_with_reordered_planes` asserts refusal but can skip, and the live run record has one unnamed skip |
 | `CM-DOC-005` | Template with an extra feature refused | In Scope | P0 | Verified | N/A | ✅ | ✅ | ✅ | ✅ | ✅ | `test_template_with_extra_feature` (job fails feature verification) |
 | `CM-DOC-006` | Non-ASCII target path | In Scope | P1 | Verified | N/A | ✅ | ✅ | ✅ | ✅ | ✅ | `test_non_ascii_path` |
 | `CM-DOC-007` | Set material | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Tier 1 `SetMaterial` |
@@ -46,16 +46,16 @@ Fields and rules common to every feature node.
 | `CM-NOD-002` | Explicit `dependencies` | In Scope | P0 | Tested | ✅ | ✅ | N/A | N/A | ✅ | N/A | `test_the_sketch_must_list_the_extrude_as_a_dependency` |
 | `CM-NOD-003` | Implied `profile` dependency | In Scope | P0 | Implemented | ✅ | ✅ | N/A | N/A | ✅ | N/A | `resolve_dependencies`; no dedicated test |
 | `CM-NOD-004` | Deterministic topological build order | In Scope | P0 | Tested | ✅ | ✅ | N/A | N/A | ✅ | N/A | `test_build_order_plate` |
-| `CM-NOD-005` | Cycle rejection | In Scope | P0 | Tested | ✅ | ✅ | N/A | N/A | ✅ | N/A | `IR_CYCLE` |
+| `CM-NOD-005` | Cycle rejection | In Scope | P0 | Tested | ✅ | ✅ | N/A | N/A | ✅ | N/A | `IR_CYCLE`; `test_cycle_rejected` |
 | `CM-NOD-006` | Unsupported feature type refused, never approximated | In Scope | P0 | Tested | ✅ | ✅ | N/A | N/A | ✅ | N/A | `refuse_*` cases in `test_part_ir_benchmark.py`; `test_only_the_cap_faces_are_supported` |
 
 ### Optional fields
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `CM-NOD-007` | `display_name` | In Scope | P2 | Partially Implemented | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | In IR and schema; not applied in SOLIDWORKS |
-| `CM-NOD-008` | `realizes` (functional feature names) | In Scope | P2 | Partially Implemented | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | In IR and schema; not consumed |
-| `CM-NOD-009` | `suppressed` | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Absent from schema |
+| `CM-NOD-007` | `display_name` | In Scope | P2 | Partially Implemented | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | In IR and schema; not applied in SOLIDWORKS; K31 |
+| `CM-NOD-008` | `realizes` (functional feature names) | In Scope | P2 | Partially Implemented | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | In IR and schema; not consumed; K31 |
+| `CM-NOD-009` | `suppressed` | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.1, K31; absent from schema |
 | `CM-NOD-010` | `x_solidworks` extension object | In Scope | P3 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.1 |
 | `CM-NOD-011` | `parameters` for non-shared parameters | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.1 |
 | `CM-NOD-012` | `ParamRef` with more than two segments | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | K23 |
@@ -114,7 +114,7 @@ Named parameters, equations and global variables. The one authoritative entry; s
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `CM-EQN-001` | Global variables | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Tier 2 |
 | `CM-EQN-002` | Equations driving dimensions or fields | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Tier 2 |
-| `CM-EQN-003` | Linked dimensions | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `CM-EQN-003` | Linked dimensions | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `CM-EQN-004` | Dimensional unit check of expressions | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.8.3 Proposed |
 
 **Metadata**

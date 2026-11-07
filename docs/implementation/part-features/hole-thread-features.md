@@ -31,7 +31,7 @@ Creates standard holes from a hole specification. IR type `hole_wizard`; ISO onl
 | `HT-WIZ-012` | Fit: close / normal / loose | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `hole_spec` |
 | `HT-WIZ-013` | Depth end condition | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | `depth` as `end_condition` |
 | `HT-WIZ-014` | Thread depth | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `hole_spec` |
-| `HT-WIZ-015` | Cosmetic thread option | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | See `HT-CTH` |
+| `HT-WIZ-015` | Cosmetic thread option | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | See [`HT-CTH`](#ht-cth--cosmetic-thread) |
 | `HT-WIZ-016` | Near / far side countersink | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `HT-WIZ-017` | Counterbore / countersink dimensions override | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
@@ -51,11 +51,11 @@ Creates standard holes from a hole specification. IR type `hole_wizard`; ISO onl
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.2; [5.7](../../../docs/architecture/feature-schema-guide.md) §5.7.3 `hole_spec` |
 | SOLIDWORKS API | `IFeatureManager.HoleWizard5` ? ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); signature only, never run |
 | Tests | — |
-| Depends on | `SK-ENT` (point), `SK-PLN`, `BF-EXT` (body) |
+| Depends on | [`SK-ENT`](../sketch/sketch-entities.md#sk-ent--sketch-entities) (point), [`SK-PLN`](../sketch/sketch-management.md#sk-pln--sketch-placement-and-coordinate-frames), [`BF-EXT`](base-features.md#bf-ext--extruded-bossbase) (body) |
 
 **Notes and limitations**
 
-- A simple round hole is **already available** as a circle cut: see `CF-EXT`. That route is not a Hole Wizard feature and does not satisfy these rows.
+- A simple round hole is **already available** as a circle cut: see [`CF-EXT`](cut-features.md#cf-ext--extruded-cut). That route is not a Hole Wizard feature and does not satisfy these rows.
 
 ## HT-THR — Thread
 
@@ -77,7 +77,7 @@ Modelled helical thread feature. Read-only in Tier 1; Create undecided.
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.2 |
 | SOLIDWORKS API | No member found by name search |
 | Tests | — |
-| Depends on | `RG-CRV` helix, `BF-SWP` |
+| Depends on | [`RG-CRV`](reference-geometry.md#rg-crv--reference-curves) helix, [`BF-SWP`](base-features.md#bf-swp--swept-bossbase) |
 
 ## HT-CTH — Cosmetic Thread
 
@@ -88,9 +88,9 @@ Annotation thread on a cylindrical face. Tier 1 Create and Read.
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `HT-CTH-001` | Cosmetic thread (create) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.2 Tier 1 |
-| `HT-CTH-002` | Standard and size | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
-| `HT-CTH-003` | Blind or through depth | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
-| `HT-CTH-004` | Major diameter | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `HT-CTH-002` | Standard and size | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
+| `HT-CTH-003` | Blind or through depth | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
+| `HT-CTH-004` | Major diameter | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `HT-CTH-005` | Thread class / tolerance | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `HT-CTH-006` | Linked to a Hole Wizard hole | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `cosmetic_thread` |
 

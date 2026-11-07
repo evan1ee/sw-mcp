@@ -2,6 +2,13 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.39
+
+Documentation only: no contract, schema or behaviour changes. Implementation status now has one home.
+
+- **Implementation status (22.12):** capability status moves to the [implementation checklists](../implementation/README.md). 22.12 keeps only what they do not track (`in` units, `origin: read`, generated models), which also removes its outdated statement that `cad_references` is empty.
+- **Register:** adds K30 (extrude and cut roles beyond the cap faces) and K31 (node fields with no effect).
+
 ## What changed in 1.38
 
 Closes open decision K29 by measuring and verifying cap-face sketch frames (`<extrude_id>.start_face` and `<extrude_id>.end_face`) across all three standard datum planes (`plane:front`, `plane:top`, `plane:right`) in SOLIDWORKS 2025, hardens 3D part COM interop cleanup and verification contract type checks, and establishes the 13-prompt evaluation baseline.

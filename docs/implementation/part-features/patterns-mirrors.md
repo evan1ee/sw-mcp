@@ -16,14 +16,14 @@ Repeats seed features along one or two directions. IR type `linear_pattern`.
 | `PAT-LIN-002` | Direction (`direction`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
 | `PAT-LIN-003` | Spacing | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
 | `PAT-LIN-004` | Instance count | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
-| `PAT-LIN-005` | Reverse direction | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `PAT-LIN-005` | Reverse direction | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
 ### Direction 2
 
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `PAT-LIN-006` | Direction 2 (`direction_2`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
-| `PAT-LIN-007` | Direction 2 spacing and count | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `PAT-LIN-007` | Direction 2 spacing and count | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
 ### Options
 
@@ -54,12 +54,12 @@ Repeats seed features about an axis. IR type `circular_pattern`.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `PAT-CIR-001` | Seed features | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
 | `PAT-CIR-002` | Axis (`direction`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
-| `PAT-CIR-003` | Angular spacing | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Degrees |
+| `PAT-CIR-003` | Angular spacing | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern`; degrees |
 | `PAT-CIR-004` | Instance count | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
 | `PAT-CIR-005` | Equal spacing (`equal_spacing`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `PAT-CIR-006` | Skip instances | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3 `pattern` |
-| `PAT-CIR-007` | Geometry pattern | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
-| `PAT-CIR-008` | Reverse direction | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `PAT-CIR-007` | Geometry pattern | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
+| `PAT-CIR-008` | Reverse direction | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
 **Metadata**
 
@@ -68,7 +68,7 @@ Repeats seed features about an axis. IR type `circular_pattern`.
 | Spec | [5.7](../../../docs/architecture/feature-schema-guide.md) §5.7.3 `pattern`; [22.5](../../../docs/specifications/ir-specification.md#225-feature-model) |
 | SOLIDWORKS API | `CreateDefinition(swFmCirPattern)`, `ICircularPatternFeatureData` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); `FeatureCircularPattern5` is obsolete |
 | Tests | — |
-| Depends on | Seed features, axis (`RG-AXS`) |
+| Depends on | Seed features, axis ([`RG-AXS`](reference-geometry.md#rg-axs--reference-axis)) |
 
 ## PAT-CRV — Curve Driven Pattern
 
@@ -79,7 +79,7 @@ Repeats seeds along a curve. Tier 2.
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `PAT-CRV-001` | Curve and seeds | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.3 Tier 2 |
-| `PAT-CRV-002` | Instance count or spacing | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `PAT-CRV-002` | Instance count or spacing | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `PAT-CRV-003` | Alignment (tangent / offset) | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
 **Metadata**
@@ -109,7 +109,7 @@ Repeats seeds at sketch points. Tier 2.
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.3 |
 | SOLIDWORKS API | `IFeatureManager.FeatureSketchDrivenPattern` (2 params) ◐ |
 | Tests | — |
-| Depends on | `SK-ENT` points |
+| Depends on | [`SK-ENT`](../sketch/sketch-entities.md#sk-ent--sketch-entities) points |
 
 ## PAT-TBL — Table Driven Pattern
 
@@ -128,7 +128,7 @@ Repeats seeds at table coordinates. Read-only in Tier 1.
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.2 |
 | SOLIDWORKS API | `IFeatureManager.InsertTableDrivenPattern2` (5 params) ◐ |
 | Tests | — |
-| Depends on | Coordinate system `RG-CSY` |
+| Depends on | Coordinate system [`RG-CSY`](reference-geometry.md#rg-csy--reference-coordinate-system) |
 
 ## PAT-FIL — Fill Pattern
 
@@ -159,10 +159,10 @@ Mirrors features or bodies about a plane. IR type `mirror`. The one authoritativ
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `PAT-MIR-001` | Mirror features (`seeds`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
 | `PAT-MIR-002` | Mirror plane (`plane`): standard plane | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
-| `PAT-MIR-003` | Mirror plane: reference plane or planar face | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Needs `RG-PLN`, K28 |
+| `PAT-MIR-003` | Mirror plane: reference plane or planar face | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Needs [`RG-PLN`](reference-geometry.md#rg-pln--reference-plane), K28 |
 | `PAT-MIR-004` | Merge result | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.5.2 |
-| `PAT-MIR-005` | Geometry pattern | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
-| `PAT-MIR-006` | Mirror Body | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Bodies mark 256 ◐ |
+| `PAT-MIR-005` | Geometry pattern | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
+| `PAT-MIR-006` | Mirror Body | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.7.3; bodies mark 256 ◐ |
 
 **Metadata**
 
@@ -171,4 +171,4 @@ Mirrors features or bodies about a plane. IR type `mirror`. The one authoritativ
 | Spec | [5.7](../../../docs/architecture/feature-schema-guide.md) §5.7.3; [22.5](../../../docs/specifications/ir-specification.md#225-feature-model) |
 | SOLIDWORKS API | `IFeatureManager.InsertMirrorFeature2` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); features mark 1, bodies 256, plane 2 |
 | Tests | — |
-| Depends on | `RG-PLN`, seed features |
+| Depends on | [`RG-PLN`](reference-geometry.md#rg-pln--reference-plane), seed features |

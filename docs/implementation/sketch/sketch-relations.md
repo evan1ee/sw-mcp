@@ -42,9 +42,9 @@ Geometric constraints. A closed list is proposed in 22.4.2; none are in the sche
 | Spec | [22.4](../../../docs/specifications/ir-specification.md#224-sketch-model) §22.4.2, §22.4.4 |
 | SOLIDWORKS API | `ISketch.RelationManager`, `ISketchRelationManager.AddRelation` with `swConstraintType_e` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); open question K27 |
 | Tests | — |
-| Depends on | `SK-ENT` |
+| Depends on | [`SK-ENT`](sketch-entities.md#sk-ent--sketch-entities) |
 
 **Notes and limitations**
 
 - IR coordinates must already satisfy every relation (seed consistency, 22.4.4); whether the solver leaves them unmoved is unmeasured (K27).
-- A sketch built today is natively under-defined (no relations).
+- A sketch built without relations is natively under-defined.

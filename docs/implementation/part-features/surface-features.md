@@ -86,7 +86,7 @@ Turns a surface into a solid. Tier 3. The one authoritative thicken entry.
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.4 |
 | SOLIDWORKS API | `IFeatureManager.FeatureBossThicken` (7 params) ◐ |
 | Tests | — |
-| Depends on | `SRF-KNT` |
+| Depends on | [`SRF-KNT`](#srf-knt--knit-surface) |
 
 ## SRF-CRE — Surface Creation
 
@@ -115,4 +115,4 @@ Surface counterparts of boss features. Not named in the spec.
 | Spec | Not named in the spec |
 | SOLIDWORKS API | `IFeatureManager.InsertUntrimSurface2` (5 params) ◐ for untrim; others not found by name search |
 | Tests | — |
-| Depends on | `SK-ENT` |
+| Depends on | [`SK-ENT`](../sketch/sketch-entities.md#sk-ent--sketch-entities) |

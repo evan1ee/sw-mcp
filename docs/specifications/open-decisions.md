@@ -15,7 +15,7 @@ Close an item by writing its document and linking it here; delete the item when 
 
 ## Summary
 
-Twenty-one open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, K19, K20, K21, K23, K24, K25, K26, K27 and K28. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
+Twenty-three open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, K19, K20, K21, K23, K24, K25, K26, K27, K28, K30 and K31. Every decision found in the v1.11 review is recorded below. New gaps found during implementation are added here in the same form: why it matters, the recommendation, the document type and the increment it blocks.
 
 ### K3: Reading title-block fields back from the owner's template (needs the owner's sheet format)
 
@@ -169,6 +169,20 @@ Twenty-one open items: K3, J11, K8, K9, K10, K11, K12, K13, K14, K15, K16, K18, 
 - **Recommendation.** At the start of A6, measure references on a part's faces and edges across save and reopen, a depth change, a change that splits a face, and deleting the owner. Record which `swPersistReferencedObject_e` status each gives, and whether a signature check catches a wrong answer. Decide then whether a written entity name on a job-owned part is worth allowing.
 - **Document:** Spec (7.5, 8.9.12), ADR-067.
 - **Blocks:** `later` (A6).
+
+### K30: Extrude and cut roles beyond the cap faces
+
+- **Why it matters.** 22.5.2 lists `side_faces` and `body` for `extrude`, and `side_faces` for `cut_extrude`, on rows marked MVP. Only `start_face` and `end_face` exist, and the validator refuses the rest. A reader cannot tell whether the MVP is short of its spec or the table is ahead of it.
+- **Recommendation.** Mark these roles as phased in 22.5.2 and tie them to K23, K26 and K28, which they depend on.
+- **Document:** Spec (22.5.2, 5.7.5).
+- **Blocks:** `later`.
+
+### K31: Node fields with no effect
+
+- **Why it matters.** 5.7.1 defines `suppressed`, `realizes` and `display_name` on every node. The schema lacks `suppressed`, and nothing consumes `realizes` or `display_name`, so an author can set a field that changes nothing.
+- **Recommendation.** Decide per field whether to add it, consume it or drop it from 5.7.1, and refuse what stays unsupported.
+- **Document:** Spec (5.7.1).
+- **Blocks:** `later`.
 
 ---
 

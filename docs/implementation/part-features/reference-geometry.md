@@ -33,7 +33,7 @@ Datum plane. IR node `plane`.
 
 **Notes and limitations**
 
-- Standard planes are not created features; they are tracked once, in `SK-PLN`.
+- Standard planes are not created features; they are tracked once, in [`SK-PLN`](../sketch/sketch-management.md#sk-pln--sketch-placement-and-coordinate-frames).
 
 ## RG-AXS — Reference Axis
 
@@ -92,7 +92,7 @@ Datum coordinate system. IR node `coordinate_system`.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `RG-CSY-001` | Origin point | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.3.4 `origin` |
 | `RG-CSY-002` | X and Y axis direction references | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 22.3.4 `x_axis`, `y_axis` |
-| `RG-CSY-003` | Flip axes | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `RG-CSY-003` | Flip axes | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
 **Metadata**
 
@@ -112,13 +112,13 @@ Curve features used as paths, drivers and parting lines.
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `RG-CRV-001` | Helix (create) | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.3; spring benchmark |
-| `RG-CRV-002` | Helix: height and revolution | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
-| `RG-CRV-003` | Helix: pitch and revolution | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `RG-CRV-002` | Helix: height and revolution | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
+| `RG-CRV-003` | Helix: pitch and revolution | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `RG-CRV-004` | Helix: spiral and variable pitch | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
-| `RG-CRV-005` | Helix: taper, start angle, direction | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
-| `RG-CRV-006` | Equation-driven curve (gear involute) | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Gear benchmark |
+| `RG-CRV-005` | Helix: taper, start angle, direction | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
+| `RG-CRV-006` | Equation-driven curve (gear involute) | In Scope | P2 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.3 Tier 2 `EquationCurve`; gear benchmark |
 | `RG-CRV-007` | Split line (parting line) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Tier 1; molded housing |
-| `RG-CRV-008` | Split line: projection, silhouette, intersection types | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `RG-CRV-008` | Split line: projection, silhouette, intersection types | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `RG-CRV-009` | Composite curve | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `RG-CRV-010` | Projected curve | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `RG-CRV-011` | Curve through XYZ or reference points | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
@@ -130,4 +130,4 @@ Curve features used as paths, drivers and parting lines.
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.2–5.3.3 |
 | SOLIDWORKS API | `IModelDoc2.InsertHelix` (10 params), `InsertSplitLineProject` (2), `InsertSplitLineSil` (0), `InsertCompositeCurve` (0); `IFeatureManager.InsertVariablePitchHelix` (4), `InsertSplitLineIntersect` (1); `ISketchManager.CreateEquationSpline2` (11) ◐ |
 | Tests | — |
-| Depends on | `SK-ENT` |
+| Depends on | [`SK-ENT`](../sketch/sketch-entities.md#sk-ent--sketch-entities) |

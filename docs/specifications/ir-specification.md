@@ -1,6 +1,6 @@
 # 22. CAD IR Specification
 
-> Specification v1.38, section 22. Index and section map: [README.md](README.md).
+> Specification v1.39, section 22. Index and section map: [README.md](README.md).
 
 **Status: Proposed, awaiting the owner.** This section gathers the IR into one reference and specifies what the topic sections leave open. It changes no schema and no code. Companion sections: [§23 Compiler Architecture](compiler-architecture-specification.md) and [§8.9 SOLIDWORKS Adapter Interface](solidworks-adapter.md). Contract ownership across all three is in [23.13](compiler-architecture-specification.md#2313-cross-specification-contracts).
 
@@ -571,18 +571,13 @@ A proposal in this section is done when these hold, offline, through `uv run pyt
 
 ## 22.12 Implementation status
 
-Read from the code on 2026-11-05. "Spec" is what the topic sections already require.
+Capability status (schema types, dependencies, `ParamRef`, roles, references) is tracked per option in the [implementation checklists](../implementation/README.md), not here. This table holds only what they do not track. Read from the code on 2026-11-05. "Spec" is what the topic sections already require.
 
 | Item | Spec | Today |
 | --- | --- | --- |
-| Part schema | About 60 Tier 1 types | 3 types; `line`, `circle`; `blind`, `through_all_both` |
 | `in` units | 3.4.3, 6.7.2 | Schema `units` is `const: mm`, so unconverted inch input cannot arrive |
 | `origin: read` | 5.8 | Schema `const: built` |
 | Model | Generated (ADR-035) | Hand-written dataclasses for the part graph, with tests against the schema (ADR-061 records the precedent) |
-| Implied dependencies | References generally (5.7.1) | `profile` only. Sufficient for 3 types |
-| `ParamRef` nesting | 5.7.2 | Schema allows two segments only: K23 |
-| Roles | 5.7.5 | Not in the feature schemas |
-| Geometry references | Section 7 | `cad_references` is empty (ADR-049 work, roadmap A6) |
 
 ## 22.13 Unresolved
 

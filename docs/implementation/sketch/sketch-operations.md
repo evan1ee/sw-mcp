@@ -13,17 +13,17 @@ Operations that derive sketch geometry. Spec §5.3.1 keeps interactive editing s
 | ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `SK-OPS-001` | Offset entities | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.2 |
-| `SK-OPS-002` | Offset: distance | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
-| `SK-OPS-003` | Offset: reverse direction | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
-| `SK-OPS-004` | Offset: select chain | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `SK-OPS-002` | Offset: distance | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
+| `SK-OPS-003` | Offset: reverse direction | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
+| `SK-OPS-004` | Offset: select chain | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SK-OPS-005` | Offset: cap ends | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SK-OPS-006` | Offset: bidirectional | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SK-OPS-007` | Offset: convert result to construction geometry | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SK-OPS-008` | Convert entities | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.2 |
-| `SK-OPS-009` | Convert: edges and faces | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `SK-OPS-009` | Convert: edges and faces | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SK-OPS-010` | Convert: select loop | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SK-OPS-011` | Mirror entities | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.2 `MirrorSketch` |
-| `SK-OPS-012` | Mirror: about centerline or edge | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | SOLIDWORKS option; not named in the spec |
+| `SK-OPS-012` | Mirror: about centerline or edge | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SK-OPS-013` | Mirror: keep original | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SK-OPS-014` | Sketch fillet (radius) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.2 |
 | `SK-OPS-015` | Sketch chamfer: distance–distance | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.2 |
@@ -35,8 +35,8 @@ Operations that derive sketch geometry. Spec §5.3.1 keeps interactive editing s
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `SK-OPS-017` | Linear sketch pattern | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Read-only in Tier 1; Create undecided |
 | `SK-OPS-018` | Circular sketch pattern | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Read-only in Tier 1; Create undecided |
-| `SK-OPS-019` | Intersection curves | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | No spec statement |
-| `SK-OPS-020` | Projected curves | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | No spec statement |
+| `SK-OPS-019` | Intersection curves | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
+| `SK-OPS-020` | Projected curves | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 
 ### Interactive editing steps
 
@@ -58,7 +58,7 @@ Operations that derive sketch geometry. Spec §5.3.1 keeps interactive editing s
 |---|---|
 | Spec | [5.3](../../../docs/architecture/part-feature-graph-ir.md#53-feature-taxonomy-and-coverage) §5.3.1–5.3.2 |
 | Tests | — |
-| Depends on | `SK-ENT` |
+| Depends on | [`SK-ENT`](sketch-entities.md#sk-ent--sketch-entities) |
 
 **Notes and limitations**
 

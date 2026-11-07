@@ -36,9 +36,9 @@ Driving dimensional constraints. None are in the schema yet.
 | Spec | [22.4](../../../docs/specifications/ir-specification.md#224-sketch-model) §22.4.3 |
 | SOLIDWORKS API | `IModelDocExtension.AddDimension`, `IModelDoc2.AddDimension2`, `IDimension.SetSystemValue3` ◐ ([8.9.11](../../../docs/specifications/solidworks-adapter.md#8911-api-capability-mapping)); multi-step with text placement (K27) |
 | Tests | — |
-| Depends on | `SK-ENT` |
+| Depends on | [`SK-ENT`](sketch-entities.md#sk-ent--sketch-entities) |
 
 **Notes and limitations**
 
-- A circle's diameter is a stored entity parameter, not a driving dimension (tracked in `SK-ENT`).
-- Equations and linked dimensions are Tier 2 and tracked once, in `CM-EQN`.
+- A circle's diameter is a stored entity parameter, not a driving dimension (tracked in [`SK-ENT`](sketch-entities.md#sk-ent--sketch-entities)).
+- Equations and linked dimensions are Tier 2 and tracked once, in [`CM-EQN`](../part-features/common-and-document.md#cm-eqn--parameters-and-equations).

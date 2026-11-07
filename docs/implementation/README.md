@@ -2,19 +2,19 @@
 
 The authoritative, project-wide tracker for **Sketch** and **Part Feature** capabilities: what the product is meant to support, broken into individually trackable configuration options, and how far each one has actually been built and verified. It tracks implementation only. What to build is decided by the [specification](../specifications/README.md) and the [ADRs](../adr/README.md); this tracker never overrides them. See [AGENTS.md §1](../../AGENTS.md).
 
-Audit basis: spec v1.38 and the code on `main` at the time of writing.
+Audit basis: spec v1.38 and the code at commit `f10cac8`.
 
 ## How the documents divide the work (single source of truth)
 
 | Fact | Owned by | Everyone else |
 | --- | --- | --- |
 | Conventions: status, scope, priority, layers, evidence marks, ID scheme | This file, [Conventions](#conventions) | Link here; never restate |
-| Whether a capability exists, its scope, priority, status and layer progress | One **row** in one checklist file | Link to the row's ID |
+| Whether an item exists, its scope, priority, status and layer progress | One **row** in one checklist file | Link to the row's ID |
 | Feature-level metadata (SOLIDWORKS API, code and test references, dependencies, limitations) | The **feature section** that owns the row | Link to the feature ID |
 | Counts and percentages | Nobody: **derived** by [`scripts/check_implementation_checklists.py`](../../scripts/check_implementation_checklists.py) into the [summary](#derived-summary) | Never hand-edit |
 | What the product should do and why | The [specification](../specifications/README.md) and [ADRs](../adr/README.md) | Cite the section; do not copy |
 
-A capability is defined **once**. An option with the same name on two features (for example *Mid Plane* on extrude and on revolve) is two capabilities, because each feature supports it independently; its definition is not restated, only its status per feature. Anything shared is owned by one section and linked from the others: the `thin` object is owned by `SHP-THN`, mirror by `PAT-MIR`, thicken by `SRF-THK`, equations and parameters by `CM-EQN`, post-build checks by `CM-VER`.
+Each item is defined **once**. An option with the same name on two features (for example *Mid Plane* on extrude and on revolve) is two items, because each feature supports it independently; its definition is not restated, only its status per feature. Anything shared is owned by one section and linked from the others: the [`SHP-THN`](part-features/shape-modification.md#shp-thn--thin-feature-shared-object) section defines the options of the `thin` object while each host row tracks only that feature's support, mirror is owned by [`PAT-MIR`](part-features/patterns-mirrors.md#pat-mir--mirror-feature-and-mirror-body), equations and parameters by [`CM-EQN`](part-features/common-and-document.md#cm-eqn--parameters-and-equations), post-build checks by [`CM-VER`](part-features/common-and-document.md#cm-ver--result-verification). Status belongs here alone: other documents link to this tracker rather than stating what is supported.
 
 ## Documents
 
@@ -22,12 +22,12 @@ The [derived summary](#derived-summary) links every checklist file. Each capabil
 
 | ID prefix | Owning file |
 | --- | --- |
-| `SK-PLN`, `SK-LIF` | [sketch-management](sketch/sketch-management.md) |
-| `SK-ENT` | [sketch-entities](sketch/sketch-entities.md) |
-| `SK-REL` | [sketch-relations](sketch/sketch-relations.md) |
-| `SK-DIM` | [sketch-dimensions](sketch/sketch-dimensions.md) |
-| `SK-OPS` | [sketch-operations](sketch/sketch-operations.md) |
-| `SK-VAL` | [sketch-validation](sketch/sketch-validation.md) |
+| [`SK-PLN`](sketch/sketch-management.md#sk-pln--sketch-placement-and-coordinate-frames), [`SK-LIF`](sketch/sketch-management.md#sk-lif--sketch-lifecycle-and-state) | [sketch-management](sketch/sketch-management.md) |
+| [`SK-ENT`](sketch/sketch-entities.md#sk-ent--sketch-entities) | [sketch-entities](sketch/sketch-entities.md) |
+| [`SK-REL`](sketch/sketch-relations.md#sk-rel--sketch-relations) | [sketch-relations](sketch/sketch-relations.md) |
+| [`SK-DIM`](sketch/sketch-dimensions.md#sk-dim--sketch-dimensions) | [sketch-dimensions](sketch/sketch-dimensions.md) |
+| [`SK-OPS`](sketch/sketch-operations.md#sk-ops--sketch-operations) | [sketch-operations](sketch/sketch-operations.md) |
+| [`SK-VAL`](sketch/sketch-validation.md#sk-val--sketch-validation) | [sketch-validation](sketch/sketch-validation.md) |
 | `BF-` | [base-features](part-features/base-features.md) |
 | `CF-` | [cut-features](part-features/cut-features.md) |
 | `SHP-` | [shape-modification](part-features/shape-modification.md) |
@@ -47,11 +47,11 @@ Add a capability to the file whose prefix fits. Do not create a new file unless 
 Do not edit this block. Refresh it with `uv run python scripts/check_implementation_checklists.py --write`.
 
 <!-- BEGIN DERIVED SUMMARY (scripts/check_implementation_checklists.py --write) -->
-| Category | Capabilities | Items | Verified | Tested | Implemented | Partially Implemented | Specified | Not Started | Deferred | Under Evaluation | Not Applicable |
+| Category | Capabilities | Items | Not Started | Specified | Partially Implemented | Implemented | Tested | Verified | Deferred | Under Evaluation | Not Applicable |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Sketch | 7 | 136 | 15 | 9 | 5 | 0 | 62 | 0 | 1 | 41 | 3 |
-| Part Features | 64 | 451 | 30 | 14 | 4 | 9 | 167 | 0 | 32 | 182 | 13 |
-| **Total** | **71** | **587** | **45** | **23** | **9** | **9** | **229** | **0** | **33** | **223** | **16** |
+| Sketch | 7 | 136 | 0 | 62 | 0 | 5 | 9 | 15 | 1 | 41 | 3 |
+| Part Features | 64 | 451 | 0 | 167 | 9 | 4 | 14 | 30 | 32 | 182 | 13 |
+| **Total** | **71** | **587** | **0** | **229** | **9** | **9** | **23** | **45** | **33** | **223** | **16** |
 
 | Scope | In Scope | Out of Scope | Under Evaluation |
 |---|---:|---:|---:|
@@ -86,11 +86,11 @@ Do not edit this block. Refresh it with `uv run python scripts/check_implementat
 
 ## Conventions
 
-This is the only place these are defined.
+This is the only place these are defined. The script reads the status, scope, priority, layer and ID prefix tables from this file and holds no copy, so a change here takes effect there. It keeps one rule per status, and fails if a status has no rule or a rule has no status.
 
 ### Row format
 
-Each row is `| ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |`. IDs look like `BF-EXT-007`: the feature ID (`BF-EXT`) plus a three-digit sequence number. **IDs are permanent.** Never renumber or reuse one; mark a dropped row Not Applicable instead of deleting it. Add new rows at the end of their feature section. Notes are never empty: a Specified row names its spec tier, section or field (the feature metadata links the section), and Verified and Tested rows name their evidence.
+Each row is `| ID | Item | Scope | Pri | Status | IR | Compiler | Adapter | Execution | Validation | Integration Test | Notes |`. IDs look like `BF-EXT-007`: the feature ID ([`BF-EXT`](part-features/base-features.md#bf-ext--extruded-bossbase)) plus a three-digit sequence number. **IDs are permanent.** Never renumber or reuse one; mark a dropped row Out of Scope and Not Applicable with a note saying why, instead of deleting it. Add new rows at the end of their feature section. The script catches a deleted row but not a renumbered one, so reviewers must check for that. Notes are never empty: a Specified row names its spec tier, section or field, and Verified and Tested rows name the `test_*` that proves them. The script enforces this and checks that the test exists.
 
 ### Status
 
@@ -103,7 +103,7 @@ The row's Status is authoritative for its progress. The script checks it against
 | Partially Implemented | Some code exists, behaviour incomplete or fixed | At least one layer done or partial |
 | Implemented | Code exists across the required layers, but no test covers it or no run is recorded | At least one layer done |
 | Tested | Unit or contract tests pass; not run in SOLIDWORKS | Some layers done; Integration Test not done |
-| Verified | Run end to end in SOLIDWORKS by a repeatable test | Every applicable layer done, Integration Test done |
+| Verified | Run end to end in SOLIDWORKS by a repeatable test, in a run listed in the [live run record](#live-run-record) | Every applicable layer done, Integration Test done |
 | Deferred | Intentionally postponed by the spec (Tier 3 / later phase) | No layer done |
 | Under Evaluation | Scope or feasibility undecided | No layer done |
 | Not Applicable | Out of scope | N/A in every layer |
@@ -115,7 +115,7 @@ An IR field, a compiler function or an API call alone never earns more than Part
 | Scope | Meaning |
 | --- | --- |
 | In Scope | Named in a spec tier or an ADR as something the product will build |
-| Out of Scope | Excluded by name in the spec (5.3.5, 5.3.1, ADR-015) |
+| Out of Scope | Excluded by name in the spec (5.3.5, 5.3.1, ADR-015), or a row withdrawn from this tracker |
 | Under Evaluation | Not decided by the spec; needs an owner decision |
 
 Out of Scope pairs with Not Applicable, and Under Evaluation scope with Under Evaluation status.
@@ -150,30 +150,23 @@ Taken from [spec 8.9.11](../specifications/solidworks-adapter.md#8911-api-capabi
 
 ### Scope of the tracker
 
-The checklists track the **Create path** (IR to execution). Reading hand-modelled parts (spec 5.8) is a separate path and is not tracked here. Rows for features that are Read-only in Tier 1 are Under Evaluation for Create.
+The checklists track the **Create path** (IR to execution). Reading hand-modelled parts (spec 5.8) is a separate path and is not tracked here. Rows for features that are Read-only in Tier 1 are Under Evaluation for Create. Spec 5.3.2 lists arcs, rectangles, slots, polygons and points as Tier 1 Create while the IR has only lines and circles: that is planned phasing, shown by the Specified rows in [`SK-ENT`](sketch/sketch-entities.md#sk-ent--sketch-entities).
 
 ## Maintaining the checklists
 
-1. Change a row only with evidence: name the test or file in the Notes cell or the feature's metadata.
+1. Change a row only with evidence: name the test in the Notes cell. Feature metadata lists the test files.
 2. Do not copy spec text. Cite the section.
-3. After any change run `uv run python scripts/check_implementation_checklists.py --write`, then without `--write` to confirm it exits 0. It audits duplicate IDs, malformed rows, status versus layer consistency, feature-ID references, relative links and anchors, and keeps the summary current.
-4. Log spec gaps in [open-decisions.md](../specifications/open-decisions.md) before working around them; record disagreements below rather than silently choosing a side.
-5. Update the live-verification evidence from [`HANDOFF.md`](../../HANDOFF.md) only through rows, never by copying counts.
+3. After any change run `uv run python scripts/check_implementation_checklists.py --write`, then without `--write` to confirm it exits 0. It audits duplicate IDs, malformed rows, status versus layer consistency, note citations and test names, ID prefixes and owning files, shared-section hosts, feature references (which must be links), relative links and anchors, and keeps the summary current.
+4. Log spec gaps and disagreements in [open-decisions.md](../specifications/open-decisions.md), not here.
+5. Add every live run to the [live run record](#live-run-record).
 
-## Discrepancies found during the audit
+## Live run record
 
-Reported, not fixed, because this tracker changes no specification or source.
+The durable evidence behind Verified rows, newest first. [`HANDOFF.md`](../../HANDOFF.md) is rewritten each session and only repeats the latest result. Add a row for each live run, with its commit and every skip named.
 
-| # | Disagreement | Where |
-| --- | --- | --- |
-| 1 | HANDOFF.md says `cut_extrude` takes `blind` / `through_all`; the schema and code use `through_all_both` (adapter maps it to `T1=T2=swEndCondThroughAll`). A one-direction `through_all` is not representable | [HANDOFF.md](../../HANDOFF.md), [schema](../../schemas/part-feature-graph/v0.json), `CF-EXT` |
-| 2 | HANDOFF.md lists rectangles as supported sketch geometry; the schema has only `line` and `circle`, and a rectangle is an authoring recipe of four lines | [HANDOFF.md](../../HANDOFF.md), `SK-ENT` |
-| 3 | Spec 22.5.2 lists `side_faces` and `body` roles for extrude; only `start_face` and `end_face` exist | `BF-EXT`, `CF-EXT` |
-| 4 | Spec 22.12 says `cad_references` is empty; `semantic/__init__.py` now holds cap-face signature resolution | [22.12](../specifications/ir-specification.md#2212-implementation-status) |
-| 5 | docs/README.md lists ADRs "ADR-001 … ADR-069"; ADR-070 exists | [docs/README.md](../README.md) |
-| 6 | 5.7.1 defines `suppressed`, `realizes` and `display_name`; the schema lacks `suppressed` and nothing consumes `realizes` or `display_name` | `CM-NOD` |
-
-Spec 5.3.2 also lists arcs, rectangles, slots, polygons and points as Tier 1 Create while the IR has only lines and circles. That is planned phasing, which 22.12 already tracks, not a disagreement.
+| Date | Commit | Command | Result | Skips |
+| --- | --- | --- | --- | --- |
+| 2026-11-07 | Not recorded; first reported in `7c550c2` | `uv run pytest tests/live/test_live_part_chain.py -m live` | 19 passed, 1 skipped | Not named |
 
 ## Evidence still needed
 
@@ -183,15 +176,15 @@ Rows held below Verified until a live run is recorded. Run on a throwaway SOLIDW
 uv run pytest tests/live/test_live_part_chain.py tests/live/test_live_part_ops.py -m live -rs
 ```
 
-- `test_template_with_reordered_planes` can skip, and HANDOFF.md records one unnamed skip: `CM-DOC`, `SK-PLN`.
-- HANDOFF.md records no run of `test_live_part_ops`: `CM-DOC`, `CF-EXT`.
+- `test_template_with_reordered_planes` can skip, and the recorded run has one unnamed skip: [`CM-DOC`](part-features/common-and-document.md#cm-doc--part-document), [`SK-PLN`](sketch/sketch-management.md#sk-pln--sketch-placement-and-coordinate-frames).
+- No run of `test_live_part_ops` is recorded: [`CM-DOC`](part-features/common-and-document.md#cm-doc--part-document), [`CF-EXT`](part-features/cut-features.md#cf-ext--extruded-cut).
 
 ## Decisions needed from the owner
 
-- **Spec-silent options.** Rows marked "SOLIDWORKS option; not named in the spec" list what the UI or API offers beyond what the spec names. Decide which to adopt as each feature's phase comes up.
+- **Spec-silent options.** Under Evaluation rows whose note says "Not named in the spec" or "Not in <section>" list what the UI or API offers beyond what the spec names. Decide which to adopt as each feature's phase comes up.
 - **Create scope for Read-only features** (sketch patterns, sketch text, table and fill patterns, thread, forming tools and the other Read-only sheet metal rows, move/copy body, mounting boss, snap hook, lip/groove, vent).
-- **Features absent from the spec:** boundary boss/cut (`BF-BND`, `CF-BND`), surface-based cuts (`CF-SRF`), intersect (`MBD-INT`), surface creation (`SRF-CRE`), swept flange and lofted bend, three-point rectangles and circles, arc and centerpoint slots, Advanced Hole.
-- **Sketch editing steps** (`SK-OPS`): 5.3.1 names only trim, extend and split. Confirm that move, copy, rotate, scale, stretch and dynamic mirror are excluded on the same principle.
-- **Through All on bosses** (`BF-EXT`): 5.7.3 offers it; SOLIDWORKS support is unverified and needs a spike.
-- **Weldments** are Out of Scope under 5.3.5 (`ADV-WLD`), and **non-ISO hole standards** under ADR-015. Reverse either only through the spec.
+- **Features absent from the spec:** boundary boss/cut ([`BF-BND`](part-features/base-features.md#bf-bnd--boundary-bossbase), [`CF-BND`](part-features/cut-features.md#cf-bnd--boundary-cut)), surface-based cuts ([`CF-SRF`](part-features/cut-features.md#cf-srf--surface-based-cuts)), intersect ([`MBD-INT`](part-features/multi-body-features.md#mbd-int--intersect)), surface creation ([`SRF-CRE`](part-features/surface-features.md#srf-cre--surface-creation)), swept flange and lofted bend, three-point rectangles and circles, arc and centerpoint slots, Advanced Hole.
+- **Sketch editing steps** ([`SK-OPS`](sketch/sketch-operations.md#sk-ops--sketch-operations)): 5.3.1 names only trim, extend and split. Confirm that move, copy, rotate, scale, stretch and dynamic mirror are excluded on the same principle.
+- **Through All on bosses** ([`BF-EXT`](part-features/base-features.md#bf-ext--extruded-bossbase)): 5.7.3 offers it; SOLIDWORKS support is unverified and needs a spike.
+- **Weldments** are Out of Scope under 5.3.5 ([`ADV-WLD`](part-features/advanced-and-excluded.md#adv-wld--weldments)), and **non-ISO hole standards** under ADR-015. Reverse either only through the spec.
 - **Spec questions that block whole groups of rows:** K23 reference grammar, K26 selection, K27 sketch solver, K28 persistent references (see [open-decisions.md](../specifications/open-decisions.md)).

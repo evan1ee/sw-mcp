@@ -22,7 +22,7 @@ Checks on sketch input and on the built sketch. Pure validator rules need no SOL
 | `SK-VAL-008` | Circle diameter below 0.01 mm rejected | In Scope | P0 | Tested | ✅ | ✅ | N/A | N/A | ✅ | N/A | `test_degenerate_rejected` |
 | `SK-VAL-009` | Lines and circles mixed in one extrude profile rejected | In Scope | P1 | Implemented | ✅ | ✅ | N/A | N/A | ✅ | N/A | `_check_extrude_profile`; `test_cut_mixing_lines_and_circles_rejected` covers cuts only |
 | `SK-VAL-010` | Nested contours (outer loop with inner holes) in one profile | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec; 22.4.6 requires one loop |
-| `SK-VAL-011` | Duplicate or coincident entities | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | No spec statement |
+| `SK-VAL-011` | Duplicate or coincident entities | Under Evaluation | P2 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
 | `SK-VAL-012` | Plane is a standard plane or an extrude cap face | In Scope | P0 | Tested | ✅ | ✅ | N/A | N/A | ✅ | N/A | `test_unsupported_plane`, `test_only_the_cap_faces_are_supported` |
 
 ### Constraint state and consistency
@@ -53,9 +53,9 @@ Checks on sketch input and on the built sketch. Pure validator rules need no SOL
 | Compiler | [semantic.py](../../../packages/cad-compiler/src/cad_compiler/validator/semantic.py) |
 | IR / schema | [sketch.json](../../../schemas/part-feature-graph/features/sketch.json) |
 | Tests | [test_rules.py](../../../packages/cad-compiler/tests/test_rules.py), [test_part.py](../../../packages/cad-verification/tests/test_part.py) |
-| Depends on | `SK-ENT` |
+| Depends on | [`SK-ENT`](sketch-entities.md#sk-ent--sketch-entities) |
 
 **Notes and limitations**
 
 - Tested means passing unit tests. These rules refuse input before SOLIDWORKS runs, so no live test applies.
-- Rules about cuts are in `CF-EXT`; selected contours are in `BF-EXT` and `CF-EXT`; post-build checks are in `CM-VER`.
+- Rules about cuts are in [`CF-EXT`](../part-features/cut-features.md#cf-ext--extruded-cut); selected contours are in [`BF-EXT`](../part-features/base-features.md#bf-ext--extruded-bossbase) and [`CF-EXT`](../part-features/cut-features.md#cf-ext--extruded-cut); post-build checks are in [`CM-VER`](../part-features/common-and-document.md#cm-ver--result-verification).

@@ -1,6 +1,6 @@
 # 12.4 Tool Contracts and 12.5 File Access
 
-> Specification v1.38, sections 12.4–12.5. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.39, sections 12.4–12.5. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 12.4 Tool Contracts
 
