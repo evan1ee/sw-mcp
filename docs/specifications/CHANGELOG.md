@@ -2,6 +2,16 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.41
+
+Adds sketch rectangle primitives (`SK-ENT-005` Corner Rectangle, `SK-ENT-006` Center Rectangle) to the Part Feature Graph IR and execution pipeline, and promotes sketch arc primitives (`SK-ENT-013`, `SK-ENT-016`) to Verified status on live SOLIDWORKS 2025. Decided in [ADR-072](../adr/ADR-072-sketch-rectangle-primitives.md).
+
+- **IR and Schemas (5.7.4, 22.4.1):** adds `CornerRectangle` (`type: "corner_rectangle"`, `corner1`, `corner2`) and `CenterRectangle` (`type: "center_rectangle"`, `center`, `width`, `height`) to `schemas/part-feature-graph/v0.json` and updates `schemas/ipc/ops/sketch.create.json`.
+- **Compiler and lowering:** validates rectangle bounds (minimum 0.01 mm, distinct diagonal corners); validates rectangle profiles as closed loops; lowers rectangles to canonical CCW connected lines for `sketch.create`.
+- **Verification:** computes exact 3D bounding box, volume, and planar faces for rectangular profiles in `cad-verification`.
+- **Authoring:** exposes `corner_rectangle` and `center_rectangle` in authoring guide and eval benchmark.
+- **Checklists & Live:** adds live SOLIDWORKS integration tests promoting `SK-ENT-013` and `SK-ENT-016` (Arcs) plus `SK-ENT-005` and `SK-ENT-006` (Rectangles) to Verified.
+
 ## What changed in 1.40
 
 Adds sketch arc primitives (`SK-ENT-013`, `SK-ENT-016`) defined by center, start, end, and direction (`ccw`/`cw`), supporting closed loops mixing lines and arcs for extrusions and cuts. Decided in [ADR-071](../adr/ADR-071-sketch-arc-primitives.md).

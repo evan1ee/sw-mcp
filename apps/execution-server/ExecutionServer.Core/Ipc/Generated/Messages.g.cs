@@ -134,7 +134,11 @@ public enum SketchCreateEntityType
     [EnumMember(Value = "circle")]
     Circle,
     [EnumMember(Value = "arc")]
-    Arc
+    Arc,
+    [EnumMember(Value = "corner_rectangle")]
+    CornerRectangle,
+    [EnumMember(Value = "center_rectangle")]
+    CenterRectangle
 }
 
 [JsonConverter(typeof(StringEnumConverter))]
@@ -1117,6 +1121,18 @@ public sealed class SketchCreateEntity
 
     [JsonProperty("direction", NullValueHandling = NullValueHandling.Ignore)]
     public SketchCreateEntityDirection? Direction { get; set; }
+
+    [JsonProperty("corner1", NullValueHandling = NullValueHandling.Ignore)]
+    public List<double>? Corner1 { get; set; }
+
+    [JsonProperty("corner2", NullValueHandling = NullValueHandling.Ignore)]
+    public List<double>? Corner2 { get; set; }
+
+    [JsonProperty("width", NullValueHandling = NullValueHandling.Ignore)]
+    public double? Width { get; set; }
+
+    [JsonProperty("height", NullValueHandling = NullValueHandling.Ignore)]
+    public double? Height { get; set; }
 }
 
 public sealed class SketchCreateFace

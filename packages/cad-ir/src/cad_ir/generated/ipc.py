@@ -108,7 +108,7 @@ type FeatureCreateResultStatus = Literal['ok', 'warning', 'error', 'suppressed']
 
 type ModelItemsInsertParamsSource = Literal['entire_model', 'selected_feature']
 
-type SketchCreateEntityType = Literal['line', 'circle', 'arc']
+type SketchCreateEntityType = Literal['line', 'circle', 'arc', 'corner_rectangle', 'center_rectangle']
 
 type SketchCreateEntityDirection = Literal['ccw', 'cw']
 
@@ -2122,6 +2122,10 @@ class SketchCreateEntity:
     center: tuple[float, ...] | None = None
     diameter: float | None = None
     direction: SketchCreateEntityDirection | None = None
+    corner1: tuple[float, ...] | None = None
+    corner2: tuple[float, ...] | None = None
+    width: float | None = None
+    height: float | None = None
 
     @classmethod
     def from_json(cls, value: JsonValue) -> Self:
@@ -2137,6 +2141,10 @@ class SketchCreateEntity:
             center=_opt(obj, "center", where, _list_of(_num)),
             diameter=_opt(obj, "diameter", where, _num),
             direction=_opt(obj, "direction", where, _str),
+            corner1=_opt(obj, "corner1", where, _list_of(_num)),
+            corner2=_opt(obj, "corner2", where, _list_of(_num)),
+            width=_opt(obj, "width", where, _num),
+            height=_opt(obj, "height", where, _num),
         )
 
     def to_json(self) -> dict[str, JsonValue]:
@@ -2152,6 +2160,14 @@ class SketchCreateEntity:
             out["diameter"] = _dump(self.diameter)
         if self.direction is not None:
             out["direction"] = _dump(self.direction)
+        if self.corner1 is not None:
+            out["corner1"] = _dump(self.corner1)
+        if self.corner2 is not None:
+            out["corner2"] = _dump(self.corner2)
+        if self.width is not None:
+            out["width"] = _dump(self.width)
+        if self.height is not None:
+            out["height"] = _dump(self.height)
         return out
 
 

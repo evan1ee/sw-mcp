@@ -197,6 +197,67 @@
         }
       }
     },
+    "CornerRectangle": {
+      "type": "object",
+      "required": [
+        "type",
+        "corner1",
+        "corner2"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "corner_rectangle"
+        },
+        "corner1": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/v0.json#/$defs/Length"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "corner2": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/v0.json#/$defs/Length"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "CenterRectangle": {
+      "type": "object",
+      "required": [
+        "type",
+        "center",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "center_rectangle"
+        },
+        "center": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/v0.json#/$defs/Length"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "width": {
+          "$ref": "../common/v0.json#/$defs/Length",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "$ref": "../common/v0.json#/$defs/Length",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
     "SketchEntity": {
       "type": "object",
       "properties": {
@@ -204,7 +265,9 @@
           "enum": [
             "line",
             "circle",
-            "arc"
+            "arc",
+            "corner_rectangle",
+            "center_rectangle"
           ]
         }
       },
@@ -246,6 +309,30 @@
           },
           "then": {
             "$ref": "#/$defs/Arc"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "corner_rectangle"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/CornerRectangle"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "center_rectangle"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/CenterRectangle"
           }
         }
       ]
