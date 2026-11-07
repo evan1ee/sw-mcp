@@ -126,9 +126,8 @@ dotnet build apps/execution-server/ExecutionServer.sln
 
 - **At the start of a session:** read it after this file, and check anything you rely on against the repository.
 - **At the end of each session:** update it under these headings:
-  - **Current State:** what is complete and the project's current status.
-  - **Changes Made:** key implementations, decisions and files modified.
+  - **Current State:** brief snapshot of what is active, complete, or frozen, plus latest verification counts.
+  - **Changes Made:** **only the current session/PR's changes** (replace previous entries; never accumulate an incremental changelog — use `git log` and [`CHANGELOG.md`](docs/specifications/CHANGELOG.md) for history).
   - **Next Steps:** prioritized tasks and recommended actions.
-  - **Known Issues:** outstanding bugs, blockers and unresolved decisions.
-- **Keep it accurate:** rewrite existing content instead of appending, remove what is outdated, and report only state you verified, including what is unverified.
-- **Keep it concise:** link to the spec, ADRs and plans instead of repeating them. `HANDOFF.md` never overrides `docs/`; decisions still go in the spec or an ADR.
+  - **Known Issues:** active bugs, blockers, and unresolved decisions.
+- **Keep it accurate and minimal:** rewrite in place instead of appending, delete resolved/historical items, and link to specs, ADRs, and plans instead of repeating them. `HANDOFF.md` never overrides `docs/`.
