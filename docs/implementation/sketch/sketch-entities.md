@@ -34,10 +34,10 @@ Geometry primitives allowed in a sketch. Schema: [v0.json](../../../schemas/part
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | `SK-ENT-011` | Circle (center, diameter) | In Scope | P0 | Verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `test_plate_end_to_end`; its use as a profile is tracked in [`CF-EXT`](../part-features/cut-features.md#cf-ext--extruded-cut) and [`BF-EXT`](../part-features/base-features.md#bf-ext--extruded-bossbase) |
 | `SK-ENT-012` | Perimeter (three-point) circle | Under Evaluation | P3 | Under Evaluation | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | Not named in the spec |
-| `SK-ENT-013` | Center-point arc | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.2 Tier 1; `CreateArc` ◐ |
+| `SK-ENT-013` | Center-point arc | In Scope | P1 | Tested | ✅ | ✅ | ✅ | ⬜ | ✅ | ⬜ | 5.3.2 Tier 1; `test_expected_geometry_with_arcs`; `CreateArc` ◐ |
 | `SK-ENT-014` | Three-point arc | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.2 Tier 1 |
 | `SK-ENT-015` | Tangent arc | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | 5.3.2 Tier 1 |
-| `SK-ENT-016` | Arc direction (`ccw` / `cw`) | In Scope | P1 | Specified | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | `CreateArc` direction ±1 ◐ |
+| `SK-ENT-016` | Arc direction (`ccw` / `cw`) | In Scope | P1 | Tested | ✅ | ✅ | ✅ | ⬜ | ✅ | ⬜ | `test_expected_geometry_with_arcs`; `CreateArc` direction ±1 ◐ |
 
 ### Curves and other
 
