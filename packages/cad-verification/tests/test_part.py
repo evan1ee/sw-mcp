@@ -10,12 +10,14 @@ from cad_ir.part_feature_graph.model import (
     Circle,
     CircularPattern,
     CornerRectangle,
+    CutRevolve,
     EndCondition,
     Line,
     LinearPattern,
     LinearPatternDirection,
     Mirror,
     PartGraph,
+    Revolve,
     SketchNode,
     SolidNode,
     StraightSlot,
@@ -35,6 +37,9 @@ THREE_FAILURES_COUNT = 3
 EXPECTED_PATTERN_CYLINDERS = 4
 EXPECTED_PATTERN_FEATURES = 5
 EXPECTED_MIRROR_CYLINDERS = 2
+EXPECTED_REVOLVE_FEATURES = 2
+EXPECTED_GROOVE_CYLINDERS = 2
+EXPECTED_GROOVE_FEATURES = 4
 
 
 def make_plate_graph() -> PartGraph:
@@ -1254,3 +1259,106 @@ def test_mirror_expected_geometry() -> None:
     assert len(geom.features) == EXPECTED_PATTERN_FEATURES
     assert geom.features[-1].feature_type == "mirror"
     assert geom.features[-1].native_type == "MirrorPattern"
+
+
+def test_expected_geometry_revolve_shaft() -> None:
+    graph = PartGraph(
+        id="turned_shaft",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_shaft": SketchNode(
+                plane="plane:front",
+                entities={
+                    "cl": Line(start=(0.0, 0.0), end=(0.0, 50.0), construction=True),
+                    "l1": Line(start=(0.0, 0.0), end=(15.0, 0.0)),
+                    "l2": Line(start=(15.0, 0.0), end=(15.0, 50.0)),
+                    "l3": Line(start=(15.0, 50.0), end=(0.0, 50.0)),
+                    "l4": Line(start=(0.0, 50.0), end=(0.0, 0.0)),
+                },
+            ),
+            "shaft_body": Revolve(
+                profile="sketch_shaft",
+                axis="sketch_shaft.cl",
+                angle=360.0,
+                dependencies=("sketch_shaft",),
+            ),
+        },
+    )
+    geom = expected_geometry(graph)
+    assert geom.solid_body_count == 1
+    # Cylinder: radius 15, height 50 -> vol = pi * 15^2 * 50 = 11250 * pi ~ 35342.917
+    expected_vol = 11250.0 * math.pi
+    assert geom.volume_mm3 == pytest.approx(expected_vol, rel=1e-4)
+
+    # 1 cylinder: radius 15
+    assert len(geom.cylinders) == 1
+    cyl = geom.cylinders[0]
+    assert cyl.radius == pytest.approx(15.0, abs=1e-3)
+    assert cyl.direction.y == pytest.approx(1.0, abs=1e-3)
+    assert cyl.point.y == pytest.approx(25.0, abs=1e-3)
+
+    assert len(geom.features) == EXPECTED_REVOLVE_FEATURES
+    assert geom.features[1].feature_type == "revolve"
+    assert geom.features[1].native_type == "Revolution"
+
+
+def test_expected_geometry_revolve_groove() -> None:
+    graph = PartGraph(
+        id="grooved_shaft",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_shaft": SketchNode(
+                plane="plane:front",
+                entities={
+                    "cl": Line(start=(0.0, 0.0), end=(0.0, 50.0), construction=True),
+                    "l1": Line(start=(0.0, 0.0), end=(15.0, 0.0)),
+                    "l2": Line(start=(15.0, 0.0), end=(15.0, 50.0)),
+                    "l3": Line(start=(15.0, 50.0), end=(0.0, 50.0)),
+                    "l4": Line(start=(0.0, 50.0), end=(0.0, 0.0)),
+                },
+            ),
+            "shaft_body": Revolve(
+                profile="sketch_shaft",
+                axis="sketch_shaft.cl",
+                angle=360.0,
+                dependencies=("sketch_shaft",),
+            ),
+            "sketch_groove": SketchNode(
+                plane="plane:front",
+                entities={
+                    "cl": Line(start=(0.0, 0.0), end=(0.0, 50.0), construction=True),
+                    "g1": Line(start=(12.0, 20.0), end=(15.0, 20.0)),
+                    "g2": Line(start=(15.0, 20.0), end=(15.0, 25.0)),
+                    "g3": Line(start=(15.0, 25.0), end=(12.0, 25.0)),
+                    "g4": Line(start=(12.0, 25.0), end=(12.0, 20.0)),
+                },
+            ),
+            "cut_groove": CutRevolve(
+                profile="sketch_groove",
+                axis="sketch_groove.cl",
+                angle=360.0,
+                dependencies=("sketch_groove", "shaft_body"),
+            ),
+        },
+    )
+    geom = expected_geometry(graph)
+    assert geom.solid_body_count == 1
+    # Base: 11250 * pi
+    # Groove: pi * (15^2 - 12^2) * 5 = 405 * pi
+    # Net: 10845 * pi ~ 34070.572
+    expected_vol = 10845.0 * math.pi
+    assert geom.volume_mm3 == pytest.approx(expected_vol, rel=1e-4)
+
+    # 2 cylinders: outer (15.0) and inner groove floor (12.0)
+    assert len(geom.cylinders) == EXPECTED_GROOVE_CYLINDERS
+    radii = sorted([c.radius for c in geom.cylinders])
+    assert radii[0] == pytest.approx(12.0, abs=1e-3)
+    assert radii[1] == pytest.approx(15.0, abs=1e-3)
+
+    assert len(geom.features) == EXPECTED_GROOVE_FEATURES
+    assert geom.features[3].feature_type == "cut_revolve"
+    assert geom.features[3].native_type == "RevCut"
