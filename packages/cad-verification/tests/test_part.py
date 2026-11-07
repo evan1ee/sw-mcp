@@ -14,6 +14,7 @@ from cad_ir.part_feature_graph.model import (
     PartGraph,
     SketchNode,
     SolidNode,
+    StraightSlot,
 )
 from cad_ir.part_feature_graph.parse import parse_part_graph
 from cad_verification.part import (
@@ -978,3 +979,91 @@ def test_expected_geometry_with_rectangle_cut() -> None:
     assert geom.bbox_mm.max == pytest.approx((50.0, 30.0, 10.0))
     assert geom.center_of_mass_mm == pytest.approx((0.0, 0.0, 5.0))
     assert geom.surface_area_mm2 == pytest.approx(14800.0)
+
+
+EXPECTED_SLOT_CYLINDERS = 2
+
+
+def test_expected_geometry_with_straight_slot() -> None:
+    graph = PartGraph(
+        id="slot_plate",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sk1": SketchNode(
+                plane="plane:front",
+                entities={
+                    "slot": StraightSlot(
+                        start_point=(-20.0, 0.0),
+                        end_point=(20.0, 0.0),
+                        width=20.0,
+                    ),
+                },
+            ),
+            "ext1": SolidNode(
+                type="extrude",
+                profile="sk1",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sk1",),
+            ),
+        },
+    )
+    geom = expected_geometry(graph)
+    expected_vol = (800.0 + 100.0 * math.pi) * 10.0
+    expected_surf = 2400.0 + 400.0 * math.pi
+    assert geom.volume_mm3 == pytest.approx(expected_vol)
+    assert geom.bbox_mm.min == pytest.approx((-30.0, -10.0, 0.0))
+    assert geom.bbox_mm.max == pytest.approx((30.0, 10.0, 10.0))
+    assert geom.center_of_mass_mm == pytest.approx((0.0, 0.0, 5.0))
+    assert geom.surface_area_mm2 == pytest.approx(expected_surf)
+    assert len(geom.cylinders) == EXPECTED_SLOT_CYLINDERS
+
+
+def test_expected_geometry_with_straight_slot_cut() -> None:
+    graph = PartGraph(
+        id="plate_slot_cut",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sk1": SketchNode(
+                plane="plane:front",
+                entities={
+                    "base": CenterRectangle(center=(0.0, 0.0), width=100.0, height=60.0),
+                },
+            ),
+            "ext1": SolidNode(
+                type="extrude",
+                profile="sk1",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sk1",),
+            ),
+            "sk2": SketchNode(
+                plane="plane:front",
+                entities={
+                    "slot_cut": StraightSlot(
+                        start_point=(-20.0, 0.0), end_point=(20.0, 0.0), width=10.0
+                    ),
+                },
+            ),
+            "cut1": SolidNode(
+                type="cut_extrude",
+                profile="sk2",
+                end_condition=EndCondition(type="through_all"),
+                dependencies=("ext1", "sk2"),
+            ),
+        },
+    )
+    geom = expected_geometry(graph)
+    base_vol = 100.0 * 60.0 * 10.0
+    slot_area = 40.0 * 10.0 + math.pi * 25.0
+    slot_perim = 80.0 + math.pi * 10.0
+    cut_vol = slot_area * 10.0
+    assert geom.volume_mm3 == pytest.approx(base_vol - cut_vol)
+    assert geom.bbox_mm.min == pytest.approx((-50.0, -30.0, 0.0))
+    assert geom.bbox_mm.max == pytest.approx((50.0, 30.0, 10.0))
+    assert geom.center_of_mass_mm == pytest.approx((0.0, 0.0, 5.0))
+    expected_surf = (2.0 * 6000.0 + 320.0 * 10.0) + slot_perim * 10.0 - 2.0 * slot_area
+    assert geom.surface_area_mm2 == pytest.approx(expected_surf)
+    assert len(geom.cylinders) == EXPECTED_SLOT_CYLINDERS

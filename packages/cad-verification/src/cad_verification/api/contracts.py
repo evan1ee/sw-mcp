@@ -11,6 +11,7 @@ from cad_ir.part_feature_graph.model import (
     CornerRectangle,
     PartGraph,
     SketchNode,
+    StraightSlot,
 )
 
 type CheckStatus = Literal["passed", "failed", "warning", "not_applicable", "not_evaluated"]
@@ -101,7 +102,7 @@ def _sketch_entity_count(sketch: SketchNode) -> int:
     """Number of segments this sketch produces in CAD."""
     count = 0
     for entity in sketch.entities.values():
-        if isinstance(entity, (CornerRectangle, CenterRectangle)):
+        if isinstance(entity, (CornerRectangle, CenterRectangle, StraightSlot)):
             count += 4
         else:
             count += 1
