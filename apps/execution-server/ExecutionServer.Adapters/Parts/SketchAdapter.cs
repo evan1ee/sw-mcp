@@ -133,6 +133,52 @@ public sealed class SketchAdapter
                         Marshal.ReleaseComObject(arc);
                     }
                 }
+                else if (entity.Type == SketchCreateEntityType.CornerRectangle)
+                {
+                    if (entity.Corner1 == null || entity.Corner1.Count < 2 ||
+                        entity.Corner2 == null || entity.Corner2.Count < 2)
+                    {
+                        throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "CornerRectangle entity requires corner1 and corner2 points [x, y].");
+                    }
+
+                    double x1 = PartUnits.MmToMetres(entity.Corner1[0]);
+                    double y1 = PartUnits.MmToMetres(entity.Corner1[1]);
+                    double x2 = PartUnits.MmToMetres(entity.Corner2[0]);
+                    double y2 = PartUnits.MmToMetres(entity.Corner2[1]);
+
+                    double minX = Math.Min(x1, x2);
+                    double maxX = Math.Max(x1, x2);
+                    double minY = Math.Min(y1, y2);
+                    double maxY = Math.Max(y1, y2);
+
+                    CreateLineSegment(sm, minX, minY, maxX, minY);
+                    CreateLineSegment(sm, maxX, minY, maxX, maxY);
+                    CreateLineSegment(sm, maxX, maxY, minX, maxY);
+                    CreateLineSegment(sm, minX, maxY, minX, minY);
+                }
+                else if (entity.Type == SketchCreateEntityType.CenterRectangle)
+                {
+                    if (entity.Center == null || entity.Center.Count < 2 ||
+                        !entity.Width.HasValue || !entity.Height.HasValue)
+                    {
+                        throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, "CenterRectangle entity requires center [x, y], width, and height.");
+                    }
+
+                    double cx = PartUnits.MmToMetres(entity.Center[0]);
+                    double cy = PartUnits.MmToMetres(entity.Center[1]);
+                    double halfW = PartUnits.MmToMetres(entity.Width.Value / 2.0);
+                    double halfH = PartUnits.MmToMetres(entity.Height.Value / 2.0);
+
+                    double minX = cx - halfW;
+                    double maxX = cx + halfW;
+                    double minY = cy - halfH;
+                    double maxY = cy + halfH;
+
+                    CreateLineSegment(sm, minX, minY, maxX, minY);
+                    CreateLineSegment(sm, maxX, minY, maxX, maxY);
+                    CreateLineSegment(sm, maxX, maxY, minX, maxY);
+                    CreateLineSegment(sm, minX, maxY, minX, minY);
+                }
                 else
                 {
                     throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, $"Unsupported sketch entity type '{entity.Type}'.");
@@ -278,5 +324,14 @@ public sealed class SketchAdapter
         }
 
         return targetPlane;
+    }
+
+    private static void CreateLineSegment(ISketchManager sm, double x0, double y0, double x1, double y1)
+    {
+        var line = sm.CreateLine(x0, y0, 0, x1, y1, 0);
+        if (line != null && Marshal.IsComObject(line))
+        {
+            Marshal.ReleaseComObject(line);
+        }
     }
 }
