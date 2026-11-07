@@ -36,13 +36,18 @@ _RULES: Final[tuple[str, ...]] = (
     " straight slots have length and width at least 0.01, and depths are positive.",
     '`extrude` takes `{"type": "blind", "depth": D}`. `cut_extrude` takes the same, with D'
     ' smaller than the extrude depth, or `{"type": "through_all_both"}`.',
+    "A `linear_pattern` patterns seed `cut_extrude` features along `direction_1` (and optional"
+    " `direction_2`): `direction` is an origin plane (e.g. `plane:right`), `spacing` >= 0.01 mm,"
+    " `count` >= 2. Seeds must be in `dependencies` and all instances must remain strictly"
+    " inside the extrude profile.",
 )
 
 _UNSUPPORTED: Final[tuple[str, ...]] = (
     "fillets and chamfers",
     "splines, ellipses, text, and any outline that is not a closed loop of straight lines and"
     " arcs, a rectangle, a straight slot, or a single circle",
-    "patterns (linear, circular, mirror) as a feature; only write out shapes the user lists",
+    "circular patterns, mirror patterns (linear pattern is supported); only write out shapes"
+    " the user lists",
     "revolves, sweeps, lofts, shells, ribs, threads, sheet metal",
     "sketches on any face other than the extrude's start_face or end_face (side faces, faces"
     " of a cut), on an offset plane or on a datum",
@@ -220,6 +225,55 @@ def _build_examples() -> dict[str, Example]:
                         "dependencies": ["sketch_cut", "extrude_base"],
                         "profile": "sketch_cut",
                         "end_condition": {"type": "through_all_both"},
+                    },
+                },
+            ),
+        ),
+        "plate_pattern_holes": Example(
+            "Make a 100 x 60 x 10 mm plate with a 10 mm hole patterned linearly 4 times with"
+            " 20 mm spacing.",
+            _header(
+                "plate_pattern_holes_100x60x10",
+                {
+                    "sketch_base": {
+                        "type": "sketch",
+                        "plane": "plane:front",
+                        "entities": {
+                            "rect": {
+                                "type": "center_rectangle",
+                                "center": [0.0, 0.0],
+                                "width": 100.0,
+                                "height": 60.0,
+                            }
+                        },
+                    },
+                    "extrude_base": _extrude(10),
+                    "sketch_hole": {
+                        "type": "sketch",
+                        "plane": "plane:front",
+                        "entities": {
+                            "c1": {
+                                "type": "circle",
+                                "center": [-30.0, 0.0],
+                                "diameter": 10.0,
+                            }
+                        },
+                    },
+                    "cut_hole": {
+                        "type": "cut_extrude",
+                        "dependencies": ["sketch_hole", "extrude_base"],
+                        "profile": "sketch_hole",
+                        "end_condition": {"type": "through_all_both"},
+                    },
+                    "pattern_holes": {
+                        "type": "linear_pattern",
+                        "dependencies": ["cut_hole", "extrude_base"],
+                        "seeds": ["cut_hole"],
+                        "direction_1": {
+                            "direction": "plane:right",
+                            "spacing": 20.0,
+                            "count": 4,
+                        },
                     },
                 },
             ),
