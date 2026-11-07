@@ -15,6 +15,7 @@ from cad_ir.part_feature_graph.model import (
     CornerRectangle,
     Line,
     LinearPattern,
+    Mirror,
     PartGraph,
     SketchNode,
     SolidNode,
@@ -296,6 +297,30 @@ def _lower_circular_pattern(
     return op_body, op_id
 
 
+def _lower_mirror(
+    graph: PartGraph, node_id: str, node: Mirror, seq: int, deps: list[str]
+) -> tuple[dict[str, Any], str]:
+    params: dict[str, Any] = {
+        "node_id": node_id,
+        "type": "mirror",
+        "seeds": list(node.seeds),
+        "plane": node.plane,
+        "merge": node.merge,
+    }
+
+    op_id = f"op_{seq}"
+    op_body = {
+        "sequence": seq,
+        "document": WORKING,
+        "op": "feature.create",
+        "params": params,
+        "source": node_id,
+        "depends_on": deps,
+        "postconditions": ["feature_exists", "feature_status_ok", "rebuild_ok"],
+    }
+    return op_body, op_id
+
+
 def lower_graph(
     graph: PartGraph,
     analysis: GraphAnalysis,
@@ -344,8 +369,12 @@ def lower_graph(
             op_body, vp_id = _lower_linear_pattern(graph, node_id, node, seq, dep_op_ids)
             operations[op_id] = op_body
             verification_points.append(vp_id)
-        else:
+        elif isinstance(node, CircularPattern):
             op_body, vp_id = _lower_circular_pattern(graph, node_id, node, seq, dep_op_ids)
+            operations[op_id] = op_body
+            verification_points.append(vp_id)
+        else:
+            op_body, vp_id = _lower_mirror(graph, node_id, node, seq, dep_op_ids)
             operations[op_id] = op_body
             verification_points.append(vp_id)
 

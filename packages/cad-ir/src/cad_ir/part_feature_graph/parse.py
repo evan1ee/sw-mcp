@@ -16,6 +16,7 @@ from cad_ir.part_feature_graph.model import (
     Line,
     LinearPattern,
     LinearPatternDirection,
+    Mirror,
     PartGraph,
     PartNode,
     SketchEntity,
@@ -139,6 +140,26 @@ def _parse_circular_pattern(
     )
 
 
+def _parse_mirror(
+    node_data: dict[str, JsonValue],
+    dependencies: tuple[str, ...],
+    display_name: str | None,
+    realizes: tuple[str, ...],
+) -> Mirror:
+    raw_seeds = cast(list[JsonValue], node_data["seeds"])
+    seeds = tuple(str(s) for s in raw_seeds)
+    plane = str(node_data["plane"])
+    merge = bool(node_data.get("merge", True))
+    return Mirror(
+        seeds=seeds,
+        plane=plane,
+        merge=merge,
+        dependencies=dependencies,
+        display_name=display_name,
+        realizes=realizes,
+    )
+
+
 def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
     """Validate and parse a Part Feature Graph IR document.
 
@@ -190,6 +211,8 @@ def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
             nodes[node_id] = _parse_circular_pattern(
                 node_data, dependencies, display_name, realizes
             )
+        elif node_type == "mirror":
+            nodes[node_id] = _parse_mirror(node_data, dependencies, display_name, realizes)
 
     return PartGraph(
         id=str(doc_dict["id"]),

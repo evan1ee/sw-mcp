@@ -16,6 +16,7 @@ DEFAULT_COVERAGE: Final[Mapping[str, str]] = MappingProxyType(
         "cut_extrude": "create",
         "linear_pattern": "create",
         "circular_pattern": "create",
+        "mirror": "create",
     }
 )
 
