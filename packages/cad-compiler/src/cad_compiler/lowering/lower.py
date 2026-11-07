@@ -6,7 +6,15 @@ from typing import Any, Final
 
 from cad_ir.core.issues import ValidationIssue
 from cad_ir.generated import ErrorCode
-from cad_ir.part_feature_graph.model import Circle, Line, PartGraph, SketchNode, SolidNode
+from cad_ir.part_feature_graph.model import (
+    Arc,
+    Circle,
+    CornerRectangle,
+    Line,
+    PartGraph,
+    SketchNode,
+    SolidNode,
+)
 from cad_references.semantic import parse_face_plane, resolve_cap_face_signature
 
 from cad_compiler.graph.analyze import GraphAnalysis
@@ -102,7 +110,7 @@ def _lower_sketch(
                     "diameter": float(ent.diameter),
                 }
             )
-        else:
+        elif isinstance(ent, Arc):
             entities_list.append(
                 {
                     "type": "arc",
@@ -111,6 +119,33 @@ def _lower_sketch(
                     "end": [float(ent.end[0]), float(ent.end[1])],
                     "direction": ent.direction,
                 }
+            )
+        elif isinstance(ent, CornerRectangle):
+            xmin = min(float(ent.corner1[0]), float(ent.corner2[0]))
+            xmax = max(float(ent.corner1[0]), float(ent.corner2[0]))
+            ymin = min(float(ent.corner1[1]), float(ent.corner2[1]))
+            ymax = max(float(ent.corner1[1]), float(ent.corner2[1]))
+            entities_list.extend(
+                [
+                    {"type": "line", "start": [xmin, ymin], "end": [xmax, ymin]},
+                    {"type": "line", "start": [xmax, ymin], "end": [xmax, ymax]},
+                    {"type": "line", "start": [xmax, ymax], "end": [xmin, ymax]},
+                    {"type": "line", "start": [xmin, ymax], "end": [xmin, ymin]},
+                ]
+            )
+        else:
+            hw = float(ent.width) / 2.0
+            hh = float(ent.height) / 2.0
+            cx, cy = float(ent.center[0]), float(ent.center[1])
+            xmin, xmax = cx - hw, cx + hw
+            ymin, ymax = cy - hh, cy + hh
+            entities_list.extend(
+                [
+                    {"type": "line", "start": [xmin, ymin], "end": [xmax, ymin]},
+                    {"type": "line", "start": [xmax, ymin], "end": [xmax, ymax]},
+                    {"type": "line", "start": [xmax, ymax], "end": [xmin, ymax]},
+                    {"type": "line", "start": [xmin, ymax], "end": [xmin, ymin]},
+                ]
             )
     return {
         "sequence": seq,

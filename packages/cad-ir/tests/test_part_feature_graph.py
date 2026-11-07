@@ -3,7 +3,7 @@
 import json
 from dataclasses import fields
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import pytest
 from cad_ir.core.issues import IssueReport
@@ -11,7 +11,9 @@ from cad_ir.generated import ErrorCode
 from cad_ir.part_feature_graph import (
     PART_SCHEMA_ID,
     Arc,
+    CenterRectangle,
     Circle,
+    CornerRectangle,
     Line,
     PartGraph,
     PlaneAxes,
@@ -31,6 +33,8 @@ EXPECTED_HOLES_ENTITIES_COUNT = 4
 EXPECTED_EXTRUDE_DEPTH = 10.0
 EXPECTED_HOLE_DIAMETER = 8.0
 MAX_EXAMPLE_TOKENS = 400
+RECT_W: Final[float] = 100.0
+RECT_H: Final[float] = 60.0
 
 
 def _plate_doc() -> dict[str, Any]:
@@ -287,4 +291,93 @@ def test_arc_dataclass_and_parsing() -> None:
         "start": [20.0, -10.0],
         "end": [20.0, 10.0],
         "direction": "ccw",
+    }
+
+
+def test_corner_rectangle_parses() -> None:
+    doc: dict[str, Any] = {
+        "module": "part",
+        "id": "corner_rect_part",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "r1": {
+                        "type": "corner_rectangle",
+                        "corner1": [-50.0, -30.0],
+                        "corner2": [50.0, 30.0],
+                    }
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+        },
+    }
+    res = parse_part_graph(doc)
+    assert isinstance(res, PartGraph)
+    sketch = res.nodes["sketch_base"]
+    assert isinstance(sketch, SketchNode)
+    r1 = sketch.entities["r1"]
+    assert isinstance(r1, CornerRectangle)
+    assert r1.corner1 == (-50.0, -30.0)
+    assert r1.corner2 == (50.0, 30.0)
+    assert r1.type == "corner_rectangle"
+    assert r1.to_dict() == {
+        "type": "corner_rectangle",
+        "corner1": [-50.0, -30.0],
+        "corner2": [50.0, 30.0],
+    }
+
+
+def test_center_rectangle_parses() -> None:
+    doc: dict[str, Any] = {
+        "module": "part",
+        "id": "center_rect_part",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "r1": {
+                        "type": "center_rectangle",
+                        "center": [0.0, 0.0],
+                        "width": RECT_W,
+                        "height": RECT_H,
+                    }
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+        },
+    }
+    res = parse_part_graph(doc)
+    assert isinstance(res, PartGraph)
+    sketch = res.nodes["sketch_base"]
+    assert isinstance(sketch, SketchNode)
+    r1 = sketch.entities["r1"]
+    assert isinstance(r1, CenterRectangle)
+    assert r1.center == (0.0, 0.0)
+    assert r1.width == RECT_W
+    assert r1.height == RECT_H
+    assert r1.type == "center_rectangle"
+    assert r1.to_dict() == {
+        "type": "center_rectangle",
+        "center": [0.0, 0.0],
+        "width": RECT_W,
+        "height": RECT_H,
     }

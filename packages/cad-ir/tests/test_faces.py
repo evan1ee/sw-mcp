@@ -1,12 +1,23 @@
 """Face references of the part feature graph (ADR-070, spec 5.7.4)."""
 
+from typing import Final
+
 import pytest
-from cad_ir.part_feature_graph.faces import FaceRef, face_frame, parse_face_plane
+from cad_ir.part_feature_graph.faces import FaceRef, face_frame, in_base_frame, parse_face_plane
+from cad_ir.part_feature_graph.model import (
+    CenterRectangle,
+    CornerRectangle,
+    EndCondition,
+    PartGraph,
+    SketchNode,
+    SolidNode,
+)
 from cad_ir.part_feature_graph.planes import plane_axes
 
 DEPTH = 10.0
 CUT = 4.0
 TOP_DEPTH = 8.0
+RECT_DIM: Final[float] = 10.0
 
 
 def test_parses_a_face_reference() -> None:
@@ -114,3 +125,46 @@ def test_the_frame_follows_the_base_plane() -> None:
 def test_an_unsupported_role_has_no_frame() -> None:
     with pytest.raises(ValueError, match="side_faces"):
         face_frame(plane_axes("plane:front"), DEPTH, "side_faces")
+
+
+def test_start_face_mirrors_rectangles() -> None:
+    graph = PartGraph(
+        id="mirrored_rect",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(
+                plane="plane:front",
+                entities={"r1": CornerRectangle(corner1=(-50, -30), corner2=(50, 30))},
+            ),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=DEPTH),
+                dependencies=("sketch_base",),
+            ),
+            "sketch_cut": SketchNode(
+                plane="extrude_base.start_face",
+                entities={
+                    "cr1": CornerRectangle(corner1=(10, 10), corner2=(20, 20)),
+                    "ctr1": CenterRectangle(center=(15, 15), width=RECT_DIM, height=RECT_DIM),
+                },
+                dependencies=("extrude_base",),
+            ),
+        },
+    )
+    mirrored = in_base_frame(graph)
+    cut = mirrored.nodes["sketch_cut"]
+    assert isinstance(cut, SketchNode)
+    cr1 = cut.entities["cr1"]
+    assert isinstance(cr1, CornerRectangle)
+    # plane:front start_face has x_sign = -1.0, y_sign = 1.0
+    assert cr1.corner1 == (-10.0, 10.0)
+    assert cr1.corner2 == (-20.0, 20.0)
+
+    ctr1 = cut.entities["ctr1"]
+    assert isinstance(ctr1, CenterRectangle)
+    assert ctr1.center == (-15.0, 15.0)
+    assert ctr1.width == RECT_DIM
+    assert ctr1.height == RECT_DIM

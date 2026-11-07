@@ -60,11 +60,48 @@ class Arc:
 
 
 @dataclass(frozen=True, slots=True)
+class CornerRectangle:
+    """2D axis-aligned corner rectangle in sketch coordinates (spec 5.7.4, 22.4.1, ADR-072)."""
+
+    corner1: tuple[float, float]
+    corner2: tuple[float, float]
+    type: str = "corner_rectangle"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": self.type,
+            "corner1": list(self.corner1),
+            "corner2": list(self.corner2),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class CenterRectangle:
+    """2D center rectangle in sketch coordinates (spec 5.7.4, 22.4.1, ADR-072)."""
+
+    center: tuple[float, float]
+    width: float
+    height: float
+    type: str = "center_rectangle"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": self.type,
+            "center": list(self.center),
+            "width": self.width,
+            "height": self.height,
+        }
+
+
+SketchEntity = Line | Circle | Arc | CornerRectangle | CenterRectangle
+
+
+@dataclass(frozen=True, slots=True)
 class SketchNode:
     """Sketch feature node (spec 5.7.4)."""
 
     plane: str
-    entities: Mapping[str, Line | Circle | Arc]
+    entities: Mapping[str, SketchEntity]
     dependencies: tuple[str, ...] = ()
     display_name: str | None = None
     realizes: tuple[str, ...] = ()
