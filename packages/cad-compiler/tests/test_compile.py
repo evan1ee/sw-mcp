@@ -38,6 +38,8 @@ SKETCH_CREATE_ID = "https://sw-mcp.invalid/schemas/ipc/ops/sketch.create.json"
 FEATURE_CREATE_ID = "https://sw-mcp.invalid/schemas/ipc/ops/feature.create.json"
 DIM_2D: Final[int] = 2
 EXPECTED_ARC_COUNT: Final[int] = 2
+EXPECTED_TWO_OPS: Final[int] = 2
+EXPECTED_RECT_LINES: Final[int] = 4
 
 
 def _make_session(
@@ -431,3 +433,79 @@ def test_sketch_with_arc_lowers_correctly() -> None:
         "end": [-20.0, -10.0],
         "direction": "ccw",
     }
+
+
+def test_lowers_corner_and_center_rectangles() -> None:
+    raw: dict[str, Any] = {
+        "module": "part",
+        "id": "plate_rects",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "r1": {
+                        "type": "corner_rectangle",
+                        "corner1": [-50.0, -30.0],
+                        "corner2": [50.0, 30.0],
+                    }
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+            "sketch_cut": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "r2": {
+                        "type": "center_rectangle",
+                        "center": [0.0, 0.0],
+                        "width": 20.0,
+                        "height": 10.0,
+                    }
+                },
+            },
+            "cut_hole": {
+                "type": "cut_extrude",
+                "dependencies": ["sketch_cut", "extrude_base"],
+                "profile": "sketch_cut",
+                "end_condition": {"type": "through_all_both"},
+            },
+        },
+    }
+    ref_str = "part:plate_rects@1"
+    manifest = BundleManifest("1.0", (parse_document_ref(ref_str),))
+    source = CompileInput(manifest=manifest, documents={ref_str: cast(dict[str, JsonValue], raw)})
+    ctx = CompileContext("0.1.0", CapabilityProfile.from_session(_make_session()), {})
+    result = compile_bundle(source, ctx)
+    assert result.plan is not None
+    plan = cast(dict[str, Any], result.plan)
+    operations = cast(dict[str, dict[str, Any]], plan["operations"])
+    sketch_ops = sorted(
+        [op for op in operations.values() if op["op"] == "sketch.create"],
+        key=lambda o: int(o["sequence"]),
+    )
+    assert len(sketch_ops) == EXPECTED_TWO_OPS
+    base_ents = sketch_ops[0]["params"]["entities"]
+    assert len(base_ents) == EXPECTED_RECT_LINES
+    assert base_ents == [
+        {"type": "line", "start": [-50.0, -30.0], "end": [50.0, -30.0]},
+        {"type": "line", "start": [50.0, -30.0], "end": [50.0, 30.0]},
+        {"type": "line", "start": [50.0, 30.0], "end": [-50.0, 30.0]},
+        {"type": "line", "start": [-50.0, 30.0], "end": [-50.0, -30.0]},
+    ]
+    cut_ents = sketch_ops[1]["params"]["entities"]
+    assert len(cut_ents) == EXPECTED_RECT_LINES
+    assert cut_ents == [
+        {"type": "line", "start": [-10.0, -5.0], "end": [10.0, -5.0]},
+        {"type": "line", "start": [10.0, -5.0], "end": [10.0, 5.0]},
+        {"type": "line", "start": [10.0, 5.0], "end": [-10.0, 5.0]},
+        {"type": "line", "start": [-10.0, 5.0], "end": [-10.0, -5.0]},
+    ]

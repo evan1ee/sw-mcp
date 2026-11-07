@@ -2,7 +2,7 @@
 
 Documentation for the AI-native Parametric CAD System: an MCP server and SOLIDWORKS execution engine that lets AI agents build parametric models and production drawings through a deterministic, verified pipeline.
 
-The [specification](specifications/README.md) (v1.40) is split across these folders by topic. Section numbers are kept, so a reference such as "see 11.5" resolves through the [section map](specifications/README.md#how-this-specification-is-organized).
+The [specification](specifications/README.md) (v1.41) is split across these folders by topic. Section numbers are kept, so a reference such as "see 11.5" resolves through the [section map](specifications/README.md#how-this-specification-is-organized).
 
 ```
 docs/

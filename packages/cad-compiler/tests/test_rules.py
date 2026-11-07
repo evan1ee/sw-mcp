@@ -13,7 +13,9 @@ from cad_compiler.validator.semantic import (
 from cad_ir.generated import ErrorCode
 from cad_ir.part_feature_graph.model import (
     Arc,
+    CenterRectangle,
     Circle,
+    CornerRectangle,
     EndCondition,
     Line,
     PartGraph,
@@ -738,4 +740,100 @@ def test_arc_coincident_start_end_rejected() -> None:
         i.code == ErrorCode.IR_RULE_VIOLATED
         and ("coincident" in i.message.lower() or "circle" in i.message.lower())
         for i in issues
+    )
+
+
+def test_corner_rectangle_profile_valid() -> None:
+    entities = {
+        "r1": CornerRectangle(corner1=(-50.0, -30.0), corner2=(50.0, 30.0)),
+    }
+    graph = PartGraph(
+        id="corner_rect_valid",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(plane="plane:front", entities=entities),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+        },
+    )
+    issues = validate_graph(graph)
+    assert not issues, [f"{i.pointer}: {i.message}" for i in issues]
+
+
+def test_center_rectangle_profile_valid() -> None:
+    entities = {
+        "r1": CenterRectangle(center=(0.0, 0.0), width=100.0, height=60.0),
+    }
+    graph = PartGraph(
+        id="center_rect_valid",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(plane="plane:front", entities=entities),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+        },
+    )
+    issues = validate_graph(graph)
+    assert not issues, [f"{i.pointer}: {i.message}" for i in issues]
+
+
+def test_corner_rectangle_degenerate_rejected() -> None:
+    entities = {
+        "r1": CornerRectangle(corner1=(-50.0, -30.0), corner2=(-50.0, 30.0)),
+    }
+    graph = PartGraph(
+        id="corner_rect_degen",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(plane="plane:front", entities=entities),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+        },
+    )
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "rectangle" in i.message.lower() for i in issues
+    )
+
+
+def test_center_rectangle_degenerate_rejected() -> None:
+    entities = {
+        "r1": CenterRectangle(center=(0.0, 0.0), width=0.005, height=60.0),
+    }
+    graph = PartGraph(
+        id="center_rect_degen",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(plane="plane:front", entities=entities),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+        },
+    )
+    issues = validate_graph(graph)
+    assert any(
+        i.code == ErrorCode.IR_RULE_VIOLATED and "rectangle" in i.message.lower() for i in issues
     )

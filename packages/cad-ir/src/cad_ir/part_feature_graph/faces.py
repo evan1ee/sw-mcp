@@ -9,7 +9,17 @@ import re
 from dataclasses import dataclass, replace
 from typing import Final
 
-from cad_ir.part_feature_graph.model import Arc, Circle, Line, PartGraph, SketchNode, SolidNode
+from cad_ir.part_feature_graph.model import (
+    Arc,
+    CenterRectangle,
+    Circle,
+    CornerRectangle,
+    Line,
+    PartGraph,
+    SketchEntity,
+    SketchNode,
+    SolidNode,
+)
 from cad_ir.part_feature_graph.planes import PlaneAxes, plane_axes
 
 SUPPORTED_ROLES: Final[tuple[str, ...]] = ("start_face", "end_face")
@@ -115,7 +125,7 @@ def face_frame(base: PlaneAxes, depth: float, role: str) -> FaceFrame:
     raise ValueError(f"unsupported face role {role!r}: use start_face or end_face")
 
 
-def _scale_xy(entity: Line | Circle | Arc, x_sign: float, y_sign: float) -> Line | Circle | Arc:
+def _scale_xy(entity: SketchEntity, x_sign: float, y_sign: float) -> SketchEntity:
     if isinstance(entity, Line):
         return Line(
             start=(x_sign * entity.start[0], y_sign * entity.start[1]),
@@ -125,6 +135,17 @@ def _scale_xy(entity: Line | Circle | Arc, x_sign: float, y_sign: float) -> Line
         return Circle(
             center=(x_sign * entity.center[0], y_sign * entity.center[1]),
             diameter=entity.diameter,
+        )
+    if isinstance(entity, CornerRectangle):
+        return CornerRectangle(
+            corner1=(x_sign * entity.corner1[0], y_sign * entity.corner1[1]),
+            corner2=(x_sign * entity.corner2[0], y_sign * entity.corner2[1]),
+        )
+    if isinstance(entity, CenterRectangle):
+        return CenterRectangle(
+            center=(x_sign * entity.center[0], y_sign * entity.center[1]),
+            width=entity.width,
+            height=entity.height,
         )
     new_dir = entity.direction
     if x_sign * y_sign < 0:

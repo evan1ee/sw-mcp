@@ -501,6 +501,7 @@ def test_blind_hole_in_top_face(tmp_path: Path) -> None:
             {"graph": _top_face_hole_graph(), "target_path": str(target)},
         )
         final = _wait_for_job(service, str(applied["execution_id"]))
+        print("FINAL RESULT:", json.dumps(final, indent=2))
         assert final["state"] == "COMMITTED", final
         assert target.is_file()
 
@@ -535,6 +536,7 @@ def test_blind_hole_in_start_face(tmp_path: Path) -> None:
             },
         )
         final = _wait_for_job(service, str(applied["execution_id"]))
+        print("FINAL RESULT:", json.dumps(final, indent=2))
         assert final["state"] == "COMMITTED", final
         assert target.is_file()
 
@@ -581,6 +583,7 @@ def test_blind_hole_on_non_front_base_planes(
             },
         )
         final = _wait_for_job(service, str(applied["execution_id"]))
+        print("FINAL RESULT:", json.dumps(final, indent=2))
         assert final["state"] == "COMMITTED", final
         assert target.is_file()
 
@@ -612,6 +615,7 @@ def test_block_centre_hole_end_to_end(tmp_path: Path) -> None:
             {"graph": _block_centre_hole_graph(), "target_path": str(target)},
         )
         final = _wait_for_job(service, str(applied["execution_id"]))
+        print("FINAL RESULT:", json.dumps(final, indent=2))
         assert final["state"] == "COMMITTED", final
         assert target.is_file()
 
@@ -1216,7 +1220,12 @@ def test_core_killed_mid_job(tmp_path: Path) -> None:
         work_file = Path(working_path(str(target), job_id))
         _close_in_solidworks_by_path(work_file)
         if work_file.exists():
-            work_file.unlink()
+            for _ in range(20):
+                try:
+                    work_file.unlink()
+                    break
+                except PermissionError:
+                    time.sleep(0.1)
 
     # Start a new CoreService on the same store: recovers the interrupted job and runs a new one
     provider = NamedPipeBackendProvider(target_session=str(session.pid))
@@ -1270,8 +1279,172 @@ def test_non_ascii_path(tmp_path: Path) -> None:
             {"graph": _plate_graph(), "target_path": str(target)},
         )
         final = _wait_for_job(service, str(applied["execution_id"]))
+        print("FINAL RESULT:", json.dumps(final, indent=2))
         assert final["state"] == "COMMITTED", final
         assert target.is_file()
     finally:
         service.stop()
+        _close_in_solidworks_by_path(target)
+
+
+def test_live_slot_plate(tmp_path: Path) -> None:
+    """Verify the plate_slot benchmark fixture (arcs + lines) end-to-end against live SOLIDWORKS."""
+    session = _get_live_session()
+    template = _resolve_template()
+    proj = tmp_path / "proj"
+    proj.mkdir(parents=True, exist_ok=True)
+    target = proj / "plate_slot.SLDPRT"
+
+    provider = NamedPipeBackendProvider(target_session=str(session.pid))
+    service = _start_core(
+        tmp_path, allowed_roots=(proj,), template_path=template, provider=provider
+    )
+    try:
+        applied = _call_ok(
+            service,
+            "apply_part_graph",
+            {"graph": REFERENCE_ANSWERS["plate_slot"], "target_path": str(target)},
+        )
+        final = _wait_for_job(service, str(applied["execution_id"]))
+        assert final["state"] == "COMMITTED", final
+        assert target.is_file()
+
+        part_result = cast(dict[str, Any], final["part_result"])
+        checks = cast(list[dict[str, Any]], part_result["checks"])
+        assert len(checks) > 0
+        assert all(c["status"] == "passed" for c in checks), checks
+    finally:
+        service.stop()
+        _close_in_solidworks_by_path(target)
+
+
+def test_live_rectangle_plate(tmp_path: Path) -> None:
+    """Verify rectangle entities end-to-end against live SOLIDWORKS."""
+    session = _get_live_session()
+    template = _resolve_template()
+    proj = tmp_path / "proj"
+    proj.mkdir(parents=True, exist_ok=True)
+    target = proj / "plate_rectangles.SLDPRT"
+
+    provider = NamedPipeBackendProvider(target_session=str(session.pid))
+    service = _start_core(
+        tmp_path, allowed_roots=(proj,), template_path=template, provider=provider
+    )
+    try:
+        applied = _call_ok(
+            service,
+            "apply_part_graph",
+            {"graph": REFERENCE_ANSWERS["plate_rectangles"], "target_path": str(target)},
+        )
+        final = _wait_for_job(service, str(applied["execution_id"]))
+        assert final["state"] == "COMMITTED", final
+        assert target.is_file()
+
+        part_result = cast(dict[str, Any], final["part_result"])
+        checks = cast(list[dict[str, Any]], part_result["checks"])
+        assert len(checks) > 0
+        assert all(c["status"] == "passed" for c in checks), checks
+    finally:
+        service.stop()
+        _close_in_solidworks_by_path(target)
+
+
+def test_live_direct_rectangle_ops(tmp_path: Path) -> None:
+    """Verify direct IPC sketch.create with center_rectangle and corner_rectangle."""
+    session = _get_live_session()
+    template = _resolve_template()
+    target = tmp_path / "direct_rect.SLDPRT"
+    job_id = f"live_rect_{time.time_ns()}"
+
+    provider = NamedPipeBackendProvider(target_session=str(session.pid))
+    backend = cast(IpcBackend, provider.acquire(on_notification=lambda _m, _p: None))
+    try:
+        op_create = Operation(
+            operation_id=f"{job_id}:1",
+            op="part.create",
+            params={"template": template, "_meta": {"job_id": job_id}},
+        )
+        res_create = backend.apply_ops(
+            [OperationGroup(document=str(target), operations=(op_create,))]
+        )
+        assert res_create.outcomes[0].error is None
+
+        op_sk_base = Operation(
+            operation_id=f"{job_id}:2",
+            op="sketch.create",
+            params={
+                "node_id": "sk_base",
+                "plane": "plane:front",
+                "entities": [
+                    {
+                        "type": "center_rectangle",
+                        "center": [0.0, 0.0],
+                        "width": 80.0,
+                        "height": 50.0,
+                    }
+                ],
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_sk_base = backend.apply_ops(
+            [OperationGroup(document=str(target), operations=(op_sk_base,))]
+        )
+        assert res_sk_base.outcomes[0].error is None
+        base_sk_id = str(cast(dict[str, Any], res_sk_base.outcomes[0].result)["feature_id"])
+
+        op_ext = Operation(
+            operation_id=f"{job_id}:3",
+            op="feature.create",
+            params={
+                "node_id": "ext_base",
+                "type": "extrude",
+                "profile": base_sk_id,
+                "end_condition": {"type": "blind", "depth": 10.0},
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_ext = backend.apply_ops([OperationGroup(document=str(target), operations=(op_ext,))])
+        assert res_ext.outcomes[0].error is None
+
+        op_sk_cut = Operation(
+            operation_id=f"{job_id}:4",
+            op="sketch.create",
+            params={
+                "node_id": "sk_cut",
+                "plane": "plane:front",
+                "entities": [
+                    {
+                        "type": "corner_rectangle",
+                        "corner1": [-15.0, -10.0],
+                        "corner2": [15.0, 10.0],
+                    }
+                ],
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_sk_cut = backend.apply_ops(
+            [OperationGroup(document=str(target), operations=(op_sk_cut,))]
+        )
+        assert res_sk_cut.outcomes[0].error is None
+        cut_sk_id = str(cast(dict[str, Any], res_sk_cut.outcomes[0].result)["feature_id"])
+
+        op_cut = Operation(
+            operation_id=f"{job_id}:5",
+            op="feature.create",
+            params={
+                "node_id": "cut_rect",
+                "type": "cut_extrude",
+                "profile": cut_sk_id,
+                "end_condition": {"type": "through_all_both"},
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_cut = backend.apply_ops([OperationGroup(document=str(target), operations=(op_cut,))])
+        assert res_cut.outcomes[0].error is None
+
+        meas = cast(dict[str, Any], backend.measure_part(str(target)))
+        # Expected volume: (80*50 - 30*20) * 10 = 34,000 mm3 = 3.4e-5 m3
+        assert meas["volume_m3"] == pytest.approx(3.4e-5, rel=1e-3)
+    finally:
+        backend.close()
         _close_in_solidworks_by_path(target)

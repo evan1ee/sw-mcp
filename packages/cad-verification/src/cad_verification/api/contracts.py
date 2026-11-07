@@ -6,7 +6,12 @@ from typing import Any, Literal
 
 from cad_ir.core.canonical import content_hash
 from cad_ir.core.json_types import JsonValue
-from cad_ir.part_feature_graph.model import PartGraph, SketchNode
+from cad_ir.part_feature_graph.model import (
+    CenterRectangle,
+    CornerRectangle,
+    PartGraph,
+    SketchNode,
+)
 
 type CheckStatus = Literal["passed", "failed", "warning", "not_applicable", "not_evaluated"]
 type NotEvaluatedReason = Literal["not_executed", "unsupported", "missing_data", "malformed_data"]
@@ -92,6 +97,17 @@ class PostconditionResult:
         return res
 
 
+def _sketch_entity_count(sketch: SketchNode) -> int:
+    """Number of segments this sketch produces in CAD."""
+    count = 0
+    for entity in sketch.entities.values():
+        if isinstance(entity, (CornerRectangle, CenterRectangle)):
+            count += 4
+        else:
+            count += 1
+    return count
+
+
 def feature_contracts(graph: PartGraph) -> tuple[VerificationContract, ...]:
     """Derive T0-level verification contracts from IR nodes (ADR-064)."""
     contracts: list[VerificationContract] = []
@@ -104,7 +120,9 @@ def feature_contracts(graph: PartGraph) -> tuple[VerificationContract, ...]:
         if isinstance(node, SketchNode):
             checks.append(ContractCheck(name="type_matches", required=True, expected="sketch"))
             checks.append(
-                ContractCheck(name="entity_count", required=True, expected=len(node.entities))
+                ContractCheck(
+                    name="entity_count", required=True, expected=_sketch_entity_count(node)
+                )
             )
         else:
             checks.append(ContractCheck(name="type_matches", required=True, expected=node.type))

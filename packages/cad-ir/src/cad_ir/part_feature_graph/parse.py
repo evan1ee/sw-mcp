@@ -8,10 +8,13 @@ from cad_ir.core.schema_validation import validate_against_schema
 from cad_ir.part_feature_graph.model import (
     PART_SCHEMA_ID,
     Arc,
+    CenterRectangle,
     Circle,
+    CornerRectangle,
     EndCondition,
     Line,
     PartGraph,
+    SketchEntity,
     SketchNode,
     SolidNode,
 )
@@ -40,7 +43,7 @@ def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
         realizes = tuple(str(r) for r in raw_realizes) if isinstance(raw_realizes, list) else ()
 
         if node_type == "sketch":
-            entities: dict[str, Line | Circle | Arc] = {}
+            entities: dict[str, SketchEntity] = {}
             raw_entities = cast(dict[str, dict[str, JsonValue]], node_data.get("entities", {}))
             for ent_id, ent_data in raw_entities.items():
                 ent_type = str(ent_data["type"])
@@ -66,6 +69,20 @@ def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
                         start=(float(raw_start[0]), float(raw_start[1])),
                         end=(float(raw_end[0]), float(raw_end[1])),
                         direction=str(ent_data["direction"]),
+                    )
+                elif ent_type == "corner_rectangle":
+                    raw_c1 = cast(list[float], ent_data["corner1"])
+                    raw_c2 = cast(list[float], ent_data["corner2"])
+                    entities[ent_id] = CornerRectangle(
+                        corner1=(float(raw_c1[0]), float(raw_c1[1])),
+                        corner2=(float(raw_c2[0]), float(raw_c2[1])),
+                    )
+                elif ent_type == "center_rectangle":
+                    raw_center = cast(list[float], ent_data["center"])
+                    entities[ent_id] = CenterRectangle(
+                        center=(float(raw_center[0]), float(raw_center[1])),
+                        width=float(cast(float | int, ent_data["width"])),
+                        height=float(cast(float | int, ent_data["height"])),
                     )
             nodes[node_id] = SketchNode(
                 plane=str(node_data["plane"]),

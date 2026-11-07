@@ -1,6 +1,6 @@
 # 5.7 Part Feature Graph Schema Guide
 
-> Specification v1.40, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.41, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
 
 Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3.2) read as one language and the compiler's defaults are explicit. Each type has one schema file, `schemas/part-feature-graph/features/<type>.json`, with one minimal example of at most 400 tokens (12.3).
 
@@ -55,7 +55,7 @@ Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3
 | Field | Description |
 | --- | --- |
 | `plane` | `GeometryRef`: a standard plane (`plane:front`), a reference-plane node, or a planar face by role |
-| `entities` | Keyed by entity ID. `line` (`start`, `end`), `circle` (`center`, `diameter`), `arc` (`center`, `start`, `end`, `direction`: `ccw` or `cw`), `point`, `rectangle` and `slot` (stored as their lines and arcs plus an entity group), `spline` (Read only in Tier 1). `construction: true` marks construction geometry. Coordinates are 2D sketch coordinates in the document's units |
+| `entities` | Keyed by entity ID. `line` (`start`, `end`), `circle` (`center`, `diameter`), `arc` (`center`, `start`, `end`, `direction`: `ccw` or `cw`), `corner_rectangle` (`corner1`, `corner2`), `center_rectangle` (`center`, `width`, `height`), `point`, `slot` (stored as lines and arcs plus an entity group), `spline` (Read only in Tier 1). `construction: true` marks construction geometry. Coordinates are 2D sketch coordinates in the document's units |
 | `relations` | Keyed by relation ID: `type` (`coincident`, `horizontal`, `vertical`, `parallel`, `perpendicular`, `tangent`, `concentric`, `equal`, `fix`, …) and `entities`. A point of an entity is `<entity>.start`, `<entity>.end` or `<entity>.center` |
 | `dimensions` | Keyed by dimension ID: `type` (`distance`, `horizontal`, `vertical`, `diameter`, `radius`, `angle`), `entities` and `value`. Each is a driving parameter (`<sketch_id>.<dimension_id>`) |
 
