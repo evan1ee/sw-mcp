@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, replace
 from typing import Final
 
-from cad_ir.part_feature_graph.model import Circle, Line, PartGraph, SketchNode, SolidNode
+from cad_ir.part_feature_graph.model import Arc, Circle, Line, PartGraph, SketchNode, SolidNode
 from cad_ir.part_feature_graph.planes import PlaneAxes, plane_axes
 
 SUPPORTED_ROLES: Final[tuple[str, ...]] = ("start_face", "end_face")
@@ -115,15 +115,25 @@ def face_frame(base: PlaneAxes, depth: float, role: str) -> FaceFrame:
     raise ValueError(f"unsupported face role {role!r}: use start_face or end_face")
 
 
-def _scale_xy(entity: Line | Circle, x_sign: float, y_sign: float) -> Line | Circle:
+def _scale_xy(entity: Line | Circle | Arc, x_sign: float, y_sign: float) -> Line | Circle | Arc:
     if isinstance(entity, Line):
         return Line(
             start=(x_sign * entity.start[0], y_sign * entity.start[1]),
             end=(x_sign * entity.end[0], y_sign * entity.end[1]),
         )
-    return Circle(
+    if isinstance(entity, Circle):
+        return Circle(
+            center=(x_sign * entity.center[0], y_sign * entity.center[1]),
+            diameter=entity.diameter,
+        )
+    new_dir = entity.direction
+    if x_sign * y_sign < 0:
+        new_dir = "cw" if entity.direction == "ccw" else "ccw"
+    return Arc(
         center=(x_sign * entity.center[0], y_sign * entity.center[1]),
-        diameter=entity.diameter,
+        start=(x_sign * entity.start[0], y_sign * entity.start[1]),
+        end=(x_sign * entity.end[0], y_sign * entity.end[1]),
+        direction=new_dir,
     )
 
 

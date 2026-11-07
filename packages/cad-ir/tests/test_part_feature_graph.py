@@ -10,6 +10,7 @@ from cad_ir.core.issues import IssueReport
 from cad_ir.generated import ErrorCode
 from cad_ir.part_feature_graph import (
     PART_SCHEMA_ID,
+    Arc,
     Circle,
     Line,
     PartGraph,
@@ -229,3 +230,61 @@ def test_part_graph_roundtrip() -> None:
     assert len(out["nodes"]) == EXPECTED_NODE_COUNT
     assert out["nodes"]["extrude_base"]["end_condition"] == {"type": "blind", "depth": 10.0}
     assert out["nodes"]["cut_holes"]["end_condition"] == {"type": "through_all_both"}
+
+
+def test_arc_dataclass_and_parsing() -> None:
+    doc: dict[str, Any] = {
+        "module": "part",
+        "id": "plate_slot",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "l1": {"type": "line", "start": [-20, -10], "end": [20, -10]},
+                    "a1": {
+                        "type": "arc",
+                        "center": [20, 0],
+                        "start": [20, -10],
+                        "end": [20, 10],
+                        "direction": "ccw",
+                    },
+                    "l2": {"type": "line", "start": [20, 10], "end": [-20, 10]},
+                    "a2": {
+                        "type": "arc",
+                        "center": [-20, 0],
+                        "start": [-20, 10],
+                        "end": [-20, -10],
+                        "direction": "ccw",
+                    },
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 5.0},
+            },
+        },
+    }
+    res = parse_part_graph(doc)
+    assert isinstance(res, PartGraph)
+    sketch = res.nodes["sketch_base"]
+    assert isinstance(sketch, SketchNode)
+    a1 = sketch.entities["a1"]
+    assert isinstance(a1, Arc)
+    assert a1.center == (20.0, 0.0)
+    assert a1.start == (20.0, -10.0)
+    assert a1.end == (20.0, 10.0)
+    assert a1.direction == "ccw"
+    assert a1.type == "arc"
+    assert a1.to_dict() == {
+        "type": "arc",
+        "center": [20.0, 0.0],
+        "start": [20.0, -10.0],
+        "end": [20.0, 10.0],
+        "direction": "ccw",
+    }

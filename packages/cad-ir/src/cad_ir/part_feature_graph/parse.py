@@ -7,6 +7,7 @@ from cad_ir.core.json_types import JsonValue
 from cad_ir.core.schema_validation import validate_against_schema
 from cad_ir.part_feature_graph.model import (
     PART_SCHEMA_ID,
+    Arc,
     Circle,
     EndCondition,
     Line,
@@ -39,7 +40,7 @@ def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
         realizes = tuple(str(r) for r in raw_realizes) if isinstance(raw_realizes, list) else ()
 
         if node_type == "sketch":
-            entities: dict[str, Line | Circle] = {}
+            entities: dict[str, Line | Circle | Arc] = {}
             raw_entities = cast(dict[str, dict[str, JsonValue]], node_data.get("entities", {}))
             for ent_id, ent_data in raw_entities.items():
                 ent_type = str(ent_data["type"])
@@ -55,6 +56,16 @@ def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
                     entities[ent_id] = Circle(
                         center=(float(raw_center[0]), float(raw_center[1])),
                         diameter=float(cast(float | int, ent_data["diameter"])),
+                    )
+                elif ent_type == "arc":
+                    raw_center = cast(list[float], ent_data["center"])
+                    raw_start = cast(list[float], ent_data["start"])
+                    raw_end = cast(list[float], ent_data["end"])
+                    entities[ent_id] = Arc(
+                        center=(float(raw_center[0]), float(raw_center[1])),
+                        start=(float(raw_start[0]), float(raw_start[1])),
+                        end=(float(raw_end[0]), float(raw_end[1])),
+                        direction=str(ent_data["direction"]),
                     )
             nodes[node_id] = SketchNode(
                 plane=str(node_data["plane"]),

@@ -2,6 +2,7 @@
 
 from cad_ir.part_feature_graph.model import (
     PART_SCHEMA_ID,
+    Arc,
     Circle,
     EndCondition,
     Line,
@@ -14,6 +15,7 @@ from cad_ir.part_feature_graph.planes import PlaneAxes, plane_axes
 
 __all__ = [
     "PART_SCHEMA_ID",
+    "Arc",
     "Circle",
     "EndCondition",
     "Line",
