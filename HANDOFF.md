@@ -1,16 +1,16 @@
 # Handoff
 
-Last updated: 2026-11-07 (branch `feat/sketch-arcs`, spec v1.40).
+Last updated: 2026-11-07 (branch `main`, spec v1.40).
 > **Handoff Rule ([AGENTS.md §5](AGENTS.md#5-session-handoff)):** Keep this file as short as possible. Rewrite in place — **never** append an incremental history (`git log` and [`CHANGELOG.md`](docs/specifications/CHANGELOG.md) record history). Keep only the current state snapshot, the latest session's **Changes Made**, prioritized **Next Steps**, and active **Known Issues**, linking to `docs/` instead of repeating details.
 
 ## Current State
 
 - **Active Focus — 3D Part Chain ([ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md), [Roadmap §18](docs/specifications/roadmap.md#current-focus-the-part-chain-adr-057)):**
-  - **Sketch Arc Primitives (`SK-ENT-013`, `SK-ENT-016`) Implemented End-to-End:** Full support for center-point circular arcs (`Arc(center, start, end, direction)`) across JSON Schemas, code contracts, `cad-ir` models and face reflection, `cad-compiler` semantic validation and lowering, `cad-verification` closed-form profile integration and cylinder expectations, C# `ExecutionServer.Adapters` (`sm.CreateArc`), and `cad-application` authoring guide & eval suite.
+  - **Sketch Arc Primitives (`SK-ENT-013`, `SK-ENT-016`) Merged on `main` via PR #18:** Full support for center-point circular arcs (`Arc(center, start, end, direction)`) across JSON Schemas, code contracts, `cad-ir` models and face reflection, `cad-compiler` semantic validation and lowering, `cad-verification` closed-form profile integration and cylinder expectations, C# `ExecutionServer.Adapters` (`sm.CreateArc`), and `cad-application` authoring guide & eval suite.
   - **Agent IR Authoring:** `get_authoring_guide` MCP tool + 14-case benchmark in [`tests/cad-benchmark/`](tests/cad-benchmark/test_part_ir_benchmark.py) (`14/14` passing: 9 positive builds including `plate_slot`, 5 refusals).
 - **2D Drawings — Frozen at `eea9389` ([ADR-057](docs/adr/ADR-057-freeze-drawings-build-part-chain-first.md), [freeze record](docs/superpowers/review/2026-11-05-drawing-freeze.md)):**
   - Do not modify `packages/cad-drawing`, `standards/iso`, `drawing-*` schemas, or `tests/drawing-benchmark` until the owner lifts the freeze.
-- **Verification Baseline (2026-11-07 on `feat/sketch-arcs`):**
+- **Verification Baseline (2026-11-07 on `main` at `f873316`):**
   - Contracts (`generate_contracts.py --check`), `ruff check`, `ruff format --check`, `pyright`, `lint-imports`: **0 errors/drift**.
   - Implementation checklists audit (`check_implementation_checklists.py`): **587 items, 71 capabilities, 0 problems**.
   - Python tests (`pytest --ignore=tests/drawing-benchmark`): **3,462 passed, 38 deselected**.
@@ -19,7 +19,7 @@ Last updated: 2026-11-07 (branch `feat/sketch-arcs`, spec v1.40).
 
 ## Changes Made
 
-- **Sketch Arc Primitives (`SK-ENT-013`, `SK-ENT-016`, [ADR-071](docs/adr/ADR-071-sketch-arc-primitives.md), Spec v1.40):**
+- **Sketch Arc Primitives (`SK-ENT-013`, `SK-ENT-016`, [ADR-071](docs/adr/ADR-071-sketch-arc-primitives.md), Spec v1.40, PR #18):**
   - **Spec & Schemas:** Added [ADR-071](docs/adr/ADR-071-sketch-arc-primitives.md); updated schemas (`part-feature-graph/v0.json` with `$defs/Arc` and `$defs/SketchEntity`, `ipc/ops/sketch.create.json` with `arc` and direction); regenerated Python and C# contracts; bumped spec to v1.40 across topic files and changelog.
   - **Pure Core IR & Compiler:** Added `Arc` model to `cad-ir`; supported arc reflection and direction inversion on mirrored start faces (`faces.py`); generalized loop closure validation to lines and arcs in `cad-compiler`; lowered `Arc` to `sketch.create` IPC operation.
   - **Verification Engine:** Implemented Green's theorem closed-form arc integration for exact cross-sectional area, bounding box with arc extrema, polygon sampling for centroid, and registered expected cylindrical faces in `cad-verification`.
@@ -29,9 +29,10 @@ Last updated: 2026-11-07 (branch `feat/sketch-arcs`, spec v1.40).
 
 ## Next Steps
 
-1. **Merge `feat/sketch-arcs` to `main`:** All tests pass, zero lint/contract/checklist issues.
-2. **Next 3D Part Milestone (pick rows from [checklists](docs/implementation/README.md)):**
-   - Fillets and chamfers (`BF-FIL`, `BF-CHM`), sketch corner/center rectangles, or linear/circular patterns.
+1. **Next 3D Part Milestone (pick rows from [checklists](docs/implementation/README.md)):**
+   - Fillets and chamfers ([`BF-FIL`](docs/implementation/part-features/base-features.md), [`BF-CHM`](docs/implementation/part-features/base-features.md)), sketch corner/center rectangles ([`SK-ENT-005`](docs/implementation/sketch/sketch-entities.md), [`SK-ENT-006`](docs/implementation/sketch/sketch-entities.md)), straight slots ([`SK-ENT-021`](docs/implementation/sketch/sketch-entities.md)), or linear/circular patterns ([`PAT-LIN`](docs/implementation/part-features/patterns-mirrors.md), [`PAT-CIR`](docs/implementation/part-features/patterns-mirrors.md)).
+2. **Live SOLIDWORKS Integration Run:**
+   - Execute `uv run pytest tests/live/test_live_part_chain.py -m live` on a live SOLIDWORKS 2025 instance to promote `SK-ENT-013` and `SK-ENT-016` from `Tested` to `Verified`.
 3. **When Drawing Freeze Lifts ([architecture review](docs/superpowers/review/2026-11-05-architecture-review.md)):**
    - Resolve owner decisions O1–O6 and open items K3, K8–K10, J11 in [`open-decisions.md`](docs/specifications/open-decisions.md).
 
