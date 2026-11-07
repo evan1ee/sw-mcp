@@ -1,6 +1,6 @@
 # Assumption Register
 
-> Specification v1.41, companion register to [section 18 (Roadmap)](roadmap.md#assumption-register-builders-call). Index and section map: [specifications/README.md](README.md).
+> Specification v1.42, companion register to [section 18 (Roadmap)](roadmap.md#assumption-register-builders-call). Index and section map: [specifications/README.md](README.md).
 
 This file records the live verification status and outcomes of the SOLIDWORKS API assumptions listed in [section 18](roadmap.md#assumption-register-builders-call).
 

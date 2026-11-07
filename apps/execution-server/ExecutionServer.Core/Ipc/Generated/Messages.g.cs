@@ -138,7 +138,9 @@ public enum SketchCreateEntityType
     [EnumMember(Value = "corner_rectangle")]
     CornerRectangle,
     [EnumMember(Value = "center_rectangle")]
-    CenterRectangle
+    CenterRectangle,
+    [EnumMember(Value = "straight_slot")]
+    StraightSlot
 }
 
 [JsonConverter(typeof(StringEnumConverter))]
@@ -1133,6 +1135,12 @@ public sealed class SketchCreateEntity
 
     [JsonProperty("height", NullValueHandling = NullValueHandling.Ignore)]
     public double? Height { get; set; }
+
+    [JsonProperty("start_point", NullValueHandling = NullValueHandling.Ignore)]
+    public List<double>? StartPoint { get; set; }
+
+    [JsonProperty("end_point", NullValueHandling = NullValueHandling.Ignore)]
+    public List<double>? EndPoint { get; set; }
 }
 
 public sealed class SketchCreateFace

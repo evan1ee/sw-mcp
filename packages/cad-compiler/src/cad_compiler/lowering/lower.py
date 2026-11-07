@@ -1,5 +1,6 @@
 """Feature lowering from resolved graph to backend operations (spec 6.5.2, 6.7.2)."""
 
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Final
@@ -8,6 +9,7 @@ from cad_ir.core.issues import ValidationIssue
 from cad_ir.generated import ErrorCode
 from cad_ir.part_feature_graph.model import (
     Arc,
+    CenterRectangle,
     Circle,
     CornerRectangle,
     Line,
@@ -133,7 +135,7 @@ def _lower_sketch(
                     {"type": "line", "start": [xmin, ymax], "end": [xmin, ymin]},
                 ]
             )
-        else:
+        elif isinstance(ent, CenterRectangle):
             hw = float(ent.width) / 2.0
             hh = float(ent.height) / 2.0
             cx, cy = float(ent.center[0]), float(ent.center[1])
@@ -145,6 +147,41 @@ def _lower_sketch(
                     {"type": "line", "start": [xmax, ymin], "end": [xmax, ymax]},
                     {"type": "line", "start": [xmax, ymax], "end": [xmin, ymax]},
                     {"type": "line", "start": [xmin, ymax], "end": [xmin, ymin]},
+                ]
+            )
+        else:
+            p1 = (float(ent.start_point[0]), float(ent.start_point[1]))
+            p2 = (float(ent.end_point[0]), float(ent.end_point[1]))
+            dx = p2[0] - p1[0]
+            dy = p2[1] - p1[1]
+            length = math.hypot(dx, dy)
+            r = float(ent.width) / 2.0
+            nx = -dy / length
+            ny = dx / length
+            ox = r * nx
+            oy = r * ny
+            l1_start = [p1[0] - ox, p1[1] - oy]
+            l1_end = [p2[0] - ox, p2[1] - oy]
+            l2_start = [p2[0] + ox, p2[1] + oy]
+            l2_end = [p1[0] + ox, p1[1] + oy]
+            entities_list.extend(
+                [
+                    {"type": "line", "start": l1_start, "end": l1_end},
+                    {
+                        "type": "arc",
+                        "center": [p2[0], p2[1]],
+                        "start": l1_end,
+                        "end": l2_start,
+                        "direction": "ccw",
+                    },
+                    {"type": "line", "start": l2_start, "end": l2_end},
+                    {
+                        "type": "arc",
+                        "center": [p1[0], p1[1]],
+                        "start": l2_end,
+                        "end": l1_start,
+                        "direction": "ccw",
+                    },
                 ]
             )
     return {

@@ -875,59 +875,17 @@
         "type": "sketch",
         "plane": "plane:front",
         "entities": {
-          "l1": {
-            "type": "line",
-            "start": [
-              -20.0,
-              -10.0
-            ],
-            "end": [
-              20.0,
-              -10.0
-            ]
-          },
-          "a1": {
-            "type": "arc",
-            "center": [
-              20.0,
-              0.0
-            ],
-            "start": [
-              20.0,
-              -10.0
-            ],
-            "end": [
-              20.0,
-              10.0
-            ],
-            "direction": "ccw"
-          },
-          "l2": {
-            "type": "line",
-            "start": [
-              20.0,
-              10.0
-            ],
-            "end": [
-              -20.0,
-              10.0
-            ]
-          },
-          "a2": {
-            "type": "arc",
-            "center": [
+          "s1": {
+            "type": "straight_slot",
+            "start_point": [
               -20.0,
               0.0
             ],
-            "start": [
-              -20.0,
-              10.0
+            "end_point": [
+              20.0,
+              0.0
             ],
-            "end": [
-              -20.0,
-              -10.0
-            ],
-            "direction": "ccw"
+            "width": 20.0
           }
         }
       },

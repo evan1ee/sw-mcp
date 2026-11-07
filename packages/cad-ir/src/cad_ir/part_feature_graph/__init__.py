@@ -12,6 +12,7 @@ from cad_ir.part_feature_graph.model import (
     SketchEntity,
     SketchNode,
     SolidNode,
+    StraightSlot,
 )
 from cad_ir.part_feature_graph.parse import parse_part_graph
 from cad_ir.part_feature_graph.planes import PlaneAxes, plane_axes
@@ -29,6 +30,7 @@ __all__ = [
     "SketchEntity",
     "SketchNode",
     "SolidNode",
+    "StraightSlot",
     "parse_part_graph",
     "plane_axes",
 ]

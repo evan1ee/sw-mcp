@@ -2,6 +2,17 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.42
+
+Adds sketch straight slot primitive (`SK-ENT-021` Straight Slot) to the Part Feature Graph IR and execution pipeline. Decided in [ADR-073](../adr/ADR-073-sketch-straight-slot-primitive.md).
+
+- **IR and Schemas (5.7.4, 22.4.1):** adds `StraightSlot` (`type: "straight_slot"`, `start_point`, `end_point`, `width`) to `schemas/part-feature-graph/v0.json` and updates `schemas/ipc/ops/sketch.create.json`.
+- **Compiler and lowering:** validates straight slot dimensions (length >= 0.01 mm, width >= 0.01 mm); validates straight slot profiles as closed loops; lowers straight slots deterministically into two tangent lines and two semicircular CCW arcs for `sketch.create`.
+- **Verification:** computes exact closed-form cross-sectional area, perimeter, center of mass, and bounding boxes for slot profiles in `cad-verification`.
+- **Execution & Adapter:** handles `straight_slot` in C# `SketchAdapter.cs` with COM cleanup (`Marshal.ReleaseComObject`).
+- **Authoring & Benchmark:** documents `straight_slot` in authoring guide and adapts `plate_slot` benchmark fixture to use the native primitive.
+- **Checklists & Live:** adds live SOLIDWORKS integration tests promoting `SK-ENT-021` (Straight Slot) to Verified.
+
 ## What changed in 1.41
 
 Adds sketch rectangle primitives (`SK-ENT-005` Corner Rectangle, `SK-ENT-006` Center Rectangle) to the Part Feature Graph IR and execution pipeline, and promotes sketch arc primitives (`SK-ENT-013`, `SK-ENT-016`) to Verified status on live SOLIDWORKS 2025. Decided in [ADR-072](../adr/ADR-072-sketch-rectangle-primitives.md).

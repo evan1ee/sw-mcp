@@ -11,6 +11,7 @@ from cad_ir.part_feature_graph.model import (
     PartGraph,
     SketchNode,
     SolidNode,
+    StraightSlot,
 )
 from cad_ir.part_feature_graph.planes import plane_axes
 
@@ -18,6 +19,7 @@ DEPTH = 10.0
 CUT = 4.0
 TOP_DEPTH = 8.0
 RECT_DIM: Final[float] = 10.0
+SLOT_WIDTH: Final[float] = 6.0
 
 
 def test_parses_a_face_reference() -> None:
@@ -168,3 +170,40 @@ def test_start_face_mirrors_rectangles() -> None:
     assert ctr1.center == (-15.0, 15.0)
     assert ctr1.width == RECT_DIM
     assert ctr1.height == RECT_DIM
+
+
+def test_start_face_mirrors_straight_slots() -> None:
+    graph = PartGraph(
+        id="mirrored_slot",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(
+                plane="plane:front",
+                entities={"s1": StraightSlot(start_point=(-20, 0), end_point=(20, 0), width=10)},
+            ),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=DEPTH),
+                dependencies=("sketch_base",),
+            ),
+            "sketch_cut": SketchNode(
+                plane="extrude_base.start_face",
+                entities={
+                    "slot_cut": StraightSlot(start_point=(5, 10), end_point=(15, 10), width=6),
+                },
+                dependencies=("extrude_base",),
+            ),
+        },
+    )
+    mirrored = in_base_frame(graph)
+    cut = mirrored.nodes["sketch_cut"]
+    assert isinstance(cut, SketchNode)
+    slot_cut = cut.entities["slot_cut"]
+    assert isinstance(slot_cut, StraightSlot)
+    # plane:front start_face has x_sign = -1.0, y_sign = 1.0
+    assert slot_cut.start_point == (-5.0, 10.0)
+    assert slot_cut.end_point == (-15.0, 10.0)
+    assert slot_cut.width == SLOT_WIDTH

@@ -22,16 +22,18 @@ _RULES: Final[tuple[str, ...]] = (
     "A part has exactly one `extrude`. It is the base body; `cut_extrude` nodes remove material"
     " from it and must depend on it.",
     "An extrude profile is either one closed, non-self-intersecting loop of `line` and `arc`"
-    " entities, exactly one `circle`, or a `corner_rectangle` or `center_rectangle`. Lines/arcs and"
-    " circles are never mixed in one extrude profile.",
-    "A cut profile is lines, circles, or rectangles, never mixed. Every cut shape lies strictly"
-    " inside the extrude profile (not touching its edge) and cut shapes do not overlap each other.",
+    " entities, exactly one `circle`, a `corner_rectangle` or `center_rectangle`, or a"
+    " `straight_slot`. Lines/arcs, circles, rectangles, and straight slots are never mixed in"
+    " one extrude profile.",
+    "A cut profile is lines/arcs, circles, rectangles, or straight slots, never mixed. Every cut"
+    " shape lies strictly inside the extrude profile (not touching its edge) and cut shapes do not"
+    " overlap each other.",
     "A sketch's `plane` is an origin plane or a cap face of the extrude: `<extrude_id>.end_face`"
     " (the face the extrude grows towards) or `<extrude_id>.start_face` (the face on the sketch"
     " plane). A sketch on a face lists the extrude in its `dependencies`.",
     "Lines have a non-zero length, arcs have equal start/end radius and distinct endpoints,"
-    " circle diameters are at least 0.01, rectangles have width and height at least 0.01, and"
-    " depths are positive.",
+    " circle diameters are at least 0.01, rectangles have width and height at least 0.01,"
+    " straight slots have length and width at least 0.01, and depths are positive.",
     '`extrude` takes `{"type": "blind", "depth": D}`. `cut_extrude` takes the same, with D'
     ' smaller than the extrude depth, or `{"type": "through_all_both"}`.',
 )
@@ -39,7 +41,7 @@ _RULES: Final[tuple[str, ...]] = (
 _UNSUPPORTED: Final[tuple[str, ...]] = (
     "fillets and chamfers",
     "splines, ellipses, text, and any outline that is not a closed loop of straight lines and"
-    " arcs, a rectangle, or a single circle",
+    " arcs, a rectangle, a straight slot, or a single circle",
     "patterns (linear, circular, mirror) as a feature; only write out shapes the user lists",
     "revolves, sweeps, lofts, shells, ribs, threads, sheet metal",
     "sketches on any face other than the extrude's start_face or end_face (side faces, faces"
@@ -79,25 +81,14 @@ def _circle_sketch(diameter: float) -> dict[str, Any]:
 
 
 def _slot_plate_entities(length: float, width: float) -> dict[str, Any]:
-    r = width / 2.0
     half_l = (length - width) / 2.0
     return {
-        "l1": {"type": "line", "start": [-half_l, -r], "end": [half_l, -r]},
-        "a1": {
-            "type": "arc",
-            "center": [half_l, 0.0],
-            "start": [half_l, -r],
-            "end": [half_l, r],
-            "direction": "ccw",
-        },
-        "l2": {"type": "line", "start": [half_l, r], "end": [-half_l, r]},
-        "a2": {
-            "type": "arc",
-            "center": [-half_l, 0.0],
-            "start": [-half_l, r],
-            "end": [-half_l, -r],
-            "direction": "ccw",
-        },
+        "slot": {
+            "type": "straight_slot",
+            "start_point": [-half_l, 0.0],
+            "end_point": [half_l, 0.0],
+            "width": width,
+        }
     }
 
 

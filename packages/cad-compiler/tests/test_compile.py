@@ -40,6 +40,7 @@ DIM_2D: Final[int] = 2
 EXPECTED_ARC_COUNT: Final[int] = 2
 EXPECTED_TWO_OPS: Final[int] = 2
 EXPECTED_RECT_LINES: Final[int] = 4
+EXPECTED_SLOT_ENTITIES: Final[int] = 4
 
 
 def _make_session(
@@ -508,4 +509,64 @@ def test_lowers_corner_and_center_rectangles() -> None:
         {"type": "line", "start": [10.0, -5.0], "end": [10.0, 5.0]},
         {"type": "line", "start": [10.0, 5.0], "end": [-10.0, 5.0]},
         {"type": "line", "start": [-10.0, 5.0], "end": [-10.0, -5.0]},
+    ]
+
+
+def test_plate_with_straight_slot_lowers_to_lines_and_arcs() -> None:
+    raw: dict[str, Any] = {
+        "module": "part",
+        "id": "plate_slot_part",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "s1": {
+                        "type": "straight_slot",
+                        "start_point": [-20.0, 0.0],
+                        "end_point": [20.0, 0.0],
+                        "width": 20.0,
+                    }
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+        },
+    }
+    ref_str = "part:plate_slot@1"
+    manifest = BundleManifest("1.0", (parse_document_ref(ref_str),))
+    source = CompileInput(manifest=manifest, documents={ref_str: cast(dict[str, JsonValue], raw)})
+    ctx = CompileContext("0.1.0", CapabilityProfile.from_session(_make_session()), {})
+    result = compile_bundle(source, ctx)
+    assert result.plan is not None
+    plan = cast(dict[str, Any], result.plan)
+    operations = cast(dict[str, dict[str, Any]], plan["operations"])
+    sketch_ops = [op for op in operations.values() if op["op"] == "sketch.create"]
+    assert len(sketch_ops) == 1
+    base_ents = sketch_ops[0]["params"]["entities"]
+    assert len(base_ents) == EXPECTED_SLOT_ENTITIES
+    assert base_ents == [
+        {"type": "line", "start": [-20.0, -10.0], "end": [20.0, -10.0]},
+        {
+            "type": "arc",
+            "center": [20.0, 0.0],
+            "start": [20.0, -10.0],
+            "end": [20.0, 10.0],
+            "direction": "ccw",
+        },
+        {"type": "line", "start": [20.0, 10.0], "end": [-20.0, 10.0]},
+        {
+            "type": "arc",
+            "center": [-20.0, 0.0],
+            "start": [-20.0, 10.0],
+            "end": [-20.0, -10.0],
+            "direction": "ccw",
+        },
     ]

@@ -17,6 +17,7 @@ from cad_ir.part_feature_graph.model import (
     SketchEntity,
     SketchNode,
     SolidNode,
+    StraightSlot,
 )
 
 from cad_compiler.graph.analyze import analyze_graph, resolve_dependencies
@@ -348,6 +349,85 @@ def _rect_to_lines(rect: CornerRectangle | CenterRectangle) -> list[Line]:
     ]
 
 
+def _slot_to_curves(slot: StraightSlot) -> list[Line | Arc]:
+    p1 = slot.start_point
+    p2 = slot.end_point
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    length = math.hypot(dx, dy)
+    if length < _QUANTUM:
+        return []
+    r = slot.width / 2.0
+    nx = -dy / length
+    ny = dx / length
+    ox = r * nx
+    oy = r * ny
+    l1_start = (p1[0] - ox, p1[1] - oy)
+    l1_end = (p2[0] - ox, p2[1] - oy)
+    l2_start = (p2[0] + ox, p2[1] + oy)
+    l2_end = (p1[0] + ox, p1[1] + oy)
+    return [
+        Line(start=l1_start, end=l1_end),
+        Arc(center=p2, start=l1_end, end=l2_start, direction="ccw"),
+        Line(start=l2_start, end=l2_end),
+        Arc(center=p1, start=l2_end, end=l1_start, direction="ccw"),
+    ]
+
+
+def _check_arc(s_id: str, ent_id: str, ent: Arc, issues: list[ValidationIssue]) -> None:
+    r_start = math.hypot(ent.start[0] - ent.center[0], ent.start[1] - ent.center[1])
+    r_end = math.hypot(ent.end[0] - ent.center[0], ent.end[1] - ent.center[1])
+    if abs(r_start - r_end) > _QUANTUM:
+        issues.append(
+            ValidationIssue(
+                code=ErrorCode.IR_RULE_VIOLATED,
+                pointer=f"/nodes/{s_id}/entities/{ent_id}",
+                message=f"Arc '{ent_id}' start and end points must have equal radius from center",
+            )
+        )
+    if r_start < _MIN_CIRCLE_DIA - _TOL:
+        issues.append(
+            ValidationIssue(
+                code=ErrorCode.IR_RULE_VIOLATED,
+                pointer=f"/nodes/{s_id}/entities/{ent_id}",
+                message=f"Arc '{ent_id}' radius must be at least 0.01 mm",
+            )
+        )
+    if math.hypot(ent.end[0] - ent.start[0], ent.end[1] - ent.start[1]) < _QUANTUM:
+        issues.append(
+            ValidationIssue(
+                code=ErrorCode.IR_RULE_VIOLATED,
+                pointer=f"/nodes/{s_id}/entities/{ent_id}",
+                message=(
+                    f"Arc '{ent_id}' start and end points cannot be coincident:"
+                    " use a circle instead"
+                ),
+            )
+        )
+
+
+def _check_slot(s_id: str, ent_id: str, ent: StraightSlot, issues: list[ValidationIssue]) -> None:
+    dx = ent.end_point[0] - ent.start_point[0]
+    dy = ent.end_point[1] - ent.start_point[1]
+    length = math.hypot(dx, dy)
+    if length < _MIN_CIRCLE_DIA - _TOL:
+        issues.append(
+            ValidationIssue(
+                code=ErrorCode.IR_RULE_VIOLATED,
+                pointer=f"/nodes/{s_id}/entities/{ent_id}",
+                message=f"Straight slot '{ent_id}' centerline length must be at least 0.01 mm",
+            )
+        )
+    if ent.width < _MIN_CIRCLE_DIA - _TOL:
+        issues.append(
+            ValidationIssue(
+                code=ErrorCode.IR_RULE_VIOLATED,
+                pointer=f"/nodes/{s_id}/entities/{ent_id}",
+                message=f"Straight slot '{ent_id}' width must be at least 0.01 mm",
+            )
+        )
+
+
 def _check_sketch_entity(
     s_id: str, ent_id: str, ent: SketchEntity, issues: list[ValidationIssue]
 ) -> None:
@@ -372,37 +452,7 @@ def _check_sketch_entity(
                 )
             )
     elif isinstance(ent, Arc):
-        r_start = math.hypot(ent.start[0] - ent.center[0], ent.start[1] - ent.center[1])
-        r_end = math.hypot(ent.end[0] - ent.center[0], ent.end[1] - ent.center[1])
-        if abs(r_start - r_end) > _QUANTUM:
-            issues.append(
-                ValidationIssue(
-                    code=ErrorCode.IR_RULE_VIOLATED,
-                    pointer=f"/nodes/{s_id}/entities/{ent_id}",
-                    message=(
-                        f"Arc '{ent_id}' start and end points must have equal radius from center"
-                    ),
-                )
-            )
-        if r_start < _MIN_CIRCLE_DIA - _TOL:
-            issues.append(
-                ValidationIssue(
-                    code=ErrorCode.IR_RULE_VIOLATED,
-                    pointer=f"/nodes/{s_id}/entities/{ent_id}",
-                    message=f"Arc '{ent_id}' radius must be at least 0.01 mm",
-                )
-            )
-        if math.hypot(ent.end[0] - ent.start[0], ent.end[1] - ent.start[1]) < _QUANTUM:
-            issues.append(
-                ValidationIssue(
-                    code=ErrorCode.IR_RULE_VIOLATED,
-                    pointer=f"/nodes/{s_id}/entities/{ent_id}",
-                    message=(
-                        f"Arc '{ent_id}' start and end points cannot be coincident:"
-                        " use a circle instead"
-                    ),
-                )
-            )
+        _check_arc(s_id, ent_id, ent, issues)
     elif isinstance(ent, CornerRectangle):
         w = abs(ent.corner2[0] - ent.corner1[0])
         h = abs(ent.corner2[1] - ent.corner1[1])
@@ -414,14 +464,17 @@ def _check_sketch_entity(
                     message=(f"Rectangle '{ent_id}' width and height must be at least 0.01 mm"),
                 )
             )
-    elif ent.width < _MIN_CIRCLE_DIA - _TOL or ent.height < _MIN_CIRCLE_DIA - _TOL:
-        issues.append(
-            ValidationIssue(
-                code=ErrorCode.IR_RULE_VIOLATED,
-                pointer=f"/nodes/{s_id}/entities/{ent_id}",
-                message=(f"Rectangle '{ent_id}' width and height must be at least 0.01 mm"),
+    elif isinstance(ent, CenterRectangle):
+        if ent.width < _MIN_CIRCLE_DIA - _TOL or ent.height < _MIN_CIRCLE_DIA - _TOL:
+            issues.append(
+                ValidationIssue(
+                    code=ErrorCode.IR_RULE_VIOLATED,
+                    pointer=f"/nodes/{s_id}/entities/{ent_id}",
+                    message=(f"Rectangle '{ent_id}' width and height must be at least 0.01 mm"),
+                )
             )
-        )
+    else:
+        _check_slot(s_id, ent_id, ent, issues)
 
 
 def _check_sketches(graph: PartGraph, issues: list[ValidationIssue]) -> None:
@@ -432,6 +485,8 @@ def _check_sketches(graph: PartGraph, issues: list[ValidationIssue]) -> None:
         for ent in node.entities.values():
             if isinstance(ent, (CornerRectangle, CenterRectangle)):
                 curves.extend(_rect_to_lines(ent))
+            elif isinstance(ent, StraightSlot):
+                curves.extend(_slot_to_curves(ent))
         if curves:
             issues.extend(_validate_curves_loop(curves, f"/nodes/{s_id}/entities"))
         for ent_id, ent in node.entities.items():
@@ -450,12 +505,16 @@ def _check_extrude_profile(
         for e in extrude_sketch.entities.values()
         if isinstance(e, (CornerRectangle, CenterRectangle))
     ]
-    if (ext_circles and (ext_curves or ext_rects)) or (ext_curves and ext_rects):
+    ext_slots = [e for e in extrude_sketch.entities.values() if isinstance(e, StraightSlot)]
+    types_count = bool(ext_curves) + bool(ext_circles) + bool(ext_rects) + bool(ext_slots)
+    if types_count > 1:
         issues.append(
             ValidationIssue(
                 code=ErrorCode.IR_RULE_VIOLATED,
                 pointer=f"/nodes/{extrude_node_id}/profile",
-                message="Extrude profile cannot mix circles, rectangles, and line/arc curves",
+                message=(
+                    "Extrude profile cannot mix circles, rectangles, slots, and line/arc curves"
+                ),
             )
         )
     elif len(ext_circles) > 1:
@@ -472,6 +531,14 @@ def _check_extrude_profile(
                 code=ErrorCode.IR_RULE_VIOLATED,
                 pointer=f"/nodes/{extrude_node_id}/profile",
                 message="Extrude profile cannot have multiple rectangles",
+            )
+        )
+    elif len(ext_slots) > 1:
+        issues.append(
+            ValidationIssue(
+                code=ErrorCode.IR_RULE_VIOLATED,
+                pointer=f"/nodes/{extrude_node_id}/profile",
+                message="Extrude profile cannot have multiple slots",
             )
         )
 
@@ -514,6 +581,9 @@ def _sketch_lines(sketch: SketchNode) -> list[Line]:
     for e in sketch.entities.values():
         if isinstance(e, (CornerRectangle, CenterRectangle)):
             lines.extend(_rect_to_lines(e))
+        elif isinstance(e, StraightSlot):
+            curves = _slot_to_curves(e)
+            lines.extend([c for c in curves if isinstance(c, Line)])
     return lines
 
 

@@ -19,6 +19,7 @@ from cad_ir.part_feature_graph.model import (
     SketchEntity,
     SketchNode,
     SolidNode,
+    StraightSlot,
 )
 from cad_ir.part_feature_graph.planes import PlaneAxes, plane_axes
 
@@ -146,6 +147,12 @@ def _scale_xy(entity: SketchEntity, x_sign: float, y_sign: float) -> SketchEntit
             center=(x_sign * entity.center[0], y_sign * entity.center[1]),
             width=entity.width,
             height=entity.height,
+        )
+    if isinstance(entity, StraightSlot):
+        return StraightSlot(
+            start_point=(x_sign * entity.start_point[0], y_sign * entity.start_point[1]),
+            end_point=(x_sign * entity.end_point[0], y_sign * entity.end_point[1]),
+            width=entity.width,
         )
     new_dir = entity.direction
     if x_sign * y_sign < 0:

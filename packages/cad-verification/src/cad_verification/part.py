@@ -16,6 +16,7 @@ from cad_ir.part_feature_graph.model import (
     PartGraph,
     SketchNode,
     SolidNode,
+    StraightSlot,
 )
 from cad_ir.part_feature_graph.planes import PlaneAxes, plane_axes
 
@@ -379,6 +380,27 @@ def _rect_to_bounds_and_metrics(
     return area, perimeter, cx, cy, (x_min, x_max), (y_min, y_max)
 
 
+def _slot_to_bounds_and_metrics(
+    s: StraightSlot,
+) -> tuple[float, float, float, float, tuple[float, float], tuple[float, float]]:
+    """Compute (area, perimeter, cx, cy, (min_x, max_x), (min_y, max_y)) for a straight slot."""
+    p1 = s.start_point
+    p2 = s.end_point
+    dx = p2[0] - p1[0]
+    dy = p2[1] - p1[1]
+    length = math.hypot(dx, dy)
+    r = s.width * 0.5
+    area = length * s.width + math.pi * r * r
+    perimeter = 2.0 * length + 2.0 * math.pi * r
+    cx = (p1[0] + p2[0]) * 0.5
+    cy = (p1[1] + p2[1]) * 0.5
+    x_min = min(p1[0], p2[0]) - r
+    x_max = max(p1[0], p2[0]) + r
+    y_min = min(p1[1], p2[1]) - r
+    y_max = max(p1[1], p2[1]) + r
+    return area, perimeter, cx, cy, (x_min, x_max), (y_min, y_max)
+
+
 def _compute_base_profile(
     sketch: SketchNode,
 ) -> tuple[float, float, float, float, tuple[float, float], tuple[float, float]]:
@@ -388,6 +410,7 @@ def _compute_base_profile(
     rectangles = [
         e for e in sketch.entities.values() if isinstance(e, (CornerRectangle, CenterRectangle))
     ]
+    slots = [e for e in sketch.entities.values() if isinstance(e, StraightSlot)]
 
     if curves:
         return _compute_curves_profile(curves)
@@ -403,7 +426,10 @@ def _compute_base_profile(
     if rectangles:
         return _rect_to_bounds_and_metrics(rectangles[0])
 
-    raise ValueError("Base sketch has no Line, Arc, Circle or Rectangle entities")
+    if slots:
+        return _slot_to_bounds_and_metrics(slots[0])
+
+    raise ValueError("Base sketch has no Line, Arc, Circle, Rectangle or Slot entities")
 
 
 def _cut_regions(sketch: SketchNode) -> list[tuple[float, float, float, float]]:
@@ -426,6 +452,12 @@ def _cut_regions(sketch: SketchNode) -> list[tuple[float, float, float, float]]:
         return [
             (metrics[0], metrics[1], metrics[2], metrics[3])
             for metrics in (_rect_to_bounds_and_metrics(r) for r in rectangles)
+        ]
+    slots = [e for e in sketch.entities.values() if isinstance(e, StraightSlot)]
+    if slots:
+        return [
+            (metrics[0], metrics[1], metrics[2], metrics[3])
+            for metrics in (_slot_to_bounds_and_metrics(s) for s in slots)
         ]
     area, perimeter, center_x, center_y, _, _ = _compute_base_profile(sketch)
     return [(area, perimeter, center_x, center_y)]
@@ -479,6 +511,95 @@ def _cut_frame_and_depths(
     return frame, (low + high) * 0.5, frame.offset_mm, frame.base_normal
 
 
+def _collect_base_cylinders(
+    base_sketch: SketchNode, base_plane: PlaneAxes, base_cx: float, base_cy: float
+) -> list[ExpectedCylinder]:
+    cylinders: list[ExpectedCylinder] = []
+    base_circles = [e for e in base_sketch.entities.values() if isinstance(e, Circle)]
+    if base_circles:
+        cylinders.append(
+            ExpectedCylinder(
+                point=base_plane.to_model(base_cx, base_cy, 0.0),
+                direction=base_plane.normal,
+                radius=base_circles[0].diameter * 0.5,
+            )
+        )
+    for arc in [e for e in base_sketch.entities.values() if isinstance(e, Arc)]:
+        r = math.hypot(arc.start[0] - arc.center[0], arc.start[1] - arc.center[1])
+        cylinders.append(
+            ExpectedCylinder(
+                point=base_plane.to_model(arc.center[0], arc.center[1], 0.0),
+                direction=base_plane.normal,
+                radius=r,
+            )
+        )
+    for slot in [e for e in base_sketch.entities.values() if isinstance(e, StraightSlot)]:
+        r = slot.width * 0.5
+        cylinders.append(
+            ExpectedCylinder(
+                point=base_plane.to_model(slot.start_point[0], slot.start_point[1], 0.0),
+                direction=base_plane.normal,
+                radius=r,
+            )
+        )
+        cylinders.append(
+            ExpectedCylinder(
+                point=base_plane.to_model(slot.end_point[0], slot.end_point[1], 0.0),
+                direction=base_plane.normal,
+                radius=r,
+            )
+        )
+    return cylinders
+
+
+def _collect_cut_entity_cylinders(
+    cut_sketch: SketchNode,
+    projector: PlaneAxes | FaceFrame,
+    circle_depth: float,
+    cyl_dir: tuple[float, float, float],
+) -> list[ExpectedCylinder]:
+    cylinders: list[ExpectedCylinder] = []
+    for entity in cut_sketch.entities.values():
+        if isinstance(entity, Circle):
+            cylinders.append(
+                ExpectedCylinder(
+                    point=projector.to_model(entity.center[0], entity.center[1], circle_depth),
+                    direction=cyl_dir,
+                    radius=entity.diameter * 0.5,
+                )
+            )
+        elif isinstance(entity, Arc):
+            r = math.hypot(entity.start[0] - entity.center[0], entity.start[1] - entity.center[1])
+            cylinders.append(
+                ExpectedCylinder(
+                    point=projector.to_model(entity.center[0], entity.center[1], circle_depth),
+                    direction=cyl_dir,
+                    radius=r,
+                )
+            )
+        elif isinstance(entity, StraightSlot):
+            r = entity.width * 0.5
+            cylinders.append(
+                ExpectedCylinder(
+                    point=projector.to_model(
+                        entity.start_point[0], entity.start_point[1], circle_depth
+                    ),
+                    direction=cyl_dir,
+                    radius=r,
+                )
+            )
+            cylinders.append(
+                ExpectedCylinder(
+                    point=projector.to_model(
+                        entity.end_point[0], entity.end_point[1], circle_depth
+                    ),
+                    direction=cyl_dir,
+                    radius=r,
+                )
+            )
+    return cylinders
+
+
 def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
     """Compute expected geometry from a PartGraph alone (spec 10.2, design 9)."""
     features, solid_nodes = _collect_features(graph)
@@ -504,25 +625,7 @@ def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
     total_volume = base_vol
     total_area = 2.0 * base_area + base_perimeter * base_depth
 
-    cylinders: list[ExpectedCylinder] = []
-    base_circles = [e for e in base_sketch_raw.entities.values() if isinstance(e, Circle)]
-    if base_circles:
-        cylinders.append(
-            ExpectedCylinder(
-                point=base_plane.to_model(base_cx, base_cy, 0.0),
-                direction=base_plane.normal,
-                radius=base_circles[0].diameter * 0.5,
-            )
-        )
-    for arc in [e for e in base_sketch_raw.entities.values() if isinstance(e, Arc)]:
-        r = math.hypot(arc.start[0] - arc.center[0], arc.start[1] - arc.center[1])
-        cylinders.append(
-            ExpectedCylinder(
-                point=base_plane.to_model(arc.center[0], arc.center[1], 0.0),
-                direction=base_plane.normal,
-                radius=r,
-            )
-        )
+    cylinders = _collect_base_cylinders(base_sketch_raw, base_plane, base_cx, base_cy)
 
     cut_entries = [e for e in solid_nodes if e[1].type == "cut_extrude"]
     for _, cut_node in cut_entries:
@@ -548,27 +651,9 @@ def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
             # A through cut opens both end faces. A blind cut's floor replaces the area it removes.
             total_area += perimeter * cut_depth - (2.0 * area if is_through else 0.0)
 
-        for entity in cut_sketch_raw.entities.values():
-            if isinstance(entity, Circle):
-                cylinders.append(
-                    ExpectedCylinder(
-                        point=projector.to_model(entity.center[0], entity.center[1], circle_depth),
-                        direction=cyl_dir,
-                        radius=entity.diameter * 0.5,
-                    )
-                )
-            elif isinstance(entity, Arc):
-                r = math.hypot(
-                    entity.start[0] - entity.center[0],
-                    entity.start[1] - entity.center[1],
-                )
-                cylinders.append(
-                    ExpectedCylinder(
-                        point=projector.to_model(entity.center[0], entity.center[1], circle_depth),
-                        direction=cyl_dir,
-                        radius=r,
-                    )
-                )
+        cylinders.extend(
+            _collect_cut_entity_cylinders(cut_sketch_raw, projector, circle_depth, cyl_dir)
+        )
 
     com_3d = Point3(
         total_moment[0] / total_volume,

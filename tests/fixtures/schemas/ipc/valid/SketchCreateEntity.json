@@ -26,5 +26,11 @@
     "center": [0.0, 0.0],
     "width": 10.0,
     "height": 20.0
+  },
+  {
+    "type": "straight_slot",
+    "start_point": [-10.0, 0.0],
+    "end_point": [10.0, 0.0],
+    "width": 10.0
   }
 ]

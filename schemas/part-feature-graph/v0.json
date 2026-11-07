@@ -258,6 +258,41 @@
         }
       }
     },
+    "StraightSlot": {
+      "type": "object",
+      "required": [
+        "type",
+        "start_point",
+        "end_point",
+        "width"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "straight_slot"
+        },
+        "start_point": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/v0.json#/$defs/Length"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "end_point": {
+          "type": "array",
+          "items": {
+            "$ref": "../common/v0.json#/$defs/Length"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "width": {
+          "$ref": "../common/v0.json#/$defs/Length",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
     "SketchEntity": {
       "type": "object",
       "properties": {
@@ -267,7 +302,8 @@
             "circle",
             "arc",
             "corner_rectangle",
-            "center_rectangle"
+            "center_rectangle",
+            "straight_slot"
           ]
         }
       },
@@ -333,6 +369,18 @@
           },
           "then": {
             "$ref": "#/$defs/CenterRectangle"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "straight_slot"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/StraightSlot"
           }
         }
       ]

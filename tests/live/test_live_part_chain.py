@@ -9,6 +9,7 @@ import contextlib
 import copy
 import hashlib
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -1445,6 +1446,72 @@ def test_live_direct_rectangle_ops(tmp_path: Path) -> None:
         meas = cast(dict[str, Any], backend.measure_part(str(target)))
         # Expected volume: (80*50 - 30*20) * 10 = 34,000 mm3 = 3.4e-5 m3
         assert meas["volume_m3"] == pytest.approx(3.4e-5, rel=1e-3)
+    finally:
+        backend.close()
+        _close_in_solidworks_by_path(target)
+
+
+def test_live_direct_slot_ops(tmp_path: Path) -> None:
+    """Verify direct IPC sketch.create with straight_slot."""
+    session = _get_live_session()
+    template = _resolve_template()
+    target = tmp_path / "direct_slot.SLDPRT"
+    job_id = f"live_slot_{time.time_ns()}"
+
+    provider = NamedPipeBackendProvider(target_session=str(session.pid))
+    backend = cast(IpcBackend, provider.acquire(on_notification=lambda _m, _p: None))
+    try:
+        op_create = Operation(
+            operation_id=f"{job_id}:1",
+            op="part.create",
+            params={"template": template, "_meta": {"job_id": job_id}},
+        )
+        res_create = backend.apply_ops(
+            [OperationGroup(document=str(target), operations=(op_create,))]
+        )
+        assert res_create.outcomes[0].error is None
+
+        op_sk_base = Operation(
+            operation_id=f"{job_id}:2",
+            op="sketch.create",
+            params={
+                "node_id": "sk_base",
+                "plane": "plane:front",
+                "entities": [
+                    {
+                        "type": "straight_slot",
+                        "start_point": [-20.0, 0.0],
+                        "end_point": [20.0, 0.0],
+                        "width": 20.0,
+                    }
+                ],
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_sk_base = backend.apply_ops(
+            [OperationGroup(document=str(target), operations=(op_sk_base,))]
+        )
+        assert res_sk_base.outcomes[0].error is None
+        base_sk_id = str(cast(dict[str, Any], res_sk_base.outcomes[0].result)["feature_id"])
+
+        op_ext = Operation(
+            operation_id=f"{job_id}:3",
+            op="feature.create",
+            params={
+                "node_id": "ext_base",
+                "type": "extrude",
+                "profile": base_sk_id,
+                "end_condition": {"type": "blind", "depth": 10.0},
+                "_meta": {"job_id": job_id},
+            },
+        )
+        res_ext = backend.apply_ops([OperationGroup(document=str(target), operations=(op_ext,))])
+        assert res_ext.outcomes[0].error is None
+
+        meas = cast(dict[str, Any], backend.measure_part(str(target)))
+        # Expected volume: (40 * 20 + pi * 10^2) * 10 = (800 + 100 * pi) * 10 mm3
+        expected_vol = (800.0 + math.pi * 100.0) * 10.0 * 1e-9
+        assert meas["volume_m3"] == pytest.approx(expected_vol, rel=1e-3)
     finally:
         backend.close()
         _close_in_solidworks_by_path(target)
