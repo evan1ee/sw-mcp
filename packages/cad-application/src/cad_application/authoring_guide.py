@@ -45,14 +45,17 @@ _RULES: Final[tuple[str, ...]] = (
     " or a cylindrical feature id; `spacing` > 0 degrees (total angle when `equal_spacing` is"
     " true), `count` >= 2. Seeds must be in `dependencies` and all patterned instances must"
     " remain strictly inside the extrude profile.",
+    "A `mirror` feature mirrors seed solid or `cut_extrude` features across a `plane`: `plane` is"
+    " an origin plane (`plane:front`, `plane:top`, `plane:right`) or a planar face / reference"
+    " plane; seeds must be in `dependencies` and mirrored features must remain strictly inside the"
+    " part body.",
 )
 
 _UNSUPPORTED: Final[tuple[str, ...]] = (
     "fillets and chamfers",
     "splines, ellipses, text, and any outline that is not a closed loop of straight lines and"
     " arcs, a rectangle, a straight slot, or a single circle",
-    "mirror patterns (linear pattern and circular pattern are supported); only write out shapes"
-    " the user lists",
+    "patterns other than linear, circular, and mirror; only write out shapes the user lists",
     "revolves, sweeps, lofts, shells, ribs, threads, sheet metal",
     "sketches on any face other than the extrude's start_face or end_face (side faces, faces"
     " of a cut), on an offset plane or on a datum",
@@ -331,6 +334,54 @@ def _build_examples() -> dict[str, Example]:
                         "count": 6,
                         "spacing": 360.0,
                         "equal_spacing": True,
+                    },
+                },
+            ),
+        ),
+        "plate_mirror_hole": Example(
+            "100 x 50 x 10 plate with 10 mm through hole mirrored across right plane",
+            _header(
+                "plate_mirror_hole",
+                {
+                    "sketch_base": {
+                        "type": "sketch",
+                        "plane": "plane:front",
+                        "entities": {
+                            "l1": {"type": "line", "start": [-50.0, -25.0], "end": [50.0, -25.0]},
+                            "l2": {"type": "line", "start": [50.0, -25.0], "end": [50.0, 25.0]},
+                            "l3": {"type": "line", "start": [50.0, 25.0], "end": [-50.0, 25.0]},
+                            "l4": {"type": "line", "start": [-50.0, 25.0], "end": [-50.0, -25.0]},
+                        },
+                    },
+                    "extrude_base": {
+                        "type": "extrude",
+                        "dependencies": ["sketch_base"],
+                        "profile": "sketch_base",
+                        "end_condition": {"type": "blind", "depth": 10.0},
+                    },
+                    "sketch_hole": {
+                        "type": "sketch",
+                        "plane": "plane:front",
+                        "entities": {
+                            "c1": {
+                                "type": "circle",
+                                "center": [25.0, 0.0],
+                                "diameter": 10.0,
+                            }
+                        },
+                    },
+                    "cut_hole": {
+                        "type": "cut_extrude",
+                        "dependencies": ["sketch_hole", "extrude_base"],
+                        "profile": "sketch_hole",
+                        "end_condition": {"type": "through_all_both"},
+                    },
+                    "mirror_hole": {
+                        "type": "mirror",
+                        "dependencies": ["cut_hole", "extrude_base"],
+                        "seeds": ["cut_hole"],
+                        "plane": "plane:right",
+                        "merge": True,
                     },
                 },
             ),
