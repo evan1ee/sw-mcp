@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated: 2026-11-07 (branch `feat/sketch-straight-slot`, spec v1.42).
+Last updated: 2026-11-07 (branch `main`, spec v1.42, PR #20 merged).
 > **Handoff Rule ([AGENTS.md §5](AGENTS.md#5-session-handoff)):** Keep this file as short as possible. Rewrite in place — **never** append an incremental history (`git log` and [`CHANGELOG.md`](docs/specifications/CHANGELOG.md) record history). Keep only the current state snapshot, the latest session's **Changes Made**, prioritized **Next Steps**, and active **Known Issues**, linking to `docs/` instead of repeating details.
 
 ## Current State
