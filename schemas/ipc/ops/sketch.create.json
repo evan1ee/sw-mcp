@@ -26,7 +26,8 @@
             "circle",
             "arc",
             "corner_rectangle",
-            "center_rectangle"
+            "center_rectangle",
+            "straight_slot"
           ]
         },
         "start": {
@@ -86,6 +87,22 @@
         "height": {
           "type": "number",
           "minimum": 0
+        },
+        "start_point": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "end_point": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "maxItems": 2
         }
       }
     },

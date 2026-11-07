@@ -108,7 +108,7 @@ type FeatureCreateResultStatus = Literal['ok', 'warning', 'error', 'suppressed']
 
 type ModelItemsInsertParamsSource = Literal['entire_model', 'selected_feature']
 
-type SketchCreateEntityType = Literal['line', 'circle', 'arc', 'corner_rectangle', 'center_rectangle']
+type SketchCreateEntityType = Literal['line', 'circle', 'arc', 'corner_rectangle', 'center_rectangle', 'straight_slot']
 
 type SketchCreateEntityDirection = Literal['ccw', 'cw']
 
@@ -2126,6 +2126,8 @@ class SketchCreateEntity:
     corner2: tuple[float, ...] | None = None
     width: float | None = None
     height: float | None = None
+    start_point: tuple[float, ...] | None = None
+    end_point: tuple[float, ...] | None = None
 
     @classmethod
     def from_json(cls, value: JsonValue) -> Self:
@@ -2145,6 +2147,8 @@ class SketchCreateEntity:
             corner2=_opt(obj, "corner2", where, _list_of(_num)),
             width=_opt(obj, "width", where, _num),
             height=_opt(obj, "height", where, _num),
+            start_point=_opt(obj, "start_point", where, _list_of(_num)),
+            end_point=_opt(obj, "end_point", where, _list_of(_num)),
         )
 
     def to_json(self) -> dict[str, JsonValue]:
@@ -2168,6 +2172,10 @@ class SketchCreateEntity:
             out["width"] = _dump(self.width)
         if self.height is not None:
             out["height"] = _dump(self.height)
+        if self.start_point is not None:
+            out["start_point"] = _dump(self.start_point)
+        if self.end_point is not None:
+            out["end_point"] = _dump(self.end_point)
         return out
 
 
