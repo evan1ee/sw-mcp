@@ -82,3 +82,4 @@ New decisions: copy [template.md](template.md), take the next free number, and a
 | [ADR-074](ADR-074-linear-pattern-feature.md) | Linear pattern solid feature on seed cut features | Enables linear repeated feature patterns in 3D parts | Accepted |
 | [ADR-075](ADR-075-circular-pattern-feature.md) | Circular pattern solid feature on seed cut features | Enables circular repeated feature patterns in 3D parts | Accepted |
 | [ADR-076](ADR-076-mirror-feature.md) | Mirror solid feature on seed cut features across a symmetry plane | Enables mirrored features and symmetric geometry in 3D parts | Accepted |
+| [ADR-077](ADR-077-revolved-features.md) | Revolved Boss/Base and Revolved Cut semantics, axis selection, and FeatureRevolve2 | Enables rotational 3D solids and cuts via sketches and axes | Accepted |

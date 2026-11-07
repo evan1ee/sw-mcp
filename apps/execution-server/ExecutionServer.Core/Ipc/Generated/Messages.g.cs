@@ -98,7 +98,11 @@ public enum FeatureCreateParamsType
     [EnumMember(Value = "circular_pattern")]
     CircularPattern,
     [EnumMember(Value = "mirror")]
-    Mirror
+    Mirror,
+    [EnumMember(Value = "revolve")]
+    Revolve,
+    [EnumMember(Value = "cut_revolve")]
+    CutRevolve
 }
 
 [JsonConverter(typeof(StringEnumConverter))]
@@ -1037,6 +1041,12 @@ public sealed class FeatureCreateParams
     [JsonProperty("reverse", NullValueHandling = NullValueHandling.Ignore)]
     public bool? Reverse { get; set; }
 
+    [JsonProperty("angle", NullValueHandling = NullValueHandling.Ignore)]
+    public double? Angle { get; set; }
+
+    [JsonProperty("mid_plane", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? MidPlane { get; set; }
+
     [JsonProperty("plane", NullValueHandling = NullValueHandling.Ignore)]
     public string? Plane { get; set; }
 
@@ -1192,6 +1202,9 @@ public sealed class SketchCreateEntity
 
     [JsonProperty("end_point", NullValueHandling = NullValueHandling.Ignore)]
     public List<double>? EndPoint { get; set; }
+
+    [JsonProperty("construction", NullValueHandling = NullValueHandling.Ignore)]
+    public bool? Construction { get; set; }
 }
 
 public sealed class SketchCreateFace

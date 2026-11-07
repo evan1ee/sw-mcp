@@ -72,7 +72,9 @@
             "cut_extrude",
             "linear_pattern",
             "circular_pattern",
-            "mirror"
+            "mirror",
+            "revolve",
+            "cut_revolve"
           ]
         },
         "profile": {
@@ -115,6 +117,14 @@
           "type": "boolean"
         },
         "reverse": {
+          "type": "boolean"
+        },
+        "angle": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 360
+        },
+        "mid_plane": {
           "type": "boolean"
         },
         "plane": {
