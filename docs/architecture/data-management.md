@@ -1,6 +1,6 @@
 # 13. Data Management and Persistence
 
-> Specification v1.38, section 13. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.39, section 13. Index and section map: [specifications/README.md](../specifications/README.md).
 
 The system persists enough to reproduce, inspect and recover sessions.
 

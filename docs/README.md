@@ -2,16 +2,17 @@
 
 Documentation for the AI-native Parametric CAD System: an MCP server and SOLIDWORKS execution engine that lets AI agents build parametric models and production drawings through a deterministic, verified pipeline.
 
-The [specification](specifications/README.md) (v1.38) is split across these folders by topic. Section numbers are kept, so a reference such as "see 11.5" resolves through the [section map](specifications/README.md#how-this-specification-is-organized).
+The [specification](specifications/README.md) (v1.39) is split across these folders by topic. Section numbers are kept, so a reference such as "see 11.5" resolves through the [section map](specifications/README.md#how-this-specification-is-organized).
 
 ```
 docs/
 ├── specifications/   what the product is and when it ships
 ├── architecture/     how the system works, one file per component or IR module
 ├── api/              the MCP tool surface agents call
-├── adr/              architecture decision records, ADR-001 … ADR-069
+├── adr/              architecture decision records, ADR-001 … ADR-070
 ├── development/      repository layout and testing
 ├── plans/            cross-cutting implementation roadmaps
+├── implementation/   Sketch and Part Feature checklists: what is built and verified
 ```
 
 ## Reading order
@@ -21,6 +22,7 @@ docs/
 3. [Production drawings](architecture/production-drawings.md) — the P0 capability
 4. [Roadmap](specifications/roadmap.md) — phases, the Phase 0 assumption register and the Phase 1 work order
 5. [Decisions](adr/README.md) — why things are the way they are
+6. [Implementation checklists](implementation/README.md) — per-capability build and verification status
 
 ## Specifications
 

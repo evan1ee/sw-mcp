@@ -1,6 +1,6 @@
 # 10. Verification Engine
 
-> Specification v1.38, section 10. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.39, section 10. Index and section map: [specifications/README.md](../specifications/README.md).
 
 ## 10.1 Purpose
 
