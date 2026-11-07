@@ -11,6 +11,8 @@ from cad_ir.part_feature_graph.model import (
     CornerRectangle,
     EndCondition,
     Line,
+    LinearPattern,
+    LinearPatternDirection,
     PartGraph,
     SketchNode,
     SolidNode,
@@ -28,6 +30,8 @@ EXPECTED_FEATURE_COUNT = 4
 EXPECTED_CYLINDER_COUNT = 4
 EXPECTED_CHECKS_COUNT = 8
 THREE_FAILURES_COUNT = 3
+EXPECTED_PATTERN_CYLINDERS = 4
+EXPECTED_PATTERN_FEATURES = 5
 
 
 def make_plate_graph() -> PartGraph:
@@ -1067,3 +1071,61 @@ def test_expected_geometry_with_straight_slot_cut() -> None:
     expected_surf = (2.0 * 6000.0 + 320.0 * 10.0) + slot_perim * 10.0 - 2.0 * slot_area
     assert geom.surface_area_mm2 == pytest.approx(expected_surf)
     assert len(geom.cylinders) == EXPECTED_SLOT_CYLINDERS
+
+
+def test_linear_pattern_expected_geometry() -> None:
+    """Plate with single hole patterned 4x linearly has 4x cut volume and 4 cylinders."""
+    graph = PartGraph(
+        id="pattern_plate",
+        schema_version="0.1",
+        units="mm",
+        origin="built",
+        nodes={
+            "sketch_base": SketchNode(
+                plane="plane:front",
+                entities={
+                    "r1": CenterRectangle(center=(0.0, 0.0), width=100.0, height=60.0),
+                },
+            ),
+            "extrude_base": SolidNode(
+                type="extrude",
+                profile="sketch_base",
+                end_condition=EndCondition(type="blind", depth=10.0),
+                dependencies=("sketch_base",),
+            ),
+            "sketch_hole": SketchNode(
+                plane="plane:front",
+                entities={"c1": Circle(center=(-30.0, 0.0), diameter=10.0)},
+            ),
+            "cut_hole": SolidNode(
+                type="cut_extrude",
+                profile="sketch_hole",
+                end_condition=EndCondition(type="through_all_both"),
+                dependencies=("sketch_hole", "extrude_base"),
+            ),
+            "pattern_holes": LinearPattern(
+                seeds=("cut_hole",),
+                direction_1=LinearPatternDirection(
+                    direction="plane:right",
+                    spacing=20.0,
+                    count=4,
+                ),
+                dependencies=("cut_hole", "extrude_base"),
+            ),
+        },
+    )
+    geom = expected_geometry(graph)
+    assert geom.solid_body_count == 1
+    # 4 through holes of dia 10 (r=5, depth=10):
+    # Total hole vol = 4 * pi * 25 * 10 = 1000 * pi ~ 3141.59265
+    # Base vol = 100 * 60 * 10 = 60000
+    expected_vol = 60000.0 - 1000.0 * math.pi
+    assert geom.volume_mm3 == pytest.approx(expected_vol, abs=0.01)
+    assert len(geom.cylinders) == EXPECTED_PATTERN_CYLINDERS
+    cyl_xs = sorted(c.point.x for c in geom.cylinders)
+    assert cyl_xs == pytest.approx([-30.0, -10.0, 10.0, 30.0], abs=1e-4)
+    for c in geom.cylinders:
+        assert c.radius == pytest.approx(5.0)
+    assert len(geom.features) == EXPECTED_PATTERN_FEATURES
+    assert geom.features[-1].feature_type == "linear_pattern"
+    assert geom.features[-1].native_type == "LPattern"
