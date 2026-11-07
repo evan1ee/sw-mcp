@@ -71,7 +71,8 @@
             "extrude",
             "cut_extrude",
             "linear_pattern",
-            "circular_pattern"
+            "circular_pattern",
+            "mirror"
           ]
         },
         "profile": {
@@ -114,6 +115,12 @@
           "type": "boolean"
         },
         "reverse": {
+          "type": "boolean"
+        },
+        "plane": {
+          "type": "string"
+        },
+        "merge": {
           "type": "boolean"
         },
         "_meta": {

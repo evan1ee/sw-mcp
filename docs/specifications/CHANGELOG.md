@@ -2,6 +2,17 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.45
+
+Adds mirror solid feature (`PAT-MIR-001` through `PAT-MIR-004`) to the Part Feature Graph IR and execution pipeline. Decided in [ADR-076](../adr/ADR-076-mirror-feature.md).
+
+- **IR and Schemas (5.7.3, 22.5.2):** creates `schemas/part-feature-graph/features/mirror.json`, adds `mirror` to `schemas/part-feature-graph/v0.json` node union, and updates `schemas/ipc/ops/feature.create.json` with `mirror` type, `plane`, and `merge` parameters.
+- **Compiler and lowering:** validates `mirror` node constraints (seeds exist and reference solid features, plane is specified as valid reference or principal plane); lowers `mirror` to `feature.create` operation.
+- **Verification:** computes closed-form volume deduction ($2 \times \sum V_{\text{seed\_cut}}$) and reflected cylinder replication across principal planes for mirror features in `cad-verification`.
+- **Execution & Adapter:** handles `mirror` in C# `FeatureAdapter.cs` via `FeatureManager.InsertMirrorFeature2` / `swFmMirrorPattern` with Mark 2 plane selection, Mark 1 seed selection, and COM cleanup (`Marshal.ReleaseComObject`).
+- **Authoring & Benchmark:** documents `mirror` in authoring guide rules and examples, and adds mirrored hole plate case to benchmark (18/18).
+- **Checklists & Live:** adds live SOLIDWORKS integration tests promoting `PAT-MIR-001` - `PAT-MIR-004` to Verified.
+
 ## What changed in 1.44
 
 Adds circular pattern solid feature (`PAT-CIR-001` through `PAT-CIR-005`) to the Part Feature Graph IR and execution pipeline. Decided in [ADR-075](../adr/ADR-075-circular-pattern-feature.md).

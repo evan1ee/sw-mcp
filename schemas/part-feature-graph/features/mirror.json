@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sw-mcp.invalid/schemas/part-feature-graph/features/mirror.json",
+  "title": "Mirror Feature Node (spec 5.7, 22.5.2)",
+  "type": "object",
+  "required": [
+    "type",
+    "dependencies",
+    "seeds",
+    "plane"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "const": "mirror"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    },
+    "seeds": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "plane": {
+      "$ref": "../../common/v0.json#/$defs/GeometryRef"
+    },
+    "merge": {
+      "type": "boolean",
+      "default": true
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "realizes": {
+      "type": "array",
+      "items": {
+        "$ref": "../../common/v0.json#/$defs/ItemId"
+      },
+      "uniqueItems": true
+    }
+  },
+  "examples": [
+    {
+      "type": "mirror",
+      "dependencies": [
+        "cut_hole",
+        "extrude_base"
+      ],
+      "seeds": [
+        "cut_hole"
+      ],
+      "plane": "plane:right"
+    }
+  ]
+}
