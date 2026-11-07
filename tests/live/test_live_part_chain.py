@@ -462,13 +462,16 @@ def _top_face_hole_graph() -> dict[str, JsonValue]:
 
 
 def _cap_face_hole_graph(
-    base_plane: str = "plane:front", cap_role: str = "end_face"
+    base_plane: str = "plane:front",
+    cap_role: str = "end_face",
+    center: tuple[float, float] = (10.0, 5.0),
 ) -> dict[str, JsonValue]:
     """Build a 40x30x10 mm block on ``base_plane`` with a 5x4 mm blind hole on ``cap_role``."""
     graph = copy.deepcopy(EXAMPLES["block_top_hole"].graph)
     graph["id"] = f"block_{base_plane.split(':')[1]}_{cap_role}"
     graph["nodes"]["sketch_base"]["plane"] = base_plane
     graph["nodes"]["sketch_hole"]["plane"] = f"extrude_base.{cap_role}"
+    graph["nodes"]["sketch_hole"]["entities"]["c1"]["center"] = [center[0], center[1]]
     return cast(dict[str, JsonValue], graph)
 
 
@@ -638,6 +641,7 @@ def test_wrong_plan_fails(tmp_path: Path) -> None:
     service = _start_core(
         tmp_path, allowed_roots=(proj,), template_path=template, provider=provider
     )
+    job_id = ""
     try:
         applied = _call_ok(
             service,
@@ -658,6 +662,9 @@ def test_wrong_plan_fails(tmp_path: Path) -> None:
     finally:
         service.stop()
         _close_in_solidworks_by_path(target)
+        if job_id:
+            _close_in_solidworks_by_path(Path(working_path(str(target), job_id)))
+            _close_in_solidworks_by_path(Path(failed_path(str(target), job_id)))
 
 
 def test_second_job_same_core(tmp_path: Path) -> None:
