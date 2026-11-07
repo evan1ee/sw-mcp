@@ -2,6 +2,15 @@
 
 Changes to the [specification](README.md), newest first.
 
+## What changed in 1.38
+
+Closes open decision K29 by measuring and verifying cap-face sketch frames (`<extrude_id>.start_face` and `<extrude_id>.end_face`) across all three standard datum planes (`plane:front`, `plane:top`, `plane:right`) in SOLIDWORKS 2025, hardens 3D part COM interop cleanup and verification contract type checks, and establishes the 13-prompt evaluation baseline.
+
+- **Cap-face frames across all datum planes (5.7.4, ADR-070, K29 closed):** on `end_face`, the sketch axes equal the base plane's axes with the origin shifted by `depth` along the base normal. On `start_face`, the normal is reversed; on vertical cap faces (`plane:front` and `plane:right`) SOLIDWORKS keeps `+Y` as the sketch `+y` axis and mirrors `+x`, while on horizontal cap faces (`plane:top`) SOLIDWORKS keeps `+X` as the sketch `+x` axis and mirrors `+y` (`x = (1, 0, 0)`, `y = (0, 0, 1)`, `normal = (0, -1, 0)`).
+- **Pure core packages (`cad-ir`, `cad-geometry`, `cad-references`, `cad-compiler`, `cad-verification`):** `FaceFrame.to_model` projects 2D cap-face coordinates into 3D model space across all 6 datum-and-cap combinations; `cad_geometry.signatures` exports `cap_face_frame` and `project_cap_face_point`; `cad_references.semantic` exports `resolve_cap_face_signature`; `expected_geometry` projects off-center cap-face cuts and cylinders on `plane:top` and `plane:right`.
+- **Verification contract hygiene & COM lifetime (`cad-verification`, `ExecutionServer.Adapters`):** `evaluate()` rejects boolean/non-integer `error_code` and `entity_count` and non-boolean `is_warning`/`suppressed` as `not_evaluated` (`malformed_data`); C# 3D part adapters track all temporary `IFeature` and `IMassProperty` COM proxies in `ComScope`, close untitled documents if `SaveAs4` fails, and translate `COMException` on feature creation/rebuild into `BACKEND_REBUILD_ERROR`.
+- **Evaluation set & live suite:** adds `blind_hole_start_face` (13 cases total: 10 build, 3 refuse), `tests/cad-benchmark/part_ir_baseline_answers.json`, and live SOLIDWORKS 2025 tests for `start_face`, `plane:top`/`plane:right` cap faces, and `block_centre_hole`.
+
 ## What changed in 1.37
 
 A sketch may sit on an extrude's cap face, so "a hole, 4 mm deep, in the top face" can be built. Decided in [ADR-070](../adr/ADR-070-sketch-on-extrude-cap-face.md); measured by the [face spike](../superpowers/review/2026-11-06-face-sketch-spike.md); planned in [the face reference plan](../superpowers/plans/2026-11-06-face-reference-sketches.md).

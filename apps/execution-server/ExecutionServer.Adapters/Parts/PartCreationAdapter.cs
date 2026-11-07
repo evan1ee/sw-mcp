@@ -89,15 +89,48 @@ public sealed class PartCreationAdapter
         // 6. Save immediately to working path
         int errors = 0;
         int warnings = 0;
-        bool saved = modelDoc.SaveAs4(
-            workingPath,
-            (int)swSaveAsVersion_e.swSaveAsCurrentVersion,
-            (int)swSaveAsOptions_e.swSaveAsOptions_Silent,
-            ref errors,
-            ref warnings);
+        bool saved = false;
+        try
+        {
+            saved = modelDoc.SaveAs4(
+                workingPath,
+                (int)swSaveAsVersion_e.swSaveAsCurrentVersion,
+                (int)swSaveAsOptions_e.swSaveAsOptions_Silent,
+                ref errors,
+                ref warnings);
+        }
+        catch
+        {
+            try
+            {
+                string title = modelDoc.GetTitle();
+                if (!string.IsNullOrEmpty(title))
+                {
+                    _sw.CloseDoc(title);
+                }
+            }
+            catch
+            {
+                // Best-effort cleanup of untitled document handle
+            }
+            throw;
+        }
 
         if (!saved || errors != 0)
         {
+            try
+            {
+                string title = modelDoc.GetTitle();
+                if (!string.IsNullOrEmpty(title))
+                {
+                    _sw.CloseDoc(title);
+                }
+            }
+            catch
+            {
+                // Best-effort cleanup of untitled document handle
+            }
+
             throw new IpcException(
                 ErrorCodes.BACKEND_OPERATION_FAILED,
                 $"SaveAs4 failed for '{workingPath}', errors: {errors}, warnings: {warnings}");

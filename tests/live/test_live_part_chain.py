@@ -6,6 +6,7 @@ Owner gate:
 """
 
 import contextlib
+import copy
 import hashlib
 import json
 import os
@@ -19,6 +20,7 @@ from pathlib import Path
 from typing import Any, Final, cast
 
 import pytest
+from cad_application.authoring_eval.references import REFERENCE_ANSWERS
 from cad_application.authoring_guide import EXAMPLES
 from cad_application.config.settings import ConfigError
 from cad_application.jobs.part_files import failed_path, working_path
@@ -459,6 +461,27 @@ def _top_face_hole_graph() -> dict[str, JsonValue]:
     return cast(dict[str, JsonValue], EXAMPLES["block_top_hole"].graph)
 
 
+def _cap_face_hole_graph(
+    base_plane: str = "plane:front",
+    cap_role: str = "end_face",
+    center: tuple[float, float] = (10.0, 5.0),
+) -> dict[str, JsonValue]:
+    """Build a 40x30x10 mm block on ``base_plane`` with a 5x4 mm blind hole on ``cap_role``."""
+    graph = copy.deepcopy(EXAMPLES["block_top_hole"].graph)
+    graph["id"] = f"block_{base_plane.split(':')[1]}_{cap_role}"
+    graph["nodes"]["sketch_base"]["plane"] = base_plane
+    graph["nodes"]["sketch_hole"]["plane"] = f"extrude_base.{cap_role}"
+    graph["nodes"]["sketch_hole"]["entities"]["c1"]["center"] = [center[0], center[1]]
+    return cast(dict[str, JsonValue], graph)
+
+
+def _block_centre_hole_graph() -> dict[str, JsonValue]:
+    """Return the block_centre_hole benchmark fixture (40x30x10 mm block, 5 mm through-hole)."""
+    raw = REFERENCE_ANSWERS["block_centre_hole"]
+    assert raw is not None
+    return cast(dict[str, JsonValue], copy.deepcopy(raw))
+
+
 def test_blind_hole_in_top_face(tmp_path: Path) -> None:
     """ADR-070: a sketch on the end face, a blind cut into the body, then a read-only reopen."""
     session = _get_live_session()
@@ -490,6 +513,117 @@ def test_blind_hole_in_top_face(tmp_path: Path) -> None:
         _close_in_solidworks_by_path(target)
 
 
+def test_blind_hole_in_start_face(tmp_path: Path) -> None:
+    """ADR-070 / Debt 2: a sketch on extrude_base.start_face with a blind cut into the body."""
+    session = _get_live_session()
+    template = _resolve_template()
+    proj = tmp_path / "proj"
+    proj.mkdir(parents=True, exist_ok=True)
+    target = proj / "block_start_hole.SLDPRT"
+
+    provider = NamedPipeBackendProvider(target_session=str(session.pid))
+    service = _start_core(
+        tmp_path, allowed_roots=(proj,), template_path=template, provider=provider
+    )
+    try:
+        applied = _call_ok(
+            service,
+            "apply_part_graph",
+            {
+                "graph": _cap_face_hole_graph("plane:front", "start_face"),
+                "target_path": str(target),
+            },
+        )
+        final = _wait_for_job(service, str(applied["execution_id"]))
+        assert final["state"] == "COMMITTED", final
+        assert target.is_file()
+
+        part_result = cast(dict[str, Any], final["part_result"])
+        checks = cast(list[dict[str, Any]], part_result["checks"])
+        assert len(checks) > 0
+        assert all(c["status"] == "passed" for c in checks), checks
+    finally:
+        service.stop()
+        _close_in_solidworks_by_path(target)
+
+
+@pytest.mark.parametrize(
+    ("base_plane", "cap_role"),
+    [
+        ("plane:top", "end_face"),
+        ("plane:top", "start_face"),
+        ("plane:right", "end_face"),
+        ("plane:right", "start_face"),
+    ],
+)
+def test_blind_hole_on_non_front_base_planes(
+    tmp_path: Path, base_plane: str, cap_role: str
+) -> None:
+    """ADR-070 / K29 / Debt 2: cap-face blind holes on parts built on plane:top and plane:right."""
+    session = _get_live_session()
+    template = _resolve_template()
+    plane_slug = base_plane.split(":")[1]
+    proj = tmp_path / f"proj_{plane_slug}_{cap_role}"
+    proj.mkdir(parents=True, exist_ok=True)
+    target = proj / f"block_{plane_slug}_{cap_role}.SLDPRT"
+
+    provider = NamedPipeBackendProvider(target_session=str(session.pid))
+    service = _start_core(
+        tmp_path, allowed_roots=(proj,), template_path=template, provider=provider
+    )
+    try:
+        applied = _call_ok(
+            service,
+            "apply_part_graph",
+            {
+                "graph": _cap_face_hole_graph(base_plane, cap_role),
+                "target_path": str(target),
+            },
+        )
+        final = _wait_for_job(service, str(applied["execution_id"]))
+        assert final["state"] == "COMMITTED", final
+        assert target.is_file()
+
+        part_result = cast(dict[str, Any], final["part_result"])
+        checks = cast(list[dict[str, Any]], part_result["checks"])
+        assert len(checks) > 0
+        assert all(c["status"] == "passed" for c in checks), checks
+    finally:
+        service.stop()
+        _close_in_solidworks_by_path(target)
+
+
+def test_block_centre_hole_end_to_end(tmp_path: Path) -> None:
+    """Debt 2: verify the block_centre_hole benchmark fixture end-to-end against live SOLIDWORKS."""
+    session = _get_live_session()
+    template = _resolve_template()
+    proj = tmp_path / "proj"
+    proj.mkdir(parents=True, exist_ok=True)
+    target = proj / "block_centre_hole.SLDPRT"
+
+    provider = NamedPipeBackendProvider(target_session=str(session.pid))
+    service = _start_core(
+        tmp_path, allowed_roots=(proj,), template_path=template, provider=provider
+    )
+    try:
+        applied = _call_ok(
+            service,
+            "apply_part_graph",
+            {"graph": _block_centre_hole_graph(), "target_path": str(target)},
+        )
+        final = _wait_for_job(service, str(applied["execution_id"]))
+        assert final["state"] == "COMMITTED", final
+        assert target.is_file()
+
+        part_result = cast(dict[str, Any], final["part_result"])
+        checks = cast(list[dict[str, Any]], part_result["checks"])
+        assert len(checks) > 0
+        assert all(c["status"] == "passed" for c in checks), checks
+    finally:
+        service.stop()
+        _close_in_solidworks_by_path(target)
+
+
 def test_wrong_plan_fails(tmp_path: Path) -> None:
     """Design 12 item 9: provider alters depth to 9 in transit; job ends FAILED, .failed kept."""
     session = _get_live_session()
@@ -507,6 +641,7 @@ def test_wrong_plan_fails(tmp_path: Path) -> None:
     service = _start_core(
         tmp_path, allowed_roots=(proj,), template_path=template, provider=provider
     )
+    job_id = ""
     try:
         applied = _call_ok(
             service,
@@ -526,6 +661,10 @@ def test_wrong_plan_fails(tmp_path: Path) -> None:
         assert details.get("failed_path") == str(expected_failed)
     finally:
         service.stop()
+        _close_in_solidworks_by_path(target)
+        if job_id:
+            _close_in_solidworks_by_path(Path(working_path(str(target), job_id)))
+            _close_in_solidworks_by_path(Path(failed_path(str(target), job_id)))
 
 
 def test_second_job_same_core(tmp_path: Path) -> None:
@@ -561,6 +700,8 @@ def test_second_job_same_core(tmp_path: Path) -> None:
         assert target2.is_file()
     finally:
         service.stop()
+        _close_in_solidworks_by_path(target1)
+        _close_in_solidworks_by_path(target2)
 
 
 def test_open_dirty_document_untouched(tmp_path: Path) -> None:
@@ -884,6 +1025,7 @@ def test_template_with_reordered_planes(tmp_path: Path) -> None:
     sw_app = win32com.client.Dispatch("SldWorks.Application")  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
     doc = sw_app.NewDocument(template, 0, 0, 0)  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
     assert doc is not None
+    initial_title = str(_com(doc, "GetTitle"))  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
     try:
         # Collect standard RefPlanes and reorder Top before Front (or delete Front)
         planes: list[Any] = []
@@ -911,7 +1053,7 @@ def test_template_with_reordered_planes(tmp_path: Path) -> None:
     finally:
         with contextlib.suppress(Exception):
             sw_app.CloseDoc(str(bad_template))  # type: ignore[reportUnknownMemberType]
-            sw_app.CloseDoc(str(_com(doc, "GetTitle")))  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+            sw_app.CloseDoc(initial_title)  # type: ignore[reportUnknownMemberType]
 
     proj = tmp_path / "proj"
     proj.mkdir(parents=True, exist_ok=True)
@@ -950,6 +1092,7 @@ def test_template_with_extra_feature(tmp_path: Path) -> None:
     sw_app = win32com.client.Dispatch("SldWorks.Application")  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
     doc = sw_app.NewDocument(template, 0, 0, 0)  # type: ignore[reportUnknownMemberType, reportUnknownVariableType]
     assert doc is not None
+    initial_title = str(_com(doc, "GetTitle"))  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
     try:
         # Select first RefPlane and insert an extra sketch into the template
         feat = _com(doc, "FirstFeature")
@@ -969,7 +1112,7 @@ def test_template_with_extra_feature(tmp_path: Path) -> None:
     finally:
         with contextlib.suppress(Exception):
             sw_app.CloseDoc(str(extra_template))  # type: ignore[reportUnknownMemberType]
-            sw_app.CloseDoc(str(_com(doc, "GetTitle")))  # type: ignore[reportUnknownMemberType, reportUnknownArgumentType]
+            sw_app.CloseDoc(initial_title)  # type: ignore[reportUnknownMemberType]
 
     proj = tmp_path / "proj"
     proj.mkdir(parents=True, exist_ok=True)
@@ -1104,6 +1247,7 @@ def test_core_killed_mid_job(tmp_path: Path) -> None:
         assert target.is_file()
     finally:
         new_service.stop()
+        _close_in_solidworks_by_path(target)
 
 
 def test_non_ascii_path(tmp_path: Path) -> None:
@@ -1130,3 +1274,4 @@ def test_non_ascii_path(tmp_path: Path) -> None:
         assert target.is_file()
     finally:
         service.stop()
+        _close_in_solidworks_by_path(target)

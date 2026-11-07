@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Threading;
 using ExecutionServer.Adapters.Native;
 using ExecutionServer.Core.Ipc;
@@ -32,8 +33,10 @@ public sealed class FeatureAdapter
 
         var doc = DocumentLocator.FindDocument(_sw, document);
 
+        using var scope = new ComScope();
+
         // 1. Locate profile sketch by feature_id
-        var profileFeature = FeatureLookup.FindById(doc, p.Profile);
+        var profileFeature = FeatureLookup.FindById(doc, p.Profile, scope);
         if (profileFeature == null)
         {
             throw new IpcException(ErrorCodes.IR_REFERENCE_UNRESOLVED, $"Profile feature '{p.Profile}' not found in document.");
@@ -45,72 +48,89 @@ public sealed class FeatureAdapter
 
         IFeature? createdFeature = null;
 
-        if (p.Type == FeatureCreateParamsType.Extrude)
+        try
         {
-            double depthM = PartUnits.MmToMetres(p.EndCondition?.Depth ?? 0.0);
-
-            createdFeature = (IFeature?)doc.FeatureManager.FeatureExtrusion3(
-                true, // Sd
-                false, // Flip
-                false, // Dir
-                (int)swEndConditions_e.swEndCondBlind, // T1
-                0, // T2
-                depthM, // D1
-                0.0, // D2
-                false, false, false, false, 0.0, 0.0, false, false, false, false,
-                true, // Merge
-                true, // UseFeatScope
-                true, // UseAutoSelect
-                0, 0.0, false);
-        }
-        else if (p.Type == FeatureCreateParamsType.CutExtrude)
-        {
-            var endType = p.EndCondition?.Type;
-            if (endType == FeatureCreateEndConditionType.ThroughAllBoth)
+            if (p.Type == FeatureCreateParamsType.Extrude)
             {
-                // Sd = false, T1 = swEndCondThroughAll (1), T2 = swEndCondThroughAll (1) (spike answer 2)
-                createdFeature = (IFeature?)doc.FeatureManager.FeatureCut4(
-                    false, // Sd
-                    false, // Flip
-                    false, // Dir
-                    (int)swEndConditions_e.swEndCondThroughAll, // T1
-                    (int)swEndConditions_e.swEndCondThroughAll, // T2
-                    0.0, // D1
-                    0.0, // D2
-                    false, false, false, false, 0.0, 0.0, false, false, false, false, false,
-                    true, // UseFeatScope
-                    true, // UseAutoSelect
-                    false, false, false, 0, 0.0, false, false);
-            }
-            else if (endType == FeatureCreateEndConditionType.Blind)
-            {
-                // Blind cut from an origin plane: Dir = true cuts into the body (spike answer 4).
-                // From a cap face the default direction already goes into the body, and Dir = true cuts
-                // nothing (face spike 2026-11-06, ADR-070).
                 double depthM = PartUnits.MmToMetres(p.EndCondition?.Depth ?? 0.0);
-                bool dir = p.Host != FeatureCreateParamsHost.Face;
 
-                createdFeature = (IFeature?)doc.FeatureManager.FeatureCut4(
+                createdFeature = scope.Track((IFeature?)doc.FeatureManager.FeatureExtrusion3(
                     true, // Sd
                     false, // Flip
-                    dir, // Dir
+                    false, // Dir
                     (int)swEndConditions_e.swEndCondBlind, // T1
                     0, // T2
                     depthM, // D1
                     0.0, // D2
-                    false, false, false, false, 0.0, 0.0, false, false, false, false, false,
+                    false, false, false, false, 0.0, 0.0, false, false, false, false,
+                    true, // Merge
                     true, // UseFeatScope
                     true, // UseAutoSelect
-                    false, false, false, 0, 0.0, false, false);
+                    0, 0.0, false));
+            }
+            else if (p.Type == FeatureCreateParamsType.CutExtrude)
+            {
+                var endType = p.EndCondition?.Type;
+                if (endType == FeatureCreateEndConditionType.ThroughAllBoth)
+                {
+                    // Sd = false, T1 = swEndCondThroughAll (1), T2 = swEndCondThroughAll (1) (spike answer 2)
+                    createdFeature = scope.Track((IFeature?)doc.FeatureManager.FeatureCut4(
+                        false, // Sd
+                        false, // Flip
+                        false, // Dir
+                        (int)swEndConditions_e.swEndCondThroughAll, // T1
+                        (int)swEndConditions_e.swEndCondThroughAll, // T2
+                        0.0, // D1
+                        0.0, // D2
+                        false, false, false, false, 0.0, 0.0, false, false, false, false, false,
+                        true, // UseFeatScope
+                        true, // UseAutoSelect
+                        false, false, false, 0, 0.0, false, false));
+                }
+                else if (endType == FeatureCreateEndConditionType.Blind)
+                {
+                    // Blind cut from an origin plane: Dir = true cuts into the body (spike answer 4).
+                    // From a cap face the default direction already goes into the body, and Dir = true cuts
+                    // nothing (face spike 2026-11-06, ADR-070).
+                    double depthM = PartUnits.MmToMetres(p.EndCondition?.Depth ?? 0.0);
+                    bool dir = p.Host != FeatureCreateParamsHost.Face;
+
+                    createdFeature = scope.Track((IFeature?)doc.FeatureManager.FeatureCut4(
+                        true, // Sd
+                        false, // Flip
+                        dir, // Dir
+                        (int)swEndConditions_e.swEndCondBlind, // T1
+                        0, // T2
+                        depthM, // D1
+                        0.0, // D2
+                        false, false, false, false, 0.0, 0.0, false, false, false, false, false,
+                        true, // UseFeatScope
+                        true, // UseAutoSelect
+                        false, false, false, 0, 0.0, false, false));
+                }
+                else
+                {
+                    throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, $"Unsupported end condition type '{endType}' for cut_extrude.");
+                }
             }
             else
             {
-                throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, $"Unsupported end condition type '{endType}' for cut_extrude.");
+                throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, $"Unsupported feature type '{p.Type}'.");
             }
         }
-        else
+        catch (COMException ex)
         {
-            throw new IpcException(ErrorCodes.IR_SCHEMA_INVALID, $"Unsupported feature type '{p.Type}'.");
+            var details = new JObject
+            {
+                ["effect"] = "unknown",
+                ["stage"] = "invoke",
+                ["native"] = new JObject
+                {
+                    ["call"] = p.Type == FeatureCreateParamsType.Extrude ? "FeatureExtrusion3" : "FeatureCut4",
+                    ["hresult"] = $"0x{ex.ErrorCode:X8}"
+                }
+            };
+            throw new IpcException(ErrorCodes.BACKEND_REBUILD_ERROR, $"{p.Type} threw COMException during feature creation: {ex.Message}", details);
         }
 
         // 3. Check feature creation outcome (null feature fails with BACKEND_REBUILD_ERROR)
@@ -130,7 +150,24 @@ public sealed class FeatureAdapter
         }
 
         // 4. Solid features are followed by a forced rebuild before save (design 7)
-        doc.ForceRebuild3(false);
+        try
+        {
+            doc.ForceRebuild3(false);
+        }
+        catch (COMException ex)
+        {
+            var details = new JObject
+            {
+                ["effect"] = "partial",
+                ["stage"] = "rebuild",
+                ["native"] = new JObject
+                {
+                    ["call"] = "ForceRebuild3",
+                    ["hresult"] = $"0x{ex.ErrorCode:X8}"
+                }
+            };
+            throw new IpcException(ErrorCodes.BACKEND_REBUILD_ERROR, $"ForceRebuild3 threw COMException after creating {p.Type}: {ex.Message}", details);
+        }
 
         // 5. Read back feature properties and observation
         int nativeId = createdFeature.GetID();
@@ -158,7 +195,8 @@ public sealed class FeatureAdapter
         {
             foreach (var pObj in parentsObj)
             {
-                if (pObj is IFeature pf)
+                var pf = scope.Track(pObj as IFeature);
+                if (pf != null)
                 {
                     parents.Add($"f{pf.GetID()}");
                 }
@@ -205,10 +243,29 @@ public sealed class FeatureAdapter
         var doc = DocumentLocator.FindDocument(_sw, document);
         bool force = p.Force ?? false;
 
-        bool rebuilt = doc.ForceRebuild3(!force);
+        bool rebuilt;
+        try
+        {
+            rebuilt = doc.ForceRebuild3(!force);
+        }
+        catch (COMException ex)
+        {
+            var details = new JObject
+            {
+                ["effect"] = "unknown",
+                ["stage"] = "invoke",
+                ["native"] = new JObject
+                {
+                    ["call"] = "ForceRebuild3",
+                    ["hresult"] = $"0x{ex.ErrorCode:X8}"
+                }
+            };
+            throw new IpcException(ErrorCodes.BACKEND_REBUILD_ERROR, $"ForceRebuild3 threw COMException: {ex.Message}", details);
+        }
 
+        using var scope = new ComScope();
         var errors = new List<string>();
-        var feat = (IFeature?)doc.FirstFeature();
+        var feat = scope.Track((IFeature?)doc.FirstFeature());
         while (feat != null)
         {
             int err = feat.GetErrorCode2(out _);
@@ -216,7 +273,7 @@ public sealed class FeatureAdapter
             {
                 errors.Add($"f{feat.GetID()}");
             }
-            feat = (IFeature?)feat.GetNextFeature();
+            feat = scope.Track((IFeature?)feat.GetNextFeature());
         }
 
         return new DocumentRebuildResult
@@ -225,32 +282,5 @@ public sealed class FeatureAdapter
             Ok = errors.Count == 0,
             Errors = errors
         };
-    }
-
-    private static IFeature? FindFeatureById(IModelDoc2 doc, string featureId)
-    {
-        if (string.IsNullOrWhiteSpace(featureId)) return null;
-
-        int targetId;
-        if (featureId.StartsWith("f", StringComparison.OrdinalIgnoreCase))
-        {
-            if (!int.TryParse(featureId.Substring(1), out targetId)) return null;
-        }
-        else
-        {
-            if (!int.TryParse(featureId, out targetId)) return null;
-        }
-
-        var feat = (IFeature?)doc.FirstFeature();
-        while (feat != null)
-        {
-            if (feat.GetID() == targetId)
-            {
-                return feat;
-            }
-            feat = (IFeature?)feat.GetNextFeature();
-        }
-
-        return null;
     }
 }

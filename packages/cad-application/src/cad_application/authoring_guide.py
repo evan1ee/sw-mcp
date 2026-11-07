@@ -208,13 +208,15 @@ def build_guide() -> str:
         " for a hole through the part.",
         "",
         "## Sketching on a cap face",
-        "The top of a part built on `plane:front` is its `end_face` (z = the extrude depth) and the"
-        " bottom is its `start_face` (z = 0). Coordinates are in mm from the model origin."
-        " On `end_face` the sketch axes equal the base plane's axes. On `start_face` the sketch x"
-        " axis is mirrored (you look at the face from outside), so x = 10 is model x = -10."
-        " The build checks the real frame and fails with `REF_SIGNATURE_MISMATCH` when it differs."
-        " That check was measured on `plane:front` only (K29): for a part built on `plane:top` or"
-        " `plane:right`, tell the user a face sketch may fail to build.",
+        "Every extrude has two cap faces along its base plane's normal (`plane:front`,"
+        " `plane:top`, or `plane:right`): `end_face` (at offset = the extrude depth along the"
+        " base normal) and `start_face` (at offset = 0 on the base sketch plane). Coordinates"
+        " are in mm from the model origin. On `end_face` the sketch axes equal the base plane's"
+        " axes. On `start_face` (looking at the face from outside) the sketch x axis is"
+        " mirrored on `plane:front` and `plane:right` (so x = 10 maps to -10 along the base"
+        " plane's x axis), while on `plane:top` the sketch y axis is mirrored (`x = (1, 0, 0)`,"
+        " `y = (0, 0, 1)`). The build checks the real frame and fails with"
+        " `REF_SIGNATURE_MISMATCH` when it differs.",
         "",
         "## Rules the validator enforces",
     ]

@@ -75,6 +75,7 @@ def test_guide_explains_the_face_frame_and_its_limit() -> None:
     assert "start_face" in guide
     assert "mirrored" in guide
     assert "REF_SIGNATURE_MISMATCH" in guide
+    assert "measured on `plane:front` only" not in guide
 
 
 def test_top_face_hole_example_has_the_blind_depth_and_the_face() -> None:

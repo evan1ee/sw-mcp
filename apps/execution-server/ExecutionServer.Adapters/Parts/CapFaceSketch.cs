@@ -18,13 +18,13 @@ internal static class CapFaceSketch
     /// <summary>Selects the cap face; the next <c>InsertSketch(true)</c> opens a sketch on it.</summary>
     public static void Select(IModelDoc2 doc, SketchCreateFace face)
     {
-        var extrude = FeatureLookup.FindById(doc, face.Feature);
+        using var scope = new ComScope();
+        var extrude = FeatureLookup.FindById(doc, face.Feature, scope);
         if (extrude == null)
         {
             throw new IpcException(ErrorCodes.REF_NOT_FOUND, $"Extrude '{face.Feature}' for the face sketch is not in the document.");
         }
 
-        using var scope = new ComScope();
         var raw = extrude.GetFaces() as object[];
         var candidates = new List<PlanarFace>();
         var faces = new List<IFace2>();

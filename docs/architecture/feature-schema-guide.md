@@ -1,6 +1,6 @@
 # 5.7 Part Feature Graph Schema Guide
 
-> Specification v1.37, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
+> Specification v1.38, section 5.7. Index and section map: [specifications/README.md](../specifications/README.md).
 
 Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3.2) read as one language and the compiler's defaults are explicit. Each type has one schema file, `schemas/part-feature-graph/features/<type>.json`, with one minimal example of at most 400 tokens (12.3).
 
@@ -73,14 +73,18 @@ Conventions every feature type's schema follows, so roughly 60 Tier 1 types (5.3
 - **Selection [Builder's call].** A plane or sketch is selected with `IFeature.Select2(false, 0)`; entities (faces, edges, sketch segments) with `IEntity.Select4`. `SelectByID2` stays banned (8.3 rule 11).
 - **Units [Builder's call].** The API takes metres whatever the document units are. The spike built the same plate in a millimetre and in an inch document with identical geometry. Mass properties are read with `IMassProperty.UseSystemUnits = true`; with `false` the values follow neither metres nor the document's linear unit.
 
-- **Sketch on a face [ADR-070, spike 2026-11-06].** `plane` may be `<extrude_id>.end_face` or `<extrude_id>.start_face` (not `side_faces`, edges or faces of a cut). The compiler states the face's outward normal and offset; the add-in finds the extrude's planar face with that normal and offset, selects it with `Entity.Select4`, and opens the sketch (live record: [face spike](../superpowers/review/2026-11-06-face-sketch-spike.md)). On `plane:front`, SOLIDWORKS 2025 gave these sketch frames:
+- **Sketch on a face [ADR-070, spikes 2026-11-06 & 2026-11-07].** `plane` may be `<extrude_id>.end_face` or `<extrude_id>.start_face` (not `side_faces`, edges or faces of a cut). The compiler states the face's outward normal and offset; the add-in finds the extrude's planar face with that normal and offset, selects it with `Entity.Select4`, and opens the sketch (live record: [face spike](../superpowers/review/2026-11-06-face-sketch-spike.md)). Across all three standard base planes (`plane:front`, `plane:top`, `plane:right`), SOLIDWORKS 2025 gives these sketch frames (closing K29):
 
-  | Face | Sketch origin | Sketch +x | Sketch +y | Sketch normal |
-  | --- | --- | --- | --- | --- |
-  | `end_face` | (0, 0, depth) | +X | +Y | +Z |
-  | `start_face` | (0, 0, 0) | -X | +Y | -Z |
+  | Base plane | Face | Sketch origin | Sketch +x | Sketch +y | Sketch normal |
+  | --- | --- | --- | --- | --- | --- |
+  | `plane:front` | `end_face` | `(0, 0, depth)` | `+X (1, 0, 0)` | `+Y (0, 1, 0)` | `+Z (0, 0, 1)` |
+  | `plane:front` | `start_face` | `(0, 0, 0)` | `-X (-1, 0, 0)` | `+Y (0, 1, 0)` | `-Z (0, 0, -1)` |
+  | `plane:top` | `end_face` | `(0, depth, 0)` | `+X (1, 0, 0)` | `-Z (0, 0, -1)` | `+Y (0, 1, 0)` |
+  | `plane:top` | `start_face` | `(0, 0, 0)` | `+X (1, 0, 0)` | `+Z (0, 0, 1)` | `-Y (0, -1, 0)` |
+  | `plane:right` | `end_face` | `(depth, 0, 0)` | `-Z (0, 0, -1)` | `+Y (0, 1, 0)` | `+X (1, 0, 0)` |
+  | `plane:right` | `start_face` | `(0, 0, 0)` | `+Z (0, 0, 1)` | `+Y (0, 1, 0)` | `-X (-1, 0, 0)` |
 
-  The rule the compiler uses: an end face has the base plane's axes, the origin moved by the depth along the normal; a start face has x mirrored and the normal reversed. Only `plane:front` was measured (K29), so the add-in compares the opened sketch's axes with the stated ones and fails the operation on a mismatch.
+  The rule the compiler uses: an `end_face` has the base plane's axes, with the origin moved by `depth` along the base normal; a `start_face` reverses the normal and mirrors `x` on vertical cap faces (`plane:front` and `plane:right`, where global `+Y` stays the sketch `+y` axis) and mirrors `y` on horizontal cap faces (`plane:top`, where global `+X` stays the sketch `+x` axis). The add-in compares the opened sketch's axes with the stated ones and fails the operation (`REF_SIGNATURE_MISMATCH`) on a mismatch.
 - **Blind cut from a face [ADR-070].** A blind `cut_extrude` whose sketch is on a face goes into the body with `Flip=false` and `Dir=false`. `Dir=true` finds nothing and `Flip=true` removes the material outside the profile. A cut from an origin plane keeps `Dir=true` (above).
 
 ## 5.7.5 Roles

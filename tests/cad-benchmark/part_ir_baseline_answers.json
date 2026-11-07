@@ -1,0 +1,870 @@
+{
+  "block": {
+    "module": "part",
+    "id": "block",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_base": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "l1": {
+            "type": "line",
+            "start": [
+              -20.0,
+              -15.0
+            ],
+            "end": [
+              20.0,
+              -15.0
+            ]
+          },
+          "l2": {
+            "type": "line",
+            "start": [
+              20.0,
+              -15.0
+            ],
+            "end": [
+              20.0,
+              15.0
+            ]
+          },
+          "l3": {
+            "type": "line",
+            "start": [
+              20.0,
+              15.0
+            ],
+            "end": [
+              -20.0,
+              15.0
+            ]
+          },
+          "l4": {
+            "type": "line",
+            "start": [
+              -20.0,
+              15.0
+            ],
+            "end": [
+              -20.0,
+              -15.0
+            ]
+          }
+        }
+      },
+      "extrude_base": {
+        "type": "extrude",
+        "dependencies": [
+          "sketch_base"
+        ],
+        "profile": "sketch_base",
+        "end_condition": {
+          "type": "blind",
+          "depth": 10
+        }
+      }
+    }
+  },
+  "block_centre_hole": {
+    "module": "part",
+    "id": "block_hole",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_base": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "l1": {
+            "type": "line",
+            "start": [
+              -20.0,
+              -15.0
+            ],
+            "end": [
+              20.0,
+              -15.0
+            ]
+          },
+          "l2": {
+            "type": "line",
+            "start": [
+              20.0,
+              -15.0
+            ],
+            "end": [
+              20.0,
+              15.0
+            ]
+          },
+          "l3": {
+            "type": "line",
+            "start": [
+              20.0,
+              15.0
+            ],
+            "end": [
+              -20.0,
+              15.0
+            ]
+          },
+          "l4": {
+            "type": "line",
+            "start": [
+              -20.0,
+              15.0
+            ],
+            "end": [
+              -20.0,
+              -15.0
+            ]
+          }
+        }
+      },
+      "extrude_base": {
+        "type": "extrude",
+        "dependencies": [
+          "sketch_base"
+        ],
+        "profile": "sketch_base",
+        "end_condition": {
+          "type": "blind",
+          "depth": 10
+        }
+      },
+      "sketch_holes": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "c1": {
+            "type": "circle",
+            "center": [
+              0,
+              0
+            ],
+            "diameter": 5
+          }
+        }
+      },
+      "cut_holes": {
+        "type": "cut_extrude",
+        "dependencies": [
+          "sketch_holes",
+          "extrude_base"
+        ],
+        "profile": "sketch_holes",
+        "end_condition": {
+          "type": "through_all_both"
+        }
+      }
+    }
+  },
+  "disc_centre_hole": {
+    "module": "part",
+    "id": "disc",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_base": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "c1": {
+            "type": "circle",
+            "center": [
+              0,
+              0
+            ],
+            "diameter": 30
+          }
+        }
+      },
+      "extrude_base": {
+        "type": "extrude",
+        "dependencies": [
+          "sketch_base"
+        ],
+        "profile": "sketch_base",
+        "end_condition": {
+          "type": "blind",
+          "depth": 8
+        }
+      },
+      "sketch_holes": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "c1": {
+            "type": "circle",
+            "center": [
+              0,
+              0
+            ],
+            "diameter": 6
+          }
+        }
+      },
+      "cut_holes": {
+        "type": "cut_extrude",
+        "dependencies": [
+          "sketch_holes",
+          "extrude_base"
+        ],
+        "profile": "sketch_holes",
+        "end_condition": {
+          "type": "through_all_both"
+        }
+      }
+    }
+  },
+  "plate_four_holes": {
+    "module": "part",
+    "id": "plate4",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_base": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "l1": {
+            "type": "line",
+            "start": [
+              -50.0,
+              -30.0
+            ],
+            "end": [
+              50.0,
+              -30.0
+            ]
+          },
+          "l2": {
+            "type": "line",
+            "start": [
+              50.0,
+              -30.0
+            ],
+            "end": [
+              50.0,
+              30.0
+            ]
+          },
+          "l3": {
+            "type": "line",
+            "start": [
+              50.0,
+              30.0
+            ],
+            "end": [
+              -50.0,
+              30.0
+            ]
+          },
+          "l4": {
+            "type": "line",
+            "start": [
+              -50.0,
+              30.0
+            ],
+            "end": [
+              -50.0,
+              -30.0
+            ]
+          }
+        }
+      },
+      "extrude_base": {
+        "type": "extrude",
+        "dependencies": [
+          "sketch_base"
+        ],
+        "profile": "sketch_base",
+        "end_condition": {
+          "type": "blind",
+          "depth": 10
+        }
+      },
+      "sketch_holes": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "c1": {
+            "type": "circle",
+            "center": [
+              -40,
+              -20
+            ],
+            "diameter": 8
+          },
+          "c2": {
+            "type": "circle",
+            "center": [
+              40,
+              -20
+            ],
+            "diameter": 8
+          },
+          "c3": {
+            "type": "circle",
+            "center": [
+              40,
+              20
+            ],
+            "diameter": 8
+          },
+          "c4": {
+            "type": "circle",
+            "center": [
+              -40,
+              20
+            ],
+            "diameter": 8
+          }
+        }
+      },
+      "cut_holes": {
+        "type": "cut_extrude",
+        "dependencies": [
+          "sketch_holes",
+          "extrude_base"
+        ],
+        "profile": "sketch_holes",
+        "end_condition": {
+          "type": "through_all_both"
+        }
+      }
+    }
+  },
+  "offset_hole": {
+    "module": "part",
+    "id": "offset",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_base": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "l1": {
+            "type": "line",
+            "start": [
+              -25.0,
+              -25.0
+            ],
+            "end": [
+              25.0,
+              -25.0
+            ]
+          },
+          "l2": {
+            "type": "line",
+            "start": [
+              25.0,
+              -25.0
+            ],
+            "end": [
+              25.0,
+              25.0
+            ]
+          },
+          "l3": {
+            "type": "line",
+            "start": [
+              25.0,
+              25.0
+            ],
+            "end": [
+              -25.0,
+              25.0
+            ]
+          },
+          "l4": {
+            "type": "line",
+            "start": [
+              -25.0,
+              25.0
+            ],
+            "end": [
+              -25.0,
+              -25.0
+            ]
+          }
+        }
+      },
+      "extrude_base": {
+        "type": "extrude",
+        "dependencies": [
+          "sketch_base"
+        ],
+        "profile": "sketch_base",
+        "end_condition": {
+          "type": "blind",
+          "depth": 5
+        }
+      },
+      "sketch_holes": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "c1": {
+            "type": "circle",
+            "center": [
+              10,
+              0
+            ],
+            "diameter": 6
+          }
+        }
+      },
+      "cut_holes": {
+        "type": "cut_extrude",
+        "dependencies": [
+          "sketch_holes",
+          "extrude_base"
+        ],
+        "profile": "sketch_holes",
+        "end_condition": {
+          "type": "through_all_both"
+        }
+      }
+    }
+  },
+  "cylinder": {
+    "module": "part",
+    "id": "cylinder",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_base": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "c1": {
+            "type": "circle",
+            "center": [
+              0,
+              0
+            ],
+            "diameter": 20
+          }
+        }
+      },
+      "extrude_base": {
+        "type": "extrude",
+        "dependencies": [
+          "sketch_base"
+        ],
+        "profile": "sketch_base",
+        "end_condition": {
+          "type": "blind",
+          "depth": 40
+        }
+      }
+    }
+  },
+  "two_holes": {
+    "module": "part",
+    "id": "two_holes",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_base": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "l1": {
+            "type": "line",
+            "start": [
+              -40.0,
+              -20.0
+            ],
+            "end": [
+              40.0,
+              -20.0
+            ]
+          },
+          "l2": {
+            "type": "line",
+            "start": [
+              40.0,
+              -20.0
+            ],
+            "end": [
+              40.0,
+              20.0
+            ]
+          },
+          "l3": {
+            "type": "line",
+            "start": [
+              40.0,
+              20.0
+            ],
+            "end": [
+              -40.0,
+              20.0
+            ]
+          },
+          "l4": {
+            "type": "line",
+            "start": [
+              -40.0,
+              20.0
+            ],
+            "end": [
+              -40.0,
+              -20.0
+            ]
+          }
+        }
+      },
+      "extrude_base": {
+        "type": "extrude",
+        "dependencies": [
+          "sketch_base"
+        ],
+        "profile": "sketch_base",
+        "end_condition": {
+          "type": "blind",
+          "depth": 6
+        }
+      },
+      "sketch_holes": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "c1": {
+            "type": "circle",
+            "center": [
+              -25,
+              0
+            ],
+            "diameter": 5
+          },
+          "c2": {
+            "type": "circle",
+            "center": [
+              25,
+              0
+            ],
+            "diameter": 5
+          }
+        }
+      },
+      "cut_holes": {
+        "type": "cut_extrude",
+        "dependencies": [
+          "sketch_holes",
+          "extrude_base"
+        ],
+        "profile": "sketch_holes",
+        "end_condition": {
+          "type": "through_all_both"
+        }
+      }
+    }
+  },
+  "l_bracket_plate": {
+    "module": "part",
+    "id": "l_plate",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_base": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "l1": {
+            "type": "line",
+            "start": [
+              0,
+              0
+            ],
+            "end": [
+              60,
+              0
+            ]
+          },
+          "l2": {
+            "type": "line",
+            "start": [
+              60,
+              0
+            ],
+            "end": [
+              60,
+              20
+            ]
+          },
+          "l3": {
+            "type": "line",
+            "start": [
+              60,
+              20
+            ],
+            "end": [
+              20,
+              20
+            ]
+          },
+          "l4": {
+            "type": "line",
+            "start": [
+              20,
+              20
+            ],
+            "end": [
+              20,
+              40
+            ]
+          },
+          "l5": {
+            "type": "line",
+            "start": [
+              20,
+              40
+            ],
+            "end": [
+              0,
+              40
+            ]
+          },
+          "l6": {
+            "type": "line",
+            "start": [
+              0,
+              40
+            ],
+            "end": [
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "extrude_base": {
+        "type": "extrude",
+        "dependencies": [
+          "sketch_base"
+        ],
+        "profile": "sketch_base",
+        "end_condition": {
+          "type": "blind",
+          "depth": 8
+        }
+      }
+    }
+  },
+  "blind_hole_top_face": {
+    "module": "part",
+    "id": "block_top_hole",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_base": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "l1": {
+            "type": "line",
+            "start": [
+              -20.0,
+              -15.0
+            ],
+            "end": [
+              20.0,
+              -15.0
+            ]
+          },
+          "l2": {
+            "type": "line",
+            "start": [
+              20.0,
+              -15.0
+            ],
+            "end": [
+              20.0,
+              15.0
+            ]
+          },
+          "l3": {
+            "type": "line",
+            "start": [
+              20.0,
+              15.0
+            ],
+            "end": [
+              -20.0,
+              15.0
+            ]
+          },
+          "l4": {
+            "type": "line",
+            "start": [
+              -20.0,
+              15.0
+            ],
+            "end": [
+              -20.0,
+              -15.0
+            ]
+          }
+        }
+      },
+      "extrude_base": {
+        "type": "extrude",
+        "dependencies": [
+          "sketch_base"
+        ],
+        "profile": "sketch_base",
+        "end_condition": {
+          "type": "blind",
+          "depth": 10
+        }
+      },
+      "sketch_holes": {
+        "type": "sketch",
+        "plane": "extrude_base.end_face",
+        "entities": {
+          "c1": {
+            "type": "circle",
+            "center": [
+              0,
+              0
+            ],
+            "diameter": 5
+          }
+        },
+        "dependencies": [
+          "extrude_base"
+        ]
+      },
+      "cut_holes": {
+        "type": "cut_extrude",
+        "dependencies": [
+          "sketch_holes",
+          "extrude_base"
+        ],
+        "profile": "sketch_holes",
+        "end_condition": {
+          "type": "blind",
+          "depth": 4
+        }
+      }
+    }
+  },
+  "blind_hole_start_face": {
+    "module": "part",
+    "id": "block_start_hole",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_base": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "l1": {
+            "type": "line",
+            "start": [
+              -20.0,
+              -15.0
+            ],
+            "end": [
+              20.0,
+              -15.0
+            ]
+          },
+          "l2": {
+            "type": "line",
+            "start": [
+              20.0,
+              -15.0
+            ],
+            "end": [
+              20.0,
+              15.0
+            ]
+          },
+          "l3": {
+            "type": "line",
+            "start": [
+              20.0,
+              15.0
+            ],
+            "end": [
+              -20.0,
+              15.0
+            ]
+          },
+          "l4": {
+            "type": "line",
+            "start": [
+              -20.0,
+              15.0
+            ],
+            "end": [
+              -20.0,
+              -15.0
+            ]
+          }
+        }
+      },
+      "extrude_base": {
+        "type": "extrude",
+        "dependencies": [
+          "sketch_base"
+        ],
+        "profile": "sketch_base",
+        "end_condition": {
+          "type": "blind",
+          "depth": 10
+        }
+      },
+      "sketch_holes": {
+        "type": "sketch",
+        "plane": "extrude_base.start_face",
+        "entities": {
+          "c1": {
+            "type": "circle",
+            "center": [
+              0,
+              0
+            ],
+            "diameter": 5
+          }
+        },
+        "dependencies": [
+          "extrude_base"
+        ]
+      },
+      "cut_holes": {
+        "type": "cut_extrude",
+        "dependencies": [
+          "sketch_holes",
+          "extrude_base"
+        ],
+        "profile": "sketch_holes",
+        "end_condition": {
+          "type": "blind",
+          "depth": 4
+        }
+      }
+    }
+  },
+  "refuse_fillet": null,
+  "refuse_hole_in_side_face": null,
+  "refuse_assembly": null
+}

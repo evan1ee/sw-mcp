@@ -43,10 +43,10 @@ public sealed class PartMeasureAdapter
         double surfaceAreaM2 = 0.0;
         var centerOfMassM = new List<double> { 0.0, 0.0, 0.0 };
 
-        var mass = (IMassProperty?)doc.Extension.CreateMassProperty();
-        if (mass != null)
+        using (var massScope = new ComScope())
         {
-            try
+            var mass = massScope.Track((IMassProperty?)doc.Extension.CreateMassProperty());
+            if (mass != null)
             {
                 mass.UseSystemUnits = true; // Spike answer 4 & 6: true ensures SI units (metres)
                 volumeM3 = mass.Volume;
@@ -56,10 +56,6 @@ public sealed class PartMeasureAdapter
                 {
                     centerOfMassM = new List<double> { com[0], com[1], com[2] };
                 }
-            }
-            finally
-            {
-                try { Marshal.ReleaseComObject(mass); } catch { }
             }
         }
 
@@ -132,13 +128,13 @@ public sealed class PartMeasureAdapter
                                                 }
                                                 finally
                                                 {
-                                                    Marshal.ReleaseComObject(surf);
+                                                    if (Marshal.IsComObject(surf)) Marshal.ReleaseComObject(surf);
                                                 }
                                             }
                                         }
                                         finally
                                         {
-                                            Marshal.ReleaseComObject(face);
+                                            if (Marshal.IsComObject(face)) Marshal.ReleaseComObject(face);
                                         }
                                     }
                                 }
@@ -146,7 +142,7 @@ public sealed class PartMeasureAdapter
                         }
                         finally
                         {
-                            Marshal.ReleaseComObject(body);
+                            if (Marshal.IsComObject(body)) Marshal.ReleaseComObject(body);
                         }
                     }
                 }
@@ -163,39 +159,42 @@ public sealed class PartMeasureAdapter
         var features = new List<PartFeatureInfo>();
         var rebuildErrors = new List<string>();
 
-        var feat = (IFeature?)doc.FirstFeature();
-        while (feat != null)
+        using (var featScope = new ComScope())
         {
-            int featId = feat.GetID();
-            string featureId = $"f{featId}";
-            string typeName = feat.GetTypeName2() ?? string.Empty;
-            int errCode = feat.GetErrorCode2(out bool isWarning);
-            bool suppressed = feat.IsSuppressed();
+            var feat = featScope.Track((IFeature?)doc.FirstFeature());
+            while (feat != null)
+            {
+                int featId = feat.GetID();
+                string featureId = $"f{featId}";
+                string typeName = feat.GetTypeName2() ?? string.Empty;
+                int errCode = feat.GetErrorCode2(out bool isWarning);
+                bool suppressed = feat.IsSuppressed();
 
-            string status = "ok";
-            if (suppressed)
-            {
-                status = "suppressed";
-            }
-            else if (errCode != 0)
-            {
-                status = "error";
-                rebuildErrors.Add(featureId);
-            }
-            else if (isWarning)
-            {
-                status = "warning";
-            }
+                string status = "ok";
+                if (suppressed)
+                {
+                    status = "suppressed";
+                }
+                else if (errCode != 0)
+                {
+                    status = "error";
+                    rebuildErrors.Add(featureId);
+                }
+                else if (isWarning)
+                {
+                    status = "warning";
+                }
 
-            features.Add(new PartFeatureInfo
-            {
-                FeatureId = featureId,
-                NativeId = featId,
-                Type = typeName,
-                Status = status
-            });
+                features.Add(new PartFeatureInfo
+                {
+                    FeatureId = featureId,
+                    NativeId = featId,
+                    Type = typeName,
+                    Status = status
+                });
 
-            feat = (IFeature?)feat.GetNextFeature();
+                feat = featScope.Track((IFeature?)feat.GetNextFeature());
+            }
         }
 
         bool dirty = doc.GetSaveFlag();

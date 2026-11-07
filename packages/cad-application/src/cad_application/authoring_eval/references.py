@@ -76,6 +76,15 @@ def _top_face_hole() -> dict[str, Any]:
     return graph
 
 
+def _start_face_hole() -> dict[str, Any]:
+    """A 40 x 30 x 10 block with a Ø5 x 4 hole in the middle of the start face."""
+    graph = part("block_start_hole", _lines(_rect(40, 30)), 10, [(0, 0, 5)])
+    graph["nodes"]["sketch_holes"]["plane"] = "extrude_base.start_face"
+    graph["nodes"]["sketch_holes"]["dependencies"] = ["extrude_base"]
+    graph["nodes"]["cut_holes"]["end_condition"] = {"type": "blind", "depth": 4}
+    return graph
+
+
 L_SHAPE: list[Point] = [(0, 0), (60, 0), (60, 20), (20, 20), (20, 40), (0, 40)]
 
 # A None answer is a refusal.
@@ -94,6 +103,7 @@ REFERENCE_ANSWERS: dict[str, dict[str, Any] | None] = {
     "two_holes": part("two_holes", _lines(_rect(80, 40)), 6, [(-25, 0, 5), (25, 0, 5)]),
     "l_bracket_plate": part("l_plate", _lines(L_SHAPE), 8),
     "blind_hole_top_face": _top_face_hole(),
+    "blind_hole_start_face": _start_face_hole(),
     "refuse_fillet": None,
     "refuse_hole_in_side_face": None,
     "refuse_assembly": None,

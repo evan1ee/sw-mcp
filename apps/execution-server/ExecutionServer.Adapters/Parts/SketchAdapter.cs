@@ -44,7 +44,8 @@ public sealed class SketchAdapter
         else
         {
             // 1. Resolve standard plane by RefPlane order and verify normal (spike answer 3)
-            var targetPlane = ResolveAndVerifyPlane(doc, p.Plane!.Value);
+            using var planeScope = new ComScope();
+            var targetPlane = ResolveAndVerifyPlane(doc, p.Plane!.Value, planeScope);
 
             // 2. Select plane (Select2 with mark 0, never SelectByID2)
             doc.ClearSelection2(true);
@@ -87,7 +88,7 @@ public sealed class SketchAdapter
                     double y1 = PartUnits.MmToMetres(entity.End[1]);
 
                     var line = sm.CreateLine(x0, y0, 0, x1, y1, 0);
-                    if (line != null)
+                    if (line != null && Marshal.IsComObject(line))
                     {
                         Marshal.ReleaseComObject(line);
                     }
@@ -104,7 +105,7 @@ public sealed class SketchAdapter
                     double r = PartUnits.MmToMetres(entity.Diameter.Value / 2.0);
 
                     var circle = sm.CreateCircleByRadius(cx, cy, 0, r);
-                    if (circle != null)
+                    if (circle != null && Marshal.IsComObject(circle))
                     {
                         Marshal.ReleaseComObject(circle);
                     }
@@ -131,7 +132,8 @@ public sealed class SketchAdapter
         }
 
         // 4. Retrieve created sketch feature (most recent feature in tree)
-        var sketchFeature = (IFeature?)doc.FeatureByPositionReverse(0);
+        using var sketchScope = new ComScope();
+        var sketchFeature = sketchScope.Track((IFeature?)doc.FeatureByPositionReverse(0));
         if (sketchFeature == null)
         {
             throw new IpcException(ErrorCodes.BACKEND_REBUILD_ERROR, "Sketch creation failed to produce a feature.");
@@ -171,7 +173,7 @@ public sealed class SketchAdapter
         };
     }
 
-    private IFeature ResolveAndVerifyPlane(IModelDoc2 doc, SketchCreateParamsPlane planeRole)
+    private IFeature ResolveAndVerifyPlane(IModelDoc2 doc, SketchCreateParamsPlane planeRole, ComScope callerScope)
     {
         int planeIndex;
         double expNx, expNy, expNz;
@@ -195,14 +197,14 @@ public sealed class SketchAdapter
         }
 
         var refPlanes = new List<IFeature>();
-        var feat = (IFeature?)doc.FirstFeature();
+        var feat = callerScope.Track((IFeature?)doc.FirstFeature());
         while (feat != null)
         {
             if (string.Equals(feat.GetTypeName2(), "RefPlane", StringComparison.OrdinalIgnoreCase))
             {
                 refPlanes.Add(feat);
             }
-            feat = (IFeature?)feat.GetNextFeature();
+            feat = callerScope.Track((IFeature?)feat.GetNextFeature());
         }
 
         if (refPlanes.Count <= planeIndex)

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Final, Literal, NamedTuple, cast
 
 from cad_ir.core.json_types import JsonValue
-from cad_ir.part_feature_graph.faces import face_frame, parse_face_plane
+from cad_ir.part_feature_graph.faces import FaceFrame, face_frame, parse_face_plane
 from cad_ir.part_feature_graph.model import (
     Circle,
     Line,
@@ -333,6 +333,23 @@ def _compute_base_bbox(
     return Box(min=min_pt, max=max_pt)
 
 
+def _cut_frame_and_depths(
+    plane_name: str,
+    base_plane: PlaneAxes,
+    base_depth: float,
+    cut_depth: float,
+) -> tuple[PlaneAxes | FaceFrame, float, float, tuple[float, float, float]]:
+    """Return (projector, depth_center, circle_depth, cyl_dir) for a cut sketch."""
+    face = parse_face_plane(plane_name)
+    if face is None:
+        cut_plane = plane_axes(plane_name)
+        return cut_plane, cut_depth * 0.5, 0.0, cut_plane.normal
+    # A cut from a cap face goes into the body (ADR-070); its x may be mirrored.
+    frame = face_frame(base_plane, base_depth, face.role)
+    low, high = frame.into_body_depth_from_base(base_depth, cut_depth)
+    return frame, (low + high) * 0.5, frame.offset_mm, frame.base_normal
+
+
 def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
     """Compute expected geometry from a PartGraph alone (spec 10.2, design 9)."""
     features, solid_nodes = _collect_features(graph)
@@ -377,20 +394,13 @@ def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
 
         is_through = cut_node.end_condition.type in ("through_all", "through_all_both")
         cut_depth = base_depth if is_through else float(cut_node.end_condition.depth or 0.0)
-        face = parse_face_plane(cut_sketch_raw.plane)
-        if face is None:
-            cut_plane = plane_axes(cut_sketch_raw.plane)
-            x_sign, depth_center, circle_depth = 1.0, cut_depth * 0.5, 0.0
-        else:
-            # A cut from a cap face goes into the body (ADR-070); its x may be mirrored.
-            frame = face_frame(base_plane, base_depth, face.role)
-            low, high = frame.into_body_depth_from_base(base_depth, cut_depth)
-            cut_plane = base_plane
-            x_sign, depth_center, circle_depth = frame.x_sign, (low + high) * 0.5, frame.offset_mm
+        projector, depth_center, circle_depth, cyl_dir = _cut_frame_and_depths(
+            cut_sketch_raw.plane, base_plane, base_depth, cut_depth
+        )
 
         for area, perimeter, center_x, center_y in _cut_regions(cut_sketch_raw):
             region_vol = area * cut_depth
-            region_com = cut_plane.to_model(x_sign * center_x, center_y, depth_center)
+            region_com = projector.to_model(center_x, center_y, depth_center)
 
             total_volume -= region_vol
             total_moment[0] -= region_vol * region_com[0]
@@ -404,10 +414,8 @@ def expected_geometry(graph: PartGraph) -> ExpectedGeometry:
             if isinstance(entity, Circle):
                 cylinders.append(
                     ExpectedCylinder(
-                        point=cut_plane.to_model(
-                            x_sign * entity.center[0], entity.center[1], circle_depth
-                        ),
-                        direction=cut_plane.normal,
+                        point=projector.to_model(entity.center[0], entity.center[1], circle_depth),
+                        direction=cyl_dir,
                         radius=entity.diameter * 0.5,
                     )
                 )

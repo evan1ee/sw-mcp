@@ -76,6 +76,11 @@ CASES: tuple[Case, ...] = (
         "Block 40 x 30 x 10 with a 5 mm hole, 4 mm deep, in the middle of the top face.",
         Facts((10, 30, 40), 40 * 30 * 10 - _disc(5, 4), (5,)),
     ),
+    Case(
+        "blind_hole_start_face",
+        "Block 40 x 30 x 10 with a 5 mm hole, 4 mm deep, in the middle of the bottom (start) face.",
+        Facts((10, 30, 40), 40 * 30 * 10 - _disc(5, 4), (5,)),
+    ),
     Case("refuse_fillet", "Make a 40 x 30 x 10 block and fillet all edges with 3 mm.", None),
     Case(
         "refuse_hole_in_side_face",
