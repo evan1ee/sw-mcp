@@ -22,15 +22,16 @@ _RULES: Final[tuple[str, ...]] = (
     "A part has exactly one `extrude`. It is the base body; `cut_extrude` nodes remove material"
     " from it and must depend on it.",
     "An extrude profile is either one closed, non-self-intersecting loop of `line` and `arc`"
-    " entities or exactly one `circle`. Lines/arcs and circles are never mixed in one extrude"
-    " profile.",
-    "A cut profile is lines or circles, never both. Every cut shape lies strictly inside the"
-    " extrude profile (not touching its edge) and cut shapes do not overlap each other.",
+    " entities, exactly one `circle`, or a `corner_rectangle` or `center_rectangle`. Lines/arcs and"
+    " circles are never mixed in one extrude profile.",
+    "A cut profile is lines, circles, or rectangles, never mixed. Every cut shape lies strictly"
+    " inside the extrude profile (not touching its edge) and cut shapes do not overlap each other.",
     "A sketch's `plane` is an origin plane or a cap face of the extrude: `<extrude_id>.end_face`"
     " (the face the extrude grows towards) or `<extrude_id>.start_face` (the face on the sketch"
     " plane). A sketch on a face lists the extrude in its `dependencies`.",
     "Lines have a non-zero length, arcs have equal start/end radius and distinct endpoints,"
-    " circle diameters are at least 0.01 and depths are positive.",
+    " circle diameters are at least 0.01, rectangles have width and height at least 0.01, and"
+    " depths are positive.",
     '`extrude` takes `{"type": "blind", "depth": D}`. `cut_extrude` takes the same, with D'
     ' smaller than the extrude depth, or `{"type": "through_all_both"}`.',
 )
@@ -38,7 +39,7 @@ _RULES: Final[tuple[str, ...]] = (
 _UNSUPPORTED: Final[tuple[str, ...]] = (
     "fillets and chamfers",
     "splines, ellipses, text, and any outline that is not a closed loop of straight lines and"
-    " arcs or a single circle",
+    " arcs, a rectangle, or a single circle",
     "patterns (linear, circular, mirror) as a feature; only write out shapes the user lists",
     "revolves, sweeps, lofts, shells, ribs, threads, sheet metal",
     "sketches on any face other than the extrude's start_face or end_face (side faces, faces"
@@ -189,6 +190,46 @@ def _build_examples() -> dict[str, Example]:
                         "entities": _slot_plate_entities(60, 20),
                     },
                     "extrude_base": _extrude(10),
+                },
+            ),
+        ),
+        "plate_rectangles": Example(
+            "Make an 80 x 50 x 10 mm plate with a centered 30 x 20 mm rectangular cutout"
+            " through all.",
+            _header(
+                "plate_rectangles_80x50x10",
+                {
+                    "sketch_base": {
+                        "type": "sketch",
+                        "plane": "plane:front",
+                        "entities": {
+                            "rect": {
+                                "type": "center_rectangle",
+                                "center": [0.0, 0.0],
+                                "width": 80.0,
+                                "height": 50.0,
+                            }
+                        },
+                    },
+                    "extrude_base": _extrude(10),
+                    "sketch_cut": {
+                        "type": "sketch",
+                        "plane": "plane:front",
+                        "entities": {
+                            "cut_rect": {
+                                "type": "center_rectangle",
+                                "center": [0.0, 0.0],
+                                "width": 30.0,
+                                "height": 20.0,
+                            }
+                        },
+                    },
+                    "cut_rect": {
+                        "type": "cut_extrude",
+                        "dependencies": ["sketch_cut", "extrude_base"],
+                        "profile": "sketch_cut",
+                        "end_condition": {"type": "through_all_both"},
+                    },
                 },
             ),
         ),

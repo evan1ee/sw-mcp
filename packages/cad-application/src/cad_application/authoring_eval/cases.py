@@ -86,6 +86,11 @@ CASES: tuple[Case, ...] = (
         "Make a 60 x 20 x 10 mm slot plate with semicircular rounded ends.",
         Facts((10, 20, 60), (40 * 20 + math.pi * 10**2) * 10, (20, 20)),
     ),
+    Case(
+        "plate_rectangles",
+        "Make an 80 x 50 x 10 mm plate with a centered 30 x 20 mm rectangular cutout through all.",
+        Facts((10, 50, 80), (80 * 50 - 30 * 20) * 10, ()),
+    ),
     Case("refuse_fillet", "Make a 40 x 30 x 10 block and fillet all edges with 3 mm.", None),
     Case(
         "refuse_hole_in_side_face",

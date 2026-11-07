@@ -110,6 +110,55 @@ def _start_face_hole() -> dict[str, Any]:
 
 L_SHAPE: list[Point] = [(0, 0), (60, 0), (60, 20), (20, 20), (20, 40), (0, 40)]
 
+
+def _rectangles_plate() -> dict[str, Any]:
+    return {
+        "module": "part",
+        "id": "plate_rectangles",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "base_rect": {
+                        "type": "center_rectangle",
+                        "center": [0.0, 0.0],
+                        "width": 80.0,
+                        "height": 50.0,
+                    }
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+            "sketch_cut": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "cut_rect": {
+                        "type": "center_rectangle",
+                        "center": [0.0, 0.0],
+                        "width": 30.0,
+                        "height": 20.0,
+                    }
+                },
+            },
+            "cut_rect": {
+                "type": "cut_extrude",
+                "dependencies": ["sketch_cut", "extrude_base"],
+                "profile": "sketch_cut",
+                "end_condition": {"type": "through_all_both"},
+            },
+        },
+    }
+
+
 # A None answer is a refusal.
 REFERENCE_ANSWERS: dict[str, dict[str, Any] | None] = {
     "block": part("block", _lines(_rect(40, 30)), 10),
@@ -128,6 +177,7 @@ REFERENCE_ANSWERS: dict[str, dict[str, Any] | None] = {
     "blind_hole_top_face": _top_face_hole(),
     "blind_hole_start_face": _start_face_hole(),
     "plate_slot": part("plate_slot", _slot(60, 20), 10),
+    "plate_rectangles": _rectangles_plate(),
     "refuse_fillet": None,
     "refuse_hole_in_side_face": None,
     "refuse_assembly": None,

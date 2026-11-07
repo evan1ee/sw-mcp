@@ -946,5 +946,66 @@
   },
   "refuse_fillet": null,
   "refuse_hole_in_side_face": null,
-  "refuse_assembly": null
+  "refuse_assembly": null,
+  "plate_rectangles": {
+    "module": "part",
+    "id": "plate_rectangles",
+    "schema_version": "0.1",
+    "units": "mm",
+    "origin": "built",
+    "nodes": {
+      "sketch_base": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "base_rect": {
+            "type": "center_rectangle",
+            "center": [
+              0.0,
+              0.0
+            ],
+            "width": 80.0,
+            "height": 50.0
+          }
+        }
+      },
+      "extrude_base": {
+        "type": "extrude",
+        "dependencies": [
+          "sketch_base"
+        ],
+        "profile": "sketch_base",
+        "end_condition": {
+          "type": "blind",
+          "depth": 10.0
+        }
+      },
+      "sketch_cut": {
+        "type": "sketch",
+        "plane": "plane:front",
+        "entities": {
+          "cut_rect": {
+            "type": "center_rectangle",
+            "center": [
+              0.0,
+              0.0
+            ],
+            "width": 30.0,
+            "height": 20.0
+          }
+        }
+      },
+      "cut_rect": {
+        "type": "cut_extrude",
+        "dependencies": [
+          "sketch_cut",
+          "extrude_base"
+        ],
+        "profile": "sketch_cut",
+        "end_condition": {
+          "type": "through_all_both"
+        }
+      }
+    }
+  }
 }
