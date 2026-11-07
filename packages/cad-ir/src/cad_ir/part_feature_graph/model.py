@@ -181,6 +181,58 @@ class SolidNode:
 
 
 @dataclass(frozen=True, slots=True)
+class LinearPatternDirection:
+    """Direction specification for linear patterns (spec 5.7.3, ADR-074)."""
+
+    direction: str
+    spacing: float
+    count: int
+    reverse: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        res: dict[str, Any] = {
+            "direction": self.direction,
+            "spacing": self.spacing,
+            "count": self.count,
+        }
+        if self.reverse:
+            res["reverse"] = True
+        return res
+
+
+@dataclass(frozen=True, slots=True)
+class LinearPattern:
+    """Linear pattern feature node (spec 5.7.3, ADR-074)."""
+
+    seeds: tuple[str, ...]
+    direction_1: LinearPatternDirection
+    direction_2: LinearPatternDirection | None = None
+    dependencies: tuple[str, ...] = ()
+    display_name: str | None = None
+    realizes: tuple[str, ...] = ()
+    type: str = "linear_pattern"
+
+    def to_dict(self) -> dict[str, Any]:
+        res: dict[str, Any] = {
+            "type": self.type,
+            "seeds": list(self.seeds),
+            "direction_1": self.direction_1.to_dict(),
+        }
+        if self.direction_2 is not None:
+            res["direction_2"] = self.direction_2.to_dict()
+        if self.dependencies:
+            res["dependencies"] = list(self.dependencies)
+        if self.display_name is not None:
+            res["display_name"] = self.display_name
+        if self.realizes:
+            res["realizes"] = list(self.realizes)
+        return res
+
+
+PartNode = SketchNode | SolidNode | LinearPattern
+
+
+@dataclass(frozen=True, slots=True)
 class PartGraph:
     """Part Feature Graph IR document (spec 5.7)."""
 
@@ -188,7 +240,7 @@ class PartGraph:
     schema_version: str
     units: str
     origin: str
-    nodes: Mapping[str, SketchNode | SolidNode]
+    nodes: Mapping[str, PartNode]
     module: str = "part"
 
     def to_dict(self) -> dict[str, Any]:

@@ -13,12 +13,15 @@ from cad_ir.part_feature_graph.model import (
     Circle,
     CornerRectangle,
     Line,
+    LinearPattern,
+    LinearPatternDirection,
     PartGraph,
     SketchEntity,
     SketchNode,
     SolidNode,
     StraightSlot,
 )
+from cad_ir.part_feature_graph.planes import plane_axes
 
 from cad_compiler.graph.analyze import analyze_graph, resolve_dependencies
 
@@ -246,6 +249,17 @@ def _check_references(graph: PartGraph, issues: list[ValidationIssue]) -> None:
                         message=f"Profile '{node.profile}' must be a sketch",
                     )
                 )
+        elif isinstance(node, LinearPattern):
+            for seed in node.seeds:
+                if seed not in graph.nodes:
+                    issues.append(
+                        ValidationIssue(
+                            code=ErrorCode.IR_REFERENCE_UNRESOLVED,
+                            pointer=f"/nodes/{node_id}/seeds",
+                            message=f"Seed '{seed}' not found in graph",
+                            ref=seed,
+                        )
+                    )
         for dep in node.dependencies:
             if dep not in graph.nodes:
                 issues.append(
@@ -809,6 +823,208 @@ def _check_cut_profiles(graph: PartGraph, issues: list[ValidationIssue]) -> None
     _check_cuts_do_not_overlap(cuts, graph, issues)
 
 
+def _direction_2d_offset(
+    sketch_plane: str, dir_spec: LinearPatternDirection
+) -> tuple[float, float] | None:
+    """Project a 3D direction onto a 2D sketch plane.
+
+    Returns (du, dv) unit vector if computable, or None.
+    """
+    try:
+        sp_axes = plane_axes(sketch_plane)
+    except ValueError:
+        return None
+
+    try:
+        dp_axes = plane_axes(dir_spec.direction)
+        d3 = dp_axes.normal
+    except ValueError:
+        return None
+
+    du = d3[0] * sp_axes.x_axis[0] + d3[1] * sp_axes.x_axis[1] + d3[2] * sp_axes.x_axis[2]
+    dv = d3[0] * sp_axes.y_axis[0] + d3[1] * sp_axes.y_axis[1] + d3[2] * sp_axes.y_axis[2]
+    if dir_spec.reverse:
+        du = -du
+        dv = -dv
+    return du, dv
+
+
+def _check_pattern_spacing_and_overlaps(
+    pat_id: str,
+    pat: LinearPattern,
+    graph: PartGraph,
+    issues: list[ValidationIssue],
+) -> None:
+    dirs: list[tuple[LinearPatternDirection, str]] = [(pat.direction_1, "direction_1")]
+    if pat.direction_2 is not None:
+        dirs.append((pat.direction_2, "direction_2"))
+
+    for dir_spec, dir_key in dirs:
+        if dir_spec.spacing < _MIN_CIRCLE_DIA - _TOL:
+            issues.append(
+                ValidationIssue(
+                    code=ErrorCode.IR_RULE_VIOLATED,
+                    pointer=f"/nodes/{pat_id}/{dir_key}/spacing",
+                    message=f"Pattern '{pat_id}' spacing must be at least 0.01 mm",
+                )
+            )
+        for seed_id in pat.seeds:
+            seed_node = graph.nodes.get(seed_id)
+            if isinstance(seed_node, SolidNode) and seed_node.profile in graph.nodes:
+                seed_prof = graph.nodes[seed_node.profile]
+                if isinstance(seed_prof, SketchNode):
+                    for _, c in _sketch_circles(seed_prof):
+                        if dir_spec.spacing < c.diameter - _QUANTUM:
+                            msg = (
+                                f"Pattern '{pat_id}' spacing {dir_spec.spacing} mm is smaller "
+                                f"than seed hole diameter {c.diameter} mm causing overlap"
+                            )
+                            issues.append(
+                                ValidationIssue(
+                                    code=ErrorCode.IR_RULE_VIOLATED,
+                                    pointer=f"/nodes/{pat_id}/{dir_key}/spacing",
+                                    message=msg,
+                                )
+                            )
+
+
+def _check_pattern_instance(
+    target: tuple[str, int],
+    delta: tuple[float, float],
+    seed_prof: SketchNode,
+    base_sketch: SketchNode,
+    issues: list[ValidationIssue],
+) -> None:
+    pat_id, k1 = target
+    du, dv = delta
+    for eid, c in _sketch_circles(seed_prof):
+        shifted_c = Circle(
+            center=(c.center[0] + du, c.center[1] + dv),
+            diameter=c.diameter,
+        )
+        if not _circle_inside_base(shifted_c, base_sketch):
+            msg = f"Patterned instance {k1 + 1} of hole '{eid}' falls outside extrude profile"
+            issues.append(
+                ValidationIssue(
+                    code=ErrorCode.IR_RULE_VIOLATED,
+                    pointer=f"/nodes/{pat_id}/direction_1",
+                    message=msg,
+                )
+            )
+    seed_lines = _sketch_lines(seed_prof)
+    if seed_lines:
+        shifted_lines = [
+            Line(
+                start=(ln.start[0] + du, ln.start[1] + dv),
+                end=(ln.end[0] + du, ln.end[1] + dv),
+            )
+            for ln in seed_lines
+        ]
+        if not _loop_inside_base(shifted_lines, base_sketch):
+            msg = f"Patterned instance {k1 + 1} of cut falls outside extrude profile"
+            issues.append(
+                ValidationIssue(
+                    code=ErrorCode.IR_RULE_VIOLATED,
+                    pointer=f"/nodes/{pat_id}/direction_1",
+                    message=msg,
+                )
+            )
+
+
+def _check_pattern_containment(
+    pat_id: str,
+    pat: LinearPattern,
+    graph: PartGraph,
+    base_sketch: SketchNode,
+    issues: list[ValidationIssue],
+) -> None:
+    for seed_id in pat.seeds:
+        seed_node = graph.nodes.get(seed_id)
+        if not isinstance(seed_node, SolidNode) or seed_node.profile not in graph.nodes:
+            continue
+        seed_prof = graph.nodes[seed_node.profile]
+        if not isinstance(seed_prof, SketchNode):
+            continue
+
+        off1 = _direction_2d_offset(seed_prof.plane, pat.direction_1)
+        if off1 is None:
+            continue
+        u1, v1 = off1
+        count1 = pat.direction_1.count
+        spacing1 = pat.direction_1.spacing
+
+        count2 = pat.direction_2.count if pat.direction_2 is not None else 1
+        spacing2 = pat.direction_2.spacing if pat.direction_2 is not None else 0.0
+        off2 = (
+            _direction_2d_offset(seed_prof.plane, pat.direction_2)
+            if pat.direction_2 is not None
+            else None
+        )
+        u2, v2 = off2 if off2 is not None else (0.0, 0.0)
+
+        for k1 in range(count1):
+            for k2 in range(count2):
+                if k1 == 0 and k2 == 0:
+                    continue
+                du = k1 * spacing1 * u1 + k2 * spacing2 * u2
+                dv = k1 * spacing1 * v1 + k2 * spacing2 * v2
+                _check_pattern_instance((pat_id, k1), (du, dv), seed_prof, base_sketch, issues)
+
+
+def _check_linear_patterns(graph: PartGraph, issues: list[ValidationIssue]) -> None:
+    patterns = [(nid, n) for nid, n in graph.nodes.items() if isinstance(n, LinearPattern)]
+    if not patterns:
+        return
+
+    deps_map = resolve_dependencies(graph)
+
+    def get_transitive_deps(start: str) -> set[str]:
+        visited: set[str] = set()
+        queue = list(deps_map.get(start, set()))
+        while queue:
+            curr = queue.pop(0)
+            if curr not in visited:
+                visited.add(curr)
+                queue.extend(deps_map.get(curr, set()))
+        return visited
+
+    extrudes = [n for n in graph.nodes.values() if isinstance(n, SolidNode) and n.type == "extrude"]
+    base_sketch: SketchNode | None = None
+    if extrudes and extrudes[0].profile in graph.nodes:
+        prof = graph.nodes[extrudes[0].profile]
+        if isinstance(prof, SketchNode):
+            base_sketch = prof
+
+    for pat_id, pat in patterns:
+        trans_deps = get_transitive_deps(pat_id)
+
+        for seed_id in pat.seeds:
+            seed_node = graph.nodes.get(seed_id)
+            if seed_node is not None and not (
+                isinstance(seed_node, SolidNode) and seed_node.type == "cut_extrude"
+            ):
+                issues.append(
+                    ValidationIssue(
+                        code=ErrorCode.IR_RULE_VIOLATED,
+                        pointer=f"/nodes/{pat_id}/seeds",
+                        message=f"Seed '{seed_id}' of pattern '{pat_id}' must be a cut feature",
+                    )
+                )
+            if seed_node is not None and seed_id not in trans_deps:
+                issues.append(
+                    ValidationIssue(
+                        code=ErrorCode.IR_RULE_VIOLATED,
+                        pointer=f"/nodes/{pat_id}/dependencies",
+                        message=f"Pattern '{pat_id}' must depend on seed feature '{seed_id}'",
+                    )
+                )
+
+        _check_pattern_spacing_and_overlaps(pat_id, pat, graph, issues)
+
+        if base_sketch is not None:
+            _check_pattern_containment(pat_id, pat, graph, base_sketch, issues)
+
+
 def validate_graph(graph: PartGraph) -> tuple[ValidationIssue, ...]:
     """Validate semantic rules of a Part Feature Graph (spec 5.7, 6.7.2).
 
@@ -833,6 +1049,7 @@ def validate_graph(graph: PartGraph) -> tuple[ValidationIssue, ...]:
 
     _check_solids(graph, issues)
     _check_sketches(graph, issues)
+    _check_linear_patterns(graph, issues)
 
     extrudes = [
         (nid, n)

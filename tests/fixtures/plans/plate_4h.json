@@ -8,7 +8,7 @@
   },
   "provenance": {
     "compiler_version": "0.1.0",
-    "profile_hash": "sha256:cd069d6336aeab8d84cd057a3a55923567a277d3e1d9cbc40d816eb7cbd67a11",
+    "profile_hash": "sha256:5e2c6f5913918ccf51a18c36a5a73b2b7bb8318914144402d8e54eeebea2dae8",
     "stage_versions": {
       "feature_lowering": "0.3.0",
       "geometry_resolver": "0.1.0",

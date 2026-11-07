@@ -13,6 +13,7 @@ from cad_ir.part_feature_graph.model import (
     Circle,
     CornerRectangle,
     Line,
+    LinearPattern,
     PartGraph,
     SketchNode,
     SolidNode,
@@ -241,6 +242,31 @@ def _lower_solid(
     return op_body, op_id
 
 
+def _lower_linear_pattern(
+    graph: PartGraph, node_id: str, node: LinearPattern, seq: int, deps: list[str]
+) -> tuple[dict[str, Any], str]:
+    params: dict[str, Any] = {
+        "node_id": node_id,
+        "type": "linear_pattern",
+        "seeds": list(node.seeds),
+        "direction_1": node.direction_1.to_dict(),
+    }
+    if node.direction_2 is not None:
+        params["direction_2"] = node.direction_2.to_dict()
+
+    op_id = f"op_{seq}"
+    op_body = {
+        "sequence": seq,
+        "document": WORKING,
+        "op": "feature.create",
+        "params": params,
+        "source": node_id,
+        "depends_on": deps,
+        "postconditions": ["feature_exists", "feature_status_ok", "rebuild_ok"],
+    }
+    return op_body, op_id
+
+
 def lower_graph(
     graph: PartGraph,
     analysis: GraphAnalysis,
@@ -281,8 +307,12 @@ def lower_graph(
 
         if isinstance(node, SketchNode):
             operations[op_id] = _lower_sketch(graph, node_id, node, seq, dep_op_ids)
-        else:
+        elif isinstance(node, SolidNode):
             op_body, vp_id = _lower_solid(graph, node_id, node, seq, dep_op_ids)
+            operations[op_id] = op_body
+            verification_points.append(vp_id)
+        else:
+            op_body, vp_id = _lower_linear_pattern(graph, node_id, node, seq, dep_op_ids)
             operations[op_id] = op_body
             verification_points.append(vp_id)
 

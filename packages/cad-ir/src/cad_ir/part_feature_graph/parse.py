@@ -13,12 +13,103 @@ from cad_ir.part_feature_graph.model import (
     CornerRectangle,
     EndCondition,
     Line,
+    LinearPattern,
+    LinearPatternDirection,
     PartGraph,
+    PartNode,
     SketchEntity,
     SketchNode,
     SolidNode,
     StraightSlot,
 )
+
+
+def _parse_sketch_entities(
+    raw_entities: dict[str, dict[str, JsonValue]],
+) -> dict[str, SketchEntity]:
+    entities: dict[str, SketchEntity] = {}
+    for ent_id, ent_data in raw_entities.items():
+        ent_type = str(ent_data["type"])
+        if ent_type == "line":
+            raw_start = cast(list[float], ent_data["start"])
+            raw_end = cast(list[float], ent_data["end"])
+            entities[ent_id] = Line(
+                start=(float(raw_start[0]), float(raw_start[1])),
+                end=(float(raw_end[0]), float(raw_end[1])),
+            )
+        elif ent_type == "circle":
+            raw_center = cast(list[float], ent_data["center"])
+            entities[ent_id] = Circle(
+                center=(float(raw_center[0]), float(raw_center[1])),
+                diameter=float(cast(float | int, ent_data["diameter"])),
+            )
+        elif ent_type == "arc":
+            raw_center = cast(list[float], ent_data["center"])
+            raw_start = cast(list[float], ent_data["start"])
+            raw_end = cast(list[float], ent_data["end"])
+            entities[ent_id] = Arc(
+                center=(float(raw_center[0]), float(raw_center[1])),
+                start=(float(raw_start[0]), float(raw_start[1])),
+                end=(float(raw_end[0]), float(raw_end[1])),
+                direction=str(ent_data["direction"]),
+            )
+        elif ent_type == "corner_rectangle":
+            raw_c1 = cast(list[float], ent_data["corner1"])
+            raw_c2 = cast(list[float], ent_data["corner2"])
+            entities[ent_id] = CornerRectangle(
+                corner1=(float(raw_c1[0]), float(raw_c1[1])),
+                corner2=(float(raw_c2[0]), float(raw_c2[1])),
+            )
+        elif ent_type == "center_rectangle":
+            raw_center = cast(list[float], ent_data["center"])
+            entities[ent_id] = CenterRectangle(
+                center=(float(raw_center[0]), float(raw_center[1])),
+                width=float(cast(float | int, ent_data["width"])),
+                height=float(cast(float | int, ent_data["height"])),
+            )
+        elif ent_type == "straight_slot":
+            raw_p1 = cast(list[float], ent_data["start_point"])
+            raw_p2 = cast(list[float], ent_data["end_point"])
+            entities[ent_id] = StraightSlot(
+                start_point=(float(raw_p1[0]), float(raw_p1[1])),
+                end_point=(float(raw_p2[0]), float(raw_p2[1])),
+                width=float(cast(float | int, ent_data["width"])),
+            )
+    return entities
+
+
+def _parse_linear_pattern(
+    node_data: dict[str, JsonValue],
+    dependencies: tuple[str, ...],
+    display_name: str | None,
+    realizes: tuple[str, ...],
+) -> LinearPattern:
+    raw_seeds = cast(list[str], node_data["seeds"])
+    seeds = tuple(str(s) for s in raw_seeds)
+    d1_data = cast(dict[str, JsonValue], node_data["direction_1"])
+    dir1 = LinearPatternDirection(
+        direction=str(d1_data["direction"]),
+        spacing=float(cast(float | int, d1_data["spacing"])),
+        count=int(cast(int, d1_data["count"])),
+        reverse=bool(d1_data.get("reverse", False)),
+    )
+    dir2: LinearPatternDirection | None = None
+    if "direction_2" in node_data and node_data["direction_2"] is not None:
+        d2_data = cast(dict[str, JsonValue], node_data["direction_2"])
+        dir2 = LinearPatternDirection(
+            direction=str(d2_data["direction"]),
+            spacing=float(cast(float | int, d2_data["spacing"])),
+            count=int(cast(int, d2_data["count"])),
+            reverse=bool(d2_data.get("reverse", False)),
+        )
+    return LinearPattern(
+        seeds=seeds,
+        direction_1=dir1,
+        direction_2=dir2,
+        dependencies=dependencies,
+        display_name=display_name,
+        realizes=realizes,
+    )
 
 
 def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
@@ -32,7 +123,7 @@ def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
 
     doc_dict = cast(dict[str, JsonValue], doc)
     nodes_dict = cast(dict[str, dict[str, JsonValue]], doc_dict.get("nodes", {}))
-    nodes: dict[str, SketchNode | SolidNode] = {}
+    nodes: dict[str, PartNode] = {}
 
     for node_id, node_data in nodes_dict.items():
         node_type = str(node_data["type"])
@@ -44,58 +135,10 @@ def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
         realizes = tuple(str(r) for r in raw_realizes) if isinstance(raw_realizes, list) else ()
 
         if node_type == "sketch":
-            entities: dict[str, SketchEntity] = {}
             raw_entities = cast(dict[str, dict[str, JsonValue]], node_data.get("entities", {}))
-            for ent_id, ent_data in raw_entities.items():
-                ent_type = str(ent_data["type"])
-                if ent_type == "line":
-                    raw_start = cast(list[float], ent_data["start"])
-                    raw_end = cast(list[float], ent_data["end"])
-                    entities[ent_id] = Line(
-                        start=(float(raw_start[0]), float(raw_start[1])),
-                        end=(float(raw_end[0]), float(raw_end[1])),
-                    )
-                elif ent_type == "circle":
-                    raw_center = cast(list[float], ent_data["center"])
-                    entities[ent_id] = Circle(
-                        center=(float(raw_center[0]), float(raw_center[1])),
-                        diameter=float(cast(float | int, ent_data["diameter"])),
-                    )
-                elif ent_type == "arc":
-                    raw_center = cast(list[float], ent_data["center"])
-                    raw_start = cast(list[float], ent_data["start"])
-                    raw_end = cast(list[float], ent_data["end"])
-                    entities[ent_id] = Arc(
-                        center=(float(raw_center[0]), float(raw_center[1])),
-                        start=(float(raw_start[0]), float(raw_start[1])),
-                        end=(float(raw_end[0]), float(raw_end[1])),
-                        direction=str(ent_data["direction"]),
-                    )
-                elif ent_type == "corner_rectangle":
-                    raw_c1 = cast(list[float], ent_data["corner1"])
-                    raw_c2 = cast(list[float], ent_data["corner2"])
-                    entities[ent_id] = CornerRectangle(
-                        corner1=(float(raw_c1[0]), float(raw_c1[1])),
-                        corner2=(float(raw_c2[0]), float(raw_c2[1])),
-                    )
-                elif ent_type == "center_rectangle":
-                    raw_center = cast(list[float], ent_data["center"])
-                    entities[ent_id] = CenterRectangle(
-                        center=(float(raw_center[0]), float(raw_center[1])),
-                        width=float(cast(float | int, ent_data["width"])),
-                        height=float(cast(float | int, ent_data["height"])),
-                    )
-                elif ent_type == "straight_slot":
-                    raw_p1 = cast(list[float], ent_data["start_point"])
-                    raw_p2 = cast(list[float], ent_data["end_point"])
-                    entities[ent_id] = StraightSlot(
-                        start_point=(float(raw_p1[0]), float(raw_p1[1])),
-                        end_point=(float(raw_p2[0]), float(raw_p2[1])),
-                        width=float(cast(float | int, ent_data["width"])),
-                    )
             nodes[node_id] = SketchNode(
                 plane=str(node_data["plane"]),
-                entities=entities,
+                entities=_parse_sketch_entities(raw_entities),
                 dependencies=dependencies,
                 display_name=display_name,
                 realizes=realizes,
@@ -114,6 +157,8 @@ def parse_part_graph(doc: JsonValue) -> PartGraph | IssueReport:
                 display_name=display_name,
                 realizes=realizes,
             )
+        elif node_type == "linear_pattern":
+            nodes[node_id] = _parse_linear_pattern(node_data, dependencies, display_name, realizes)
 
     return PartGraph(
         id=str(doc_dict["id"]),

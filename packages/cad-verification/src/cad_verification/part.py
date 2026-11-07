@@ -325,7 +325,7 @@ def _collect_features(
                     native_type="ProfileFeature",
                 )
             )
-        else:
+        elif isinstance(node, SolidNode):
             solid_nodes.append((nid, node))
             if node.type == "extrude":
                 features.append(
@@ -351,6 +351,14 @@ def _collect_features(
                         native_type="",
                     )
                 )
+        else:
+            features.append(
+                ExpectedFeature(
+                    node_id=nid,
+                    feature_type="linear_pattern",
+                    native_type="LPattern",
+                )
+            )
     return features, solid_nodes
 
 

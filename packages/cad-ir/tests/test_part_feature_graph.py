@@ -3,10 +3,11 @@
 import json
 from dataclasses import fields
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, cast
 
 import pytest
 from cad_ir.core.issues import IssueReport
+from cad_ir.core.json_types import JsonValue
 from cad_ir.generated import ErrorCode
 from cad_ir.part_feature_graph import (
     PART_SCHEMA_ID,
@@ -15,6 +16,8 @@ from cad_ir.part_feature_graph import (
     Circle,
     CornerRectangle,
     Line,
+    LinearPattern,
+    LinearPatternDirection,
     PartGraph,
     PlaneAxes,
     SketchNode,
@@ -89,7 +92,7 @@ def test_part_schema_id_constant() -> None:
 
 def test_plate_parses() -> None:
     doc = _plate_doc()
-    res = parse_part_graph(doc)
+    res = parse_part_graph(cast(JsonValue, doc))
     assert isinstance(res, PartGraph)
     assert res.id == "plate_4h"
     assert res.schema_version == "0.1"
@@ -133,7 +136,7 @@ def test_plate_parses() -> None:
 def test_unknown_field_rejected() -> None:
     doc = _plate_doc()
     doc["nodes"]["extrude_base"]["suppressed"] = True
-    res = parse_part_graph(doc)
+    res = parse_part_graph(cast(JsonValue, doc))
     assert isinstance(res, IssueReport)
     assert any(
         i.code == ErrorCode.IR_SCHEMA_INVALID and i.pointer.startswith("/nodes/extrude_base")
@@ -144,7 +147,7 @@ def test_unknown_field_rejected() -> None:
 def test_blind_needs_depth() -> None:
     doc = _plate_doc()
     doc["nodes"]["extrude_base"]["end_condition"] = {"type": "blind"}
-    res = parse_part_graph(doc)
+    res = parse_part_graph(cast(JsonValue, doc))
     assert isinstance(res, IssueReport)
     assert any(
         i.code == ErrorCode.IR_SCHEMA_INVALID
@@ -156,7 +159,7 @@ def test_blind_needs_depth() -> None:
 def test_through_all_has_no_depth() -> None:
     doc = _plate_doc()
     doc["nodes"]["cut_holes"]["end_condition"] = {"type": "through_all_both", "depth": 10}
-    res = parse_part_graph(doc)
+    res = parse_part_graph(cast(JsonValue, doc))
     assert isinstance(res, IssueReport)
     assert any(
         i.code == ErrorCode.IR_SCHEMA_INVALID
@@ -225,7 +228,7 @@ def test_plane_axes_unsupported() -> None:
 
 def test_part_graph_roundtrip() -> None:
     doc = _plate_doc()
-    res = parse_part_graph(doc)
+    res = parse_part_graph(cast(JsonValue, doc))
     assert isinstance(res, PartGraph)
     out = res.to_dict()
     assert out["module"] == "part"
@@ -276,7 +279,7 @@ def test_arc_dataclass_and_parsing() -> None:
             },
         },
     }
-    res = parse_part_graph(doc)
+    res = parse_part_graph(cast(JsonValue, doc))
     assert isinstance(res, PartGraph)
     sketch = res.nodes["sketch_base"]
     assert isinstance(sketch, SketchNode)
@@ -323,7 +326,7 @@ def test_corner_rectangle_parses() -> None:
             },
         },
     }
-    res = parse_part_graph(doc)
+    res = parse_part_graph(cast(JsonValue, doc))
     assert isinstance(res, PartGraph)
     sketch = res.nodes["sketch_base"]
     assert isinstance(sketch, SketchNode)
@@ -367,7 +370,7 @@ def test_center_rectangle_parses() -> None:
             },
         },
     }
-    res = parse_part_graph(doc)
+    res = parse_part_graph(cast(JsonValue, doc))
     assert isinstance(res, PartGraph)
     sketch = res.nodes["sketch_base"]
     assert isinstance(sketch, SketchNode)
@@ -413,7 +416,7 @@ def test_straight_slot_parses() -> None:
             },
         },
     }
-    res = parse_part_graph(doc)
+    res = parse_part_graph(cast(JsonValue, doc))
     assert isinstance(res, PartGraph)
     sketch = res.nodes["sketch_base"]
     assert isinstance(sketch, SketchNode)
@@ -429,3 +432,70 @@ def test_straight_slot_parses() -> None:
         "end_point": [20.0, 0.0],
         "width": SLOT_WIDTH,
     }
+
+
+def test_linear_pattern_parses() -> None:
+    doc = {
+        "module": "part",
+        "id": "pattern_part",
+        "schema_version": "0.1",
+        "units": "mm",
+        "origin": "built",
+        "nodes": {
+            "sketch_base": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "r1": {
+                        "type": "center_rectangle",
+                        "center": [0.0, 0.0],
+                        "width": 100.0,
+                        "height": 60.0,
+                    }
+                },
+            },
+            "extrude_base": {
+                "type": "extrude",
+                "dependencies": ["sketch_base"],
+                "profile": "sketch_base",
+                "end_condition": {"type": "blind", "depth": 10.0},
+            },
+            "sketch_hole": {
+                "type": "sketch",
+                "plane": "plane:front",
+                "entities": {
+                    "c1": {
+                        "type": "circle",
+                        "center": [-30.0, 0.0],
+                        "diameter": 10.0,
+                    }
+                },
+            },
+            "cut_hole": {
+                "type": "cut_extrude",
+                "dependencies": ["sketch_hole", "extrude_base"],
+                "profile": "sketch_hole",
+                "end_condition": {"type": "through_all_both"},
+            },
+            "pattern_holes": {
+                "type": "linear_pattern",
+                "dependencies": ["cut_hole", "extrude_base"],
+                "seeds": ["cut_hole"],
+                "direction_1": {
+                    "direction": "plane:right",
+                    "spacing": 20.0,
+                    "count": 4,
+                },
+            },
+        },
+    }
+    res = parse_part_graph(cast(JsonValue, doc))
+    assert isinstance(res, PartGraph)
+    pat = res.nodes["pattern_holes"]
+    assert isinstance(pat, LinearPattern)
+    assert pat.type == "linear_pattern"
+    assert pat.seeds == ("cut_hole",)
+    assert pat.direction_1 == LinearPatternDirection(
+        direction="plane:right", spacing=20.0, count=4, reverse=False
+    )
+    assert pat.direction_2 is None
